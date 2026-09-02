@@ -259,6 +259,10 @@ button{font-family:inherit;}
 .step-table td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
 .step-table td input,.step-table td select{width:100%;border:1px solid transparent;background:none;padding:4px 5px;font-size:12px;border-radius:2px;font-family:inherit;}
 .step-table td input:focus,.step-table td select:focus{border-color:var(--green);background:var(--white);outline:none;}
+.cellwrap{display:flex;align-items:center;gap:2px;}
+.cellwrap input{min-width:0;flex:1;}
+.cellexp{flex:0 0 auto;width:22px;height:22px;border:1px solid var(--line-strong);background:var(--paper);border-radius:2px;color:var(--ink-faint);font-size:11px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.cellexp:hover,.cellexp:active{border-color:var(--green);color:var(--green);background:var(--green-tint);}
 .step-num{font-family:var(--mono);color:var(--ink-faint);font-size:11px;}
 .step-del{background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:14px;}
 .step-del:hover{color:var(--red);}
@@ -404,7 +408,7 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
       <div class="field"><label>タイトル</label><input id="td_title" placeholder="例）W95・希釈10%でのCMP再検証"></div>
       <div class="field-row">
         <div class="field"><label>事業</label><select id="td_biz"><option>研磨</option><option>動画編集</option><option>3Dプリンタ</option><option>全般</option></select></div>
-        <div class="field"><label>ジャンル</label><select id="td_genre"><option>定常業務</option><option>加工研究</option><option>耐用・測定テスト</option><option>デザイン</option><option>事務業務</option><option>禁止事項</option></select></div>
+        <div class="field"><label>ジャンル</label><select id="td_genre"><option>定常業務</option><option>製造</option><option>加工研究</option><option>耐用・測定テスト</option><option>デザイン</option><option>事務業務</option><option>禁止事項</option></select></div>
       </div>
       <div class="field-row">
         <div class="field" style="max-width:100px"><label>No.</label><input id="td_no" value="" readonly style="background:var(--paper-deep);color:var(--ink-faint)"></div>
@@ -525,7 +529,7 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
 <!-- ============ 新規加工研究（タイトル先聞き） ============ -->
 <div class="overlay" id="ov-newresearch">
   <div class="modal">
-    <div class="modal-head"><h3>加工研究を追加</h3><button class="modal-close" onclick="closeOv('ov-newresearch')">×</button></div>
+    <div class="modal-head"><h3>新規追加</h3><button class="modal-close" onclick="closeOv('ov-newresearch')">×</button></div>
     <div class="modal-body">
       <div class="field"><label>タイトル</label><input id="nr_title" placeholder="例）センタドリル有無によるポリッシュの仕上がり確認、加工時間、作業性比較"></div>
       <div class="field"><label>ジャンル</label><select id="nr_genre"><option value="加工研究">加工研究</option><option value="耐用・測定テスト">耐用・測定テスト</option></select></div>
@@ -535,6 +539,21 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
       <div style="flex:1"></div>
       <button class="btn" onclick="closeOv('ov-newresearch')">キャンセル</button>
       <button class="btn primary" onclick="submitNewResearch()">作成して詳細を開く</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 工程表セル拡大編集 ============ -->
+<div class="overlay" id="ov-cellEdit" onclick="if(event.target===this)closeCellEditor()">
+  <div class="modal">
+    <div class="modal-head"><h3 id="cellEditLabel">編集</h3><button class="modal-close" onclick="closeCellEditor()">×</button></div>
+    <div class="modal-body">
+      <textarea id="cellEditTextarea" style="min-height:120px;font-size:16px"></textarea>
+    </div>
+    <div class="modal-foot">
+      <div style="flex:1"></div>
+      <button class="btn" onclick="closeCellEditor()">キャンセル</button>
+      <button class="btn primary" onclick="saveCellEditor()">保存</button>
     </div>
   </div>
 </div>
@@ -621,7 +640,7 @@ function autofillSpec(){
    データモデル
    ========================================================================== */
 const BIZ_LIST = ['研磨','動画編集','3Dプリンタ','全般'];
-const GENRE_LIST = ['定常業務','加工研究','耐用・測定テスト','デザイン','事務業務','禁止事項'];
+const GENRE_LIST = ['定常業務','製造','加工研究','耐用・測定テスト','デザイン','事務業務','禁止事項'];
 const STATUS_LIST = ['未着手','進行中','完了'];
 
 let state = {
@@ -907,7 +926,7 @@ function renderNav(){
     {id:'dash',label:'ダッシュボード',icon:ICONS.dash},
     {id:'timer',label:'作業タイマー',icon:ICONS.timer},
     {id:'todo',label:'ToDoリスト',icon:ICONS.todo,count:state.todos.filter(t=>t.status!=='完了').length},
-    {id:'research',label:'加工研究',icon:ICONS.research,count:state.research.filter(r=>r.genre!=='耐用・測定テスト').length},
+    {id:'research',label:'工程表',icon:ICONS.research,count:state.research.filter(r=>r.genre!=='耐用・測定テスト').length},
     {id:'durability',label:'耐用・測定記録',icon:ICONS.durability,count:state.research.filter(r=>r.genre==='耐用・測定テスト').length},
     {id:'tools',label:'工具マスタ',icon:ICONS.tools,count:state.tools.length},
     {id:'customers',label:'顧客管理',icon:ICONS.cust,count:state.customers.length},
@@ -956,7 +975,7 @@ function closeOv(id){ document.getElementById(id).classList.remove('show'); }
    ========================================================================== */
 function render(){
   renderNav();
-  const titleMap={dash:'ダッシュボード',timer:'作業タイマー',todo:'ToDoリスト',research:'加工研究',durability:'耐用・測定記録',tools:'工具マスタ',customers:'顧客管理',trash:'ゴミ箱'};
+  const titleMap={dash:'ダッシュボード',timer:'作業タイマー',todo:'ToDoリスト',research:'工程表',durability:'耐用・測定記録',tools:'工具マスタ',customers:'顧客管理',trash:'ゴミ箱'};
   document.getElementById('pageTitle').textContent=titleMap[currentPage]||'';
   const subMap={dash:todayStr(),timer:'実作業時間を計測して工程表に反映',todo:'定常業務・加工研究・事務を横断管理',research:'比較検証の記録',durability:'工具・消耗品の使用量を工具ごとに集計',tools:'保有工具・消耗品の台帳',customers:'見込み〜取引先の管理',trash:'削除済みアイテムの復元・完全削除'};
   document.getElementById('pageSub').textContent=subMap[currentPage]||'';
@@ -1551,7 +1570,7 @@ function renderResearchPage(container){
   container.innerHTML=`<div class="filterbar">${bizChips}<span class="divider"></span>
     <button class="btn sm ghost" onclick="researchFilterBiz.clear();render();">絞込解除</button>
     <div class="spacer"></div><button class="btn sm" onclick="exportResearchCSV()">CSV出力</button>
-    <button class="btn primary sm" onclick="openNewResearchModal()">＋ 新規研究</button></div>
+    <button class="btn primary sm" onclick="openNewResearchModal()">＋ 新規追加</button></div>
     <div class="rowlist">${rows}</div>`;
   document.querySelectorAll('.swiperow').forEach(row=>attachSwipe(row, ()=>{}));
 }
@@ -1701,17 +1720,17 @@ function renderResearchDetail(id){
       return `
       <tr>
         <td class="step-num">${i+1}</td>
-        <td><input value="${esc(s.processName)}" placeholder="例）洗浄／測定／研磨" oninput="rsStepInput('${id}',${si},${i},'processName',this.value)"></td>
+        <td><div class="cellwrap"><input value="${esc(s.processName)}" placeholder="例）洗浄／測定／研磨" oninput="rsStepInput('${id}',${si},${i},'processName',this.value)"><button type="button" class="cellexp" onclick="openCellEditor('${id}',${si},${i},'processName')" title="拡大して編集">⤢</button></div></td>
         <td><select onchange="rsStepToolChange('${id}',${si},${i},this.value)"><option value="">（選択）</option>${toolOptionsFor(r.biz)}</select>
-            ${s.tool&&!state.tools.some(t=>t.name===s.tool)?`<input value="${esc(s.tool)}" oninput="rsStepInput('${id}',${si},${i},'tool',this.value)" style="margin-top:4px">`:''}</td>
-        <td><input value="${esc(s.grit)}" placeholder="番手/粒径" oninput="rsStepInput('${id}',${si},${i},'grit',this.value)"></td>
+            ${s.tool&&!state.tools.some(t=>t.name===s.tool)?`<div class="cellwrap" style="margin-top:4px"><input value="${esc(s.tool)}" oninput="rsStepInput('${id}',${si},${i},'tool',this.value)"><button type="button" class="cellexp" onclick="openCellEditor('${id}',${si},${i},'tool')" title="拡大して編集">⤢</button></div>`:''}</td>
+        <td><div class="cellwrap"><input value="${esc(s.grit)}" placeholder="番手/粒径" oninput="rsStepInput('${id}',${si},${i},'grit',this.value)"><button type="button" class="cellexp" onclick="openCellEditor('${id}',${si},${i},'grit')" title="拡大して編集">⤢</button></div></td>
         <td><input value="${esc(s.time)}" type="number" placeholder="分" style="width:56px" oninput="rsStepInput('${id}',${si},${i},'time',this.value)"></td>
-        <td><input value="${esc(s.pressure)}" placeholder="押し圧" oninput="rsStepInput('${id}',${si},${i},'pressure',this.value)"></td>
+        <td><div class="cellwrap"><input value="${esc(s.pressure)}" placeholder="押し圧" oninput="rsStepInput('${id}',${si},${i},'pressure',this.value)"><button type="button" class="cellexp" onclick="openCellEditor('${id}',${si},${i},'pressure')" title="拡大して編集">⤢</button></div></td>
         ${isDurability ? `
         <td><input value="${esc(s.beforeWeight)}" type="number" step="0.001" placeholder="使用前(g)" style="width:76px" oninput="rsStepInput('${id}',${si},${i},'beforeWeight',this.value)"></td>
         <td><input value="${esc(s.afterWeight)}" type="number" step="0.001" placeholder="使用後(g)" style="width:76px" oninput="rsStepInput('${id}',${si},${i},'afterWeight',this.value)"></td>
         <td class="mute" style="text-align:right">${consumed}</td>` : ''}
-        <td><input value="${esc(s.memo)}" placeholder="メモ" oninput="rsStepInput('${id}',${si},${i},'memo',this.value)"></td>
+        <td><div class="cellwrap"><input value="${esc(s.memo)}" placeholder="メモ" oninput="rsStepInput('${id}',${si},${i},'memo',this.value)"><button type="button" class="cellexp" onclick="openCellEditor('${id}',${si},${i},'memo')" title="拡大して編集">⤢</button></div></td>
         <td><button class="step-del" onclick="rsRemoveStep('${id}',${si},${i})">×</button></td>
       </tr>`;
     }).join('');
@@ -1895,6 +1914,25 @@ function rsRemoveSpecimen(id,si){ const r=state.research.find(x=>x.id===id); if(
 function rsAddStep(id,si){ const r=state.research.find(x=>x.id===id); const sp=r.specimens[si]; if(sp.steps.length>=20) return; sp.steps.push({processName:'',tool:'',grit:'',time:'',pressure:'',memo:'',beforeWeight:'',afterWeight:''}); saveState(); render(); }
 function rsRemoveStep(id,si,i){ const r=state.research.find(x=>x.id===id); r.specimens[si].steps.splice(i,1); saveState(); render(); }
 function rsStepInput(id,si,i,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].steps[i][key]=val; saveState(); }
+
+/* ---- 工程表セルの拡大編集ポップアップ ---- */
+let cellEditCtx=null;
+const CELL_EDIT_LABELS={processName:'工程名称',tool:'工具（自由入力）',grit:'番手/粒径',pressure:'押し圧',memo:'メモ'};
+function openCellEditor(id,si,i,key){
+  const r=state.research.find(x=>x.id===id); const step=r.specimens[si].steps[i];
+  cellEditCtx={id,si,i,key};
+  document.getElementById('cellEditLabel').textContent=`${i+1}. ${CELL_EDIT_LABELS[key]||key}`;
+  document.getElementById('cellEditTextarea').value=step[key]||'';
+  openOv('ov-cellEdit');
+  setTimeout(()=>document.getElementById('cellEditTextarea').focus(),50);
+}
+function saveCellEditor(){
+  if(!cellEditCtx) return;
+  const val=document.getElementById('cellEditTextarea').value;
+  rsStepInput(cellEditCtx.id,cellEditCtx.si,cellEditCtx.i,cellEditCtx.key,val);
+  closeCellEditor(); render();
+}
+function closeCellEditor(){ cellEditCtx=null; closeOv('ov-cellEdit'); }
 function rsStepToolChange(id,si,i,toolName){
   const r=state.research.find(x=>x.id===id); const step=r.specimens[si].steps[i];
   step.tool = toolName;
