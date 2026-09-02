@@ -237,6 +237,11 @@ button{font-family:inherit;}
 .itemrow .meta{font-size:11px;color:var(--ink-soft);display:flex;gap:10px;flex-wrap:wrap;}
 .itemrow .meta span{white-space:nowrap;}
 .itemrow .right{display:flex;align-items:center;gap:8px;flex:0 0 auto;}
+.datefilter{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.datefilter input[type=date]{width:auto;padding:5px 6px;font-size:11px;border:1px solid var(--line-strong);border-radius:var(--radius);background:var(--white);color:var(--ink);}
+.datestamp{font-size:10px;color:var(--ink-faint);margin-top:2px;}
+.itemrow .right .detail-link{font-size:12px;font-weight:600;color:var(--green);text-decoration:underline;cursor:pointer;white-space:nowrap;padding:6px 2px;}
+.itemrow .right .detail-link:hover{color:var(--green-deep);}
 .star{color:var(--green);}
 
 /* ---- detail ---- */
@@ -650,6 +655,7 @@ function autofillSpec(){
    ========================================================================== */
 const BIZ_LIST = ['研磨','動画編集','3Dプリンタ','全般'];
 const GENRE_LIST = ['定常業務','製造','加工研究','耐用・測定テスト','デザイン','事務業務','禁止事項'];
+const WEIGHT_UNIT_LIST = ['g','mg','mm','μm','ml','回'];
 const STATUS_LIST = ['未着手','進行中','完了'];
 
 let state = {
@@ -657,6 +663,39 @@ let state = {
   settings: {hourly:1800, packMaterial:70, shipping:870, packMin:30},
 };
 function todayStr(){ return new Date().toISOString().slice(0,10); }
+function fmtDT(ts){
+  if(!ts) return '';
+  const d=new Date(ts);
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+/* ---- 日付レンジフィルター（作成日・更新日／各ページ共通） ---- */
+let dateFilters={};
+function getDateFilter(page){ return dateFilters[page] || (dateFilters[page]={cFrom:'',cTo:'',uFrom:'',uTo:''}); }
+function setDateFilter(page,key,val){ getDateFilter(page)[key]=val; render(); }
+function clearDateFilter(page){ dateFilters[page]={cFrom:'',cTo:'',uFrom:'',uTo:''}; render(); }
+function dateRangeMatch(ts,fromStr,toStr){
+  if(!fromStr && !toStr) return true;
+  if(!ts) return false;
+  if(fromStr && ts < new Date(fromStr+'T00:00:00').getTime()) return false;
+  if(toStr && ts > new Date(toStr+'T23:59:59').getTime()) return false;
+  return true;
+}
+function passDateFilter(page,item){
+  const f=getDateFilter(page);
+  return dateRangeMatch(item.createdAt,f.cFrom,f.cTo) && dateRangeMatch(item.updatedAt,f.uFrom,f.uTo);
+}
+function renderDateFilterBar(page){
+  const f=getDateFilter(page);
+  const active = f.cFrom||f.cTo||f.uFrom||f.uTo;
+  return `<div class="datefilter">
+    <span class="mute" style="font-size:11px">作成日</span>
+    <input type="date" value="${f.cFrom}" onchange="setDateFilter('${page}','cFrom',this.value)">〜<input type="date" value="${f.cTo}" onchange="setDateFilter('${page}','cTo',this.value)">
+    <span class="mute" style="font-size:11px;margin-left:6px">更新日</span>
+    <input type="date" value="${f.uFrom}" onchange="setDateFilter('${page}','uFrom',this.value)">〜<input type="date" value="${f.uTo}" onchange="setDateFilter('${page}','uTo',this.value)">
+    ${active?`<button class="btn sm ghost" onclick="clearDateFilter('${page}')">日付解除</button>`:''}
+  </div>`;
+}
 function uid(p){ return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function addDays(dateStr,n){ const d=new Date(dateStr+'T00:00:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
 function dayDiff(a,b){ return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000); }
@@ -686,6 +725,7 @@ function migrateResearchRecord(raw){
   base.compare = Object.assign({}, base.compare, raw.compare||{});
   base.photos = raw.photos || base.photos;
   base.createdAt = raw.createdAt || base.createdAt;
+  base.updatedAt = raw.updatedAt || raw.createdAt || base.updatedAt;
   if(Array.isArray(raw.specimens) && raw.specimens.length){
     base.specimens = raw.specimens.map(sp=>deepMergeSafe(emptySpecimen(sp.label||'N1'), sp));
   }else if(raw.obj){ // 旧形式（単一の対象物）からの変換
@@ -693,13 +733,17 @@ function migrateResearchRecord(raw){
   }
   return base;
 }
-function migrateToolRecord(raw){ return Object.assign(emptyTool(), raw, {createdDate: raw.createdDate||todayStr()}); }
-function migrateCustomerRecord(raw){ return Object.assign(emptyCustomer(), raw, {createdDate: raw.createdDate||todayStr()}); }
-function migrateRoughnessRecord(raw){ return Object.assign(emptyRoughness(), raw); }
+function migrateToolRecord(raw){ return Object.assign(emptyTool(), raw, {createdDate: raw.createdDate||todayStr(), updatedAt: raw.updatedAt||raw.createdAt||Date.now()}); }
+function migrateCustomerRecord(raw){ return Object.assign(emptyCustomer(), raw, {createdDate: raw.createdDate||todayStr(), updatedAt: raw.updatedAt||raw.createdAt||Date.now()}); }
+function migrateRoughnessRecord(raw){ return Object.assign(emptyRoughness(), raw, {updatedAt: raw.updatedAt||raw.createdAt||Date.now()}); }
+function migrateTodoRecord(raw){
+  if(raw.updatedAt==null) raw.updatedAt = raw.createdAt || Date.now();
+  return raw;
+}
 function migrateState(raw){
   raw = raw||{};
   return {
-    todos: Array.isArray(raw.todos)?raw.todos:[],
+    todos: Array.isArray(raw.todos)?raw.todos.map(migrateTodoRecord):[],
     research: Array.isArray(raw.research)?raw.research.map(migrateResearchRecord):[],
     tools: Array.isArray(raw.tools)?raw.tools.map(migrateToolRecord):[],
     customers: Array.isArray(raw.customers)?raw.customers.map(migrateCustomerRecord):[],
@@ -714,7 +758,7 @@ function emptySpecimen(label){
     label: label||'N1', qty:'',
     obj:{maker:'',product:'',material:'',country:'',magnetism:'',cond:'新品',preOverhaul:'なし',spec:''},
     specs:{maxDia:{b:'',a:''}, minDia:{b:'',a:''}, length:{b:'',a:''}, weight:{b:'',a:''}},
-    steps:[],
+    steps:[], weightUnit:'g',
     pre:{pretreat:'',coolant:'',wash:'',centerPress:''},
     cost:{targetMin:'',actualMin:'', material:'', packaging:state.settings.packMaterial, shipping:state.settings.shipping},
     result:{finish:'',good:'',bad:'',next:''},
@@ -728,18 +772,18 @@ function emptyResearch(biz){
     status:'進行中', conclusion:'',
     compare:{factor:'',fixed:'',refNo:''},
     specimens:[emptySpecimen('N1')],
-    photos:[], createdAt:Date.now(),
+    photos:[], createdAt:Date.now(), updatedAt:Date.now(),
   };
 }
-function emptyTool(){ return {id:null,biz:'研磨',cat:'',name:'',spec:'',starter:false,price:'',life:'',link:'',note:'',createdDate:todayStr(),photos:[],createdAt:Date.now()}; }
-function emptyCustomer(){ return {id:null,name:'',status:'見込',biz:[],contact:'',sns:'',tags:'',note:'',createdDate:todayStr(),createdAt:Date.now()}; }
+function emptyTool(){ return {id:null,biz:'研磨',cat:'',name:'',spec:'',starter:false,price:'',life:'',link:'',note:'',createdDate:todayStr(),photos:[],createdAt:Date.now(),updatedAt:Date.now()}; }
+function emptyCustomer(){ return {id:null,name:'',status:'見込',biz:[],contact:'',sns:'',tags:'',note:'',createdDate:todayStr(),createdAt:Date.now(),updatedAt:Date.now()}; }
 function emptyRoughness(){
   return {
     id:null, no:null, checked:false, personName:'',
     origin:'', maker:'', product:'', wRatio:'', magnetism:'非磁性',
     condition:'', preOverhaul:'', cmp:'',
     method:'', priority:'中', ohFee:'', measureFee:'',
-    ra:'', note:'', createdAt:Date.now(),
+    ra:'', note:'', createdAt:Date.now(), updatedAt:Date.now(),
   };
 }
 
@@ -826,6 +870,7 @@ function saveState(){
     updateStorageNote();
   },600);
 }
+function touch(obj){ if(obj) obj.updatedAt = Date.now(); }
 function updateStorageNote(){
   const el=document.getElementById('storageNote'); if(!el) return;
   const cnt=state.todos.length+state.research.length+state.tools.length+state.customers.length+state.roughness.length;
@@ -1341,6 +1386,7 @@ function renderTodo(){
   let items=state.todos.slice();
   if(todoFilterBiz.size) items=items.filter(t=>todoFilterBiz.has(t.biz));
   if(todoFilterGenre.size) items=items.filter(t=>todoFilterGenre.has(t.genre));
+  items=items.filter(t=>passDateFilter('todo',t));
   items.sort((a,b)=>(a.order||0)-(b.order||0));
   const cols=STATUS_LIST.map(st=>{
     const cardsHtml=items.filter(t=>t.status===st).map(t=>{
@@ -1351,6 +1397,7 @@ function renderTodo(){
         <div class="title">${t.no!=null?`<span class="mute" style="font-weight:700;margin-right:4px">No.${t.no}</span>`:''}${esc(t.title)}</div>
         ${t.note?`<div class="note">${esc(t.note).slice(0,60)}${t.note.length>60?'…':''}</div>`:''}
         <div class="foot"><span class="due ${late?'late':''}">${t.due||''}</span>${t.linkedResearchId?`<span class="mute" style="font-size:10px;cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();openLinkedResearch('${t.linkedResearchId}')">🔗研究</span>`:''}</div>
+        <div class="datestamp">作成 ${fmtDT(t.createdAt)}　更新 ${fmtDT(t.updatedAt)}</div>
         <div class="movebtns">
           ${stIdx>0?`<button class="movebtn" onclick="event.stopPropagation();moveTodoStatus('${t.id}',-1)">‹ ${STATUS_LIST[stIdx-1]}</button>`:'<span></span>'}
           ${stIdx<STATUS_LIST.length-1?`<button class="movebtn" onclick="event.stopPropagation();moveTodoStatus('${t.id}',1)">${STATUS_LIST[stIdx+1]} ›</button>`:'<span></span>'}
@@ -1366,6 +1413,7 @@ function renderTodo(){
     <button class="btn sm ghost" onclick="todoFilterBiz.clear();todoFilterGenre.clear();render();">絞込解除</button>
     <div class="spacer"></div><button class="btn sm" onclick="exportCSV(todoRowsForCSV(),'ToDoリスト')">CSV出力</button>
     <button class="btn primary sm" onclick="openTodoModal()">＋ ToDoを追加</button></div>
+    ${renderDateFilterBar('todo')}
     <div class="kanban">${cols}</div>`;
 }
 function todoRowsForCSV(){ return state.todos.map(t=>({タイトル:t.title,事業:t.biz,ジャンル:t.genre,優先度:t.priority,開始日:t.start||'',期限:t.due||'',状態:t.status,メモ:t.note||''})); }
@@ -1376,6 +1424,7 @@ function moveTodoStatus(id, dir){
   const newIdx = idx + dir;
   if(newIdx<0 || newIdx>=STATUS_LIST.length) return;
   t.status = STATUS_LIST[newIdx];
+  touch(t);
   syncResearchFromTodo(t);
   saveState(); render();
   toast(`「${t.title}」を${t.status}へ`);
@@ -1388,6 +1437,7 @@ function syncResearchFromTodo(todo){
   if(todo.biz) r.biz = todo.biz;
   r.startDate = todo.start || r.startDate;
   r.endDate = todo.due || r.endDate;
+  touch(r);
 }
 let editingTodoId=null;
 function openTodoModal(){
@@ -1432,7 +1482,7 @@ function submitTodo(){
     const t = state.todos.find(x=>x.id===editingTodoId);
     const oldBiz=t.biz, oldGenre=t.genre, oldNo=t.no;
     const comboChanged = (oldBiz!==data.biz) || (oldGenre!==data.genre);
-    Object.assign(t,data);
+    Object.assign(t,data); touch(t);
 
     if(comboChanged){
       const wasResearchGenre = RESEARCH_GENRES.includes(oldGenre);
@@ -1475,7 +1525,7 @@ function submitTodo(){
   }
   else{
     const id=uid('td_');
-    const newTodo = Object.assign({id,order:state.todos.length,createdAt:Date.now(),linkedResearchId:null,no:null},data);
+    const newTodo = Object.assign({id,order:state.todos.length,createdAt:Date.now(),updatedAt:Date.now(),linkedResearchId:null,no:null},data);
     state.todos.push(newTodo);
     if(isResearchGenre){
       const r=emptyResearch(data.biz); r.id=uid('rs_'); r.genre=genre; r.no=nextResearchNo(data.biz, genre); r.title=title; r.status=data.status;
@@ -1557,7 +1607,7 @@ function attachSwipe(rowEl, onDelete){
 /* ==========================================================================
    加工研究
    ========================================================================== */
-let researchFilterBiz=new Set(), researchFilterGenre=new Set(), researchDetailId=null, durabilityFilterTool='';
+let researchFilterBiz=new Set(), researchFilterGenre=new Set(), researchDetailId=null, durabilityFilterTool='', durabilityToolDetail=null;
 function renderResearchPage(container){
   if(researchDetailId){ container.innerHTML=renderResearchDetail(researchDetailId); attachDetailPhotoDrop(); return; }
   const bizChips=BIZ_LIST.filter(b=>b!=='全般').map(b=>`<span class="pill biz-${b} ${researchFilterBiz.has(b)?'active':''}" onclick="researchFilterBiz.has('${b}')?researchFilterBiz.delete('${b}'):researchFilterBiz.add('${b}');render();">${b}</span>`).join('');
@@ -1565,6 +1615,7 @@ function renderResearchPage(container){
   let items=[...state.research].filter(r=>r.genre!=='耐用・測定テスト').sort((a,b)=>b.createdAt-a.createdAt);
   if(researchFilterBiz.size) items=items.filter(r=>researchFilterBiz.has(r.biz));
   if(researchFilterGenre.size) items=items.filter(r=>researchFilterGenre.has(r.genre));
+  items=items.filter(r=>passDateFilter('research',r));
   const rows=items.length?items.map(r=>{
     const firstSp=(r.specimens&&r.specimens[0])||{};
     const thumb=r.photos&&r.photos[0]?`<img class="thumb" src="${r.photos[0]}">`:`<div class="thumb empty-thumb">研</div>`;
@@ -1577,6 +1628,7 @@ function renderResearchPage(container){
         <div class="main" onclick="openResearchDetail('${r.id}')">
           <div class="ttl">No.${r.no}　${esc(r.title||'（無題）')} ${r.type==='チャット由来'?'<span class="mute" style="font-size:10px">［チャット由来メモ］</span>':''}</div>
           <div class="meta"><span class="tag" style="background:var(--paper-deep);color:var(--ink-soft)">${r.genre}</span><span class="tag biz-${r.biz}">${r.biz}</span><span>${r.createdDate||r.date||''}</span>${firstSp.obj&&firstSp.obj.material?`<span>${esc(firstSp.obj.material)}</span>`:''}${spCount>1?`<span>試料${spCount}件</span>`:''}</div>
+          <div class="datestamp">作成 ${fmtDT(r.createdAt)}　更新 ${fmtDT(r.updatedAt)}</div>
         </div>
         <div class="right"><span class="st-chip st-${r.status}">${r.status}</span>
           <button class="delbtn" onclick="event.stopPropagation();rsDelete('${r.id}')" title="削除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg></button>
@@ -1588,6 +1640,7 @@ function renderResearchPage(container){
     <button class="btn sm ghost" onclick="researchFilterBiz.clear();researchFilterGenre.clear();render();">絞込解除</button>
     <div class="spacer"></div><button class="btn sm" onclick="exportResearchCSV()">CSV出力</button>
     <button class="btn primary sm" onclick="openNewResearchModal()">＋ 新規追加</button></div>
+    ${renderDateFilterBar('research')}
     <div class="rowlist">${rows}</div>`;
   document.querySelectorAll('.swiperow').forEach(row=>attachSwipe(row, ()=>{}));
 }
@@ -1596,39 +1649,99 @@ function renderResearchPage(container){
    耐用・測定記録ページ（工具の消耗を集約）
    ========================================================================== */
 function collectDurabilityUsage(){
-  // 工具名ごとに { count, consumed, unitGuess } を集計
+  // 工具名ごとに、単位別の { count, consumed } を集計
+  // 例: map['ダイヤラッパー#2000'] = { units: { g: {count,consumed} }, tools: 'ダイヤラッパー#2000' }
   const map={};
   state.research.forEach(r=>{
     if(r.genre!=='耐用・測定テスト') return;
     (r.specimens||[]).forEach(sp=>{
+      const unit=sp.weightUnit||'g';
       (sp.steps||[]).forEach(s=>{
         if(!s.tool) return;
         if(s.beforeWeight===''||s.beforeWeight==null||s.afterWeight===''||s.afterWeight==null) return;
         const diff = Number(s.beforeWeight)-Number(s.afterWeight);
-        if(!map[s.tool]) map[s.tool]={count:0,consumed:0};
-        map[s.tool].count += 1;
-        map[s.tool].consumed += diff;
+        if(!map[s.tool]) map[s.tool]={};
+        if(!map[s.tool][unit]) map[s.tool][unit]={count:0,consumed:0};
+        map[s.tool][unit].count += 1;
+        map[s.tool][unit].consumed += diff;
       });
     });
   });
   return map;
 }
+function collectDurabilityStepsForTool(toolName){
+  // 指定した工具を使った全工程を、日付降順でフラットに集める（単位は工程表の設定に従う）
+  const rows=[];
+  state.research.forEach(r=>{
+    if(r.genre!=='耐用・測定テスト') return;
+    (r.specimens||[]).forEach(sp=>{
+      const unit=sp.weightUnit||'g';
+      (sp.steps||[]).forEach((s,i)=>{
+        if(s.tool!==toolName) return;
+        const hasWeights = s.beforeWeight!=='' && s.beforeWeight!=null && s.afterWeight!=='' && s.afterWeight!=null;
+        const diff = hasWeights ? (Math.round((Number(s.beforeWeight)-Number(s.afterWeight))*1000)/1000) : null;
+        rows.push({
+          researchId:r.id, no:r.no, title:r.title||'（無題）', biz:r.biz, date:r.createdDate||'',
+          createdAt:r.createdAt||0, specimenLabel:sp.label||'', stepIndex:i, unit,
+          processName:s.processName||'', beforeWeight:s.beforeWeight, afterWeight:s.afterWeight, diff,
+        });
+      });
+    });
+  });
+  rows.sort((a,b)=>b.createdAt-a.createdAt);
+  return rows;
+}
+function openDurabilityToolDetail(t){ durabilityToolDetail=t; render(); }
+function closeDurabilityToolDetail(){ durabilityToolDetail=null; render(); }
+function renderDurabilityToolDetail(toolName){
+  const rows = collectDurabilityStepsForTool(toolName);
+  const weighed = rows.filter(x=>x.diff!==null);
+  // 単位ごとに累計（通常は1種類だが、途中で単位を変えた場合は単位別に分けて表示）
+  const totalsByUnit={};
+  weighed.forEach(x=>{ totalsByUnit[x.unit]=(totalsByUnit[x.unit]||0)+x.diff; });
+  const totalsLabel = Object.keys(totalsByUnit).map(u=>`${Math.round(totalsByUnit[u]*1000)/1000}${u}`).join('　+　') || '0';
+  const toolMaster = state.tools.find(x=>x.name===toolName);
+  const lifeGuess = toolMaster&&toolMaster.life ? toolMaster.life : '';
+  const bodyRows = rows.length ? rows.map(x=>`
+    <div class="itemrow" style="cursor:pointer" onclick="openResearchDetail('${x.researchId}')">
+      <div class="thumb empty-thumb">測</div>
+      <div class="main">
+        <div class="ttl">${x.diff!==null?`消耗 ${x.diff}${esc(x.unit)}`:'（未計測）'}</div>
+        <div class="meta"><span>No.${x.no} ${esc(x.title)}</span><span>試料${esc(x.specimenLabel)}</span><span>${esc(x.processName||'工程名なし')}</span><span class="mute">${esc(x.date)}</span></div>
+      </div>
+      <div class="right"><span class="mute" style="font-size:11px">${x.beforeWeight||'-'}${esc(x.unit)}→${x.afterWeight||'-'}${esc(x.unit)}</span></div>
+    </div>`).join('') : `<div class="empty">この工具を使った工程はまだありません。</div>`;
+
+  return `
+    <div class="detail-head">
+      <div><button class="btn ghost sm" onclick="closeDurabilityToolDetail()">← 一覧へ</button>
+        <h2 style="margin-top:8px">${esc(toolName)}</h2>
+        <span class="mute">使用回数：${weighed.length}回　累計消耗：${totalsLabel}${lifeGuess?`　／　工具マスタの耐用回数（手入力）：${lifeGuess}回`:''}</span></div>
+    </div>
+    <div class="section-label">全工程の一覧</div>
+    <div class="rowlist">${bodyRows}</div>`;
+}
 function renderDurabilityPage(container){
   if(researchDetailId){ container.innerHTML=renderResearchDetail(researchDetailId); attachDetailPhotoDrop(); return; }
+  if(durabilityToolDetail){ container.innerHTML=renderDurabilityToolDetail(durabilityToolDetail); return; }
   const usage = collectDurabilityUsage();
   const toolNames = Object.keys(usage).sort();
   const toolChips = toolNames.map(t=>`<span class="pill ${durabilityFilterTool===t?'active':''}" onclick="durabilityFilterTool=(durabilityFilterTool==='${esc(t).replace(/'/g,"&#39;")}'?'':'${esc(t).replace(/'/g,"&#39;")}');render();">${esc(t)}</span>`).join('');
 
   const summaryRows = toolNames.length ? toolNames.map(t=>{
-    const u=usage[t];
+    const units=usage[t];
+    const unitKeys=Object.keys(units);
+    const totalCount = unitKeys.reduce((sum,u)=>sum+units[u].count,0);
+    const consumedLabel = unitKeys.map(u=>`${Math.round(units[u].consumed*1000)/1000}${u}`).join('　+　');
     const toolMaster = state.tools.find(x=>x.name===t);
     const lifeGuess = toolMaster&&toolMaster.life ? toolMaster.life : '';
     return `<div class="itemrow" style="cursor:default">
       <div class="thumb empty-thumb">測</div>
-      <div class="main">
-        <div class="ttl">${esc(t)}</div>
-        <div class="meta"><span>使用回数：${u.count}回</span><span>累計消耗：${Math.round(u.consumed*1000)/1000} g</span>${lifeGuess?`<span class="mute">工具マスタの耐用回数（手入力）：${lifeGuess}回</span>`:''}</div>
+      <div class="main" style="cursor:default">
+        <div class="ttl">累計消耗：${consumedLabel}</div>
+        <div class="meta"><span>${esc(t)}</span><span>使用回数：${totalCount}回</span>${lifeGuess?`<span class="mute">工具マスタの耐用回数（手入力）：${lifeGuess}回</span>`:''}</div>
       </div>
+      <div class="right"><a class="detail-link" onclick="openDurabilityToolDetail('${esc(t).replace(/'/g,"&#39;")}')">内訳</a></div>
     </div>`;
   }).join('') : `<div class="empty">まだ使用前後の重量が記録された工程がありません。加工研究を「耐用・測定テスト」ジャンルで作成し、工程表で工具を選んで使用前後の重量を入力してください。</div>`;
 
@@ -1636,6 +1749,7 @@ function renderDurabilityPage(container){
   if(durabilityFilterTool){
     items=items.filter(r=>(r.specimens||[]).some(sp=>(sp.steps||[]).some(s=>s.tool===durabilityFilterTool)));
   }
+  items=items.filter(r=>passDateFilter('durability',r));
   const rows=items.length?items.map(r=>{
     const firstSp=(r.specimens&&r.specimens[0])||{};
     const thumb=r.photos&&r.photos[0]?`<img class="thumb" src="${r.photos[0]}">`:`<div class="thumb empty-thumb">測</div>`;
@@ -1647,6 +1761,7 @@ function renderDurabilityPage(container){
         <div class="main" onclick="openResearchDetail('${r.id}')">
           <div class="ttl">No.${r.no}　${esc(r.title||'（無題）')}</div>
           <div class="meta"><span class="tag biz-${r.biz}">${r.biz}</span><span>${r.createdDate||''}</span></div>
+          <div class="datestamp">作成 ${fmtDT(r.createdAt)}　更新 ${fmtDT(r.updatedAt)}</div>
         </div>
         <div class="right"><span class="st-chip st-${r.status}">${r.status}</span>
           <button class="delbtn" onclick="event.stopPropagation();rsDelete('${r.id}')" title="削除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg></button>
@@ -1661,6 +1776,7 @@ function renderDurabilityPage(container){
     <div class="rowlist" style="margin-bottom:20px">${summaryRows}</div>
 
     <div class="section-label">記録一覧</div>
+    ${renderDateFilterBar('durability')}
     <div class="filterbar"><div class="spacer"></div>
       <button class="btn primary sm" onclick="openNewResearchModal('耐用・測定テスト')">＋ 新規記録</button></div>
     <div class="rowlist">${rows}</div>`;
@@ -1673,7 +1789,7 @@ function renderDurabilityPage(container){
 function nextRoughnessNo(){ return state.roughness.reduce((m,x)=>Math.max(m,x.no||0),0)+1; }
 function roughField(id,key,val){
   const row=state.roughness.find(x=>x.id===id); if(!row) return;
-  row[key]=val; saveState();
+  row[key]=val; touch(row); saveState();
   if(key==='checked'||key==='magnetism'||key==='priority') render();
 }
 function roughAdd(){
@@ -1696,7 +1812,8 @@ function exportRoughnessCSV(){
   exportCSV(rows,'面粗度比較');
 }
 function renderRoughnessPage(container){
-  const items=[...state.roughness].sort((a,b)=>(a.no||0)-(b.no||0));
+  let items=[...state.roughness].sort((a,b)=>(a.no||0)-(b.no||0));
+  items=items.filter(r=>passDateFilter('roughness',r));
   const bodyRows = items.length ? items.map(r=>`
     <tr>
       <td style="text-align:center;font-weight:700">${r.no}</td>
@@ -1716,9 +1833,12 @@ function renderRoughnessPage(container){
       <td><input type="number" value="${esc(r.measureFee)}" placeholder="円" style="width:64px" onchange="roughField('${r.id}','measureFee',this.value)"></td>
       <td><input value="${esc(r.ra)}" placeholder="実測値" style="width:64px" onchange="roughField('${r.id}','ra',this.value)"></td>
       <td><div class="cellwrap"><input value="${esc(r.note)}" onchange="roughField('${r.id}','note',this.value)"><button type="button" class="cellexp" onclick="openRoughCellEditor('${r.id}','note')">⤢</button></div></td>
+      <td class="mute" style="font-size:10px;white-space:nowrap">${fmtDT(r.createdAt)}</td>
+      <td class="mute" style="font-size:10px;white-space:nowrap">${fmtDT(r.updatedAt)}</td>
       <td><button class="step-del" onclick="roughDelete('${r.id}')" title="削除">×</button></td>
     </tr>`).join('') : '';
   container.innerHTML=`
+    ${renderDateFilterBar('roughness')}
     <div class="filterbar"><div class="spacer"></div>
       <button class="btn sm" onclick="exportRoughnessCSV()">CSV出力</button>
       <button class="btn primary sm" onclick="roughAdd()">＋ 行を追加</button></div>
@@ -1727,7 +1847,7 @@ function renderRoughnessPage(container){
       <table class="rough-table">
         <thead><tr>
           <th>No</th><th>済</th><th>氏名</th><th>W産出国</th><th>メーカー</th><th>製品名</th><th>W比率</th><th>磁性</th>
-          <th>新品/中古</th><th>事前研磨</th><th>CMP</th><th>達成手法</th><th>優先度</th><th>OH依頼額</th><th>測定費用</th><th>面粗度(Ra)</th><th>備考</th><th></th>
+          <th>新品/中古</th><th>事前研磨</th><th>CMP</th><th>達成手法</th><th>優先度</th><th>OH依頼額</th><th>測定費用</th><th>面粗度(Ra)</th><th>備考</th><th>作成日時</th><th>更新日時</th><th></th>
         </tr></thead>
         <tbody>${bodyRows}</tbody>
       </table>
@@ -1739,7 +1859,7 @@ function newResearchDirect(title, biz, genre){
   const r=emptyResearch(biz||'研磨'); r.id=uid('rs_'); r.genre=genre; r.no=nextResearchNo(biz||'研磨', genre); r.title=title||'';
   state.research.push(r);
   const todoId=uid('td_');
-  state.todos.push({id:todoId,title:title||'（無題）',no:r.no,biz:r.biz,genre:genre,priority:'中',status:r.status,start:r.startDate||'',due:r.endDate||'',note:'',order:state.todos.length,createdAt:Date.now(),linkedResearchId:r.id});
+  state.todos.push({id:todoId,title:title||'（無題）',no:r.no,biz:r.biz,genre:genre,priority:'中',status:r.status,start:r.startDate||'',due:r.endDate||'',note:'',order:state.todos.length,createdAt:Date.now(),updatedAt:Date.now(),linkedResearchId:r.id});
   saveState(); openResearchDetail(r.id);
   toast(genre+'を追加し、ToDoリストにも連携しました');
 }
@@ -1812,8 +1932,8 @@ function renderResearchDetail(id){
         <td><input value="${esc(s.time)}" type="number" placeholder="分" style="width:56px" oninput="rsStepInput('${id}',${si},${i},'time',this.value)"></td>
         <td><div class="cellwrap"><input value="${esc(s.pressure)}" placeholder="押し圧" oninput="rsStepInput('${id}',${si},${i},'pressure',this.value)"><button type="button" class="cellexp" onclick="openCellEditor('${id}',${si},${i},'pressure')" title="拡大して編集">⤢</button></div></td>
         ${isDurability ? `
-        <td><input value="${esc(s.beforeWeight)}" type="number" step="0.001" placeholder="使用前(g)" style="width:76px" oninput="rsWeightInput('${id}',${si},${i},'beforeWeight',this.value)"></td>
-        <td><input value="${esc(s.afterWeight)}" type="number" step="0.001" placeholder="使用後(g)" style="width:76px" oninput="rsWeightInput('${id}',${si},${i},'afterWeight',this.value)"></td>
+        <td><input value="${esc(s.beforeWeight)}" type="number" step="0.001" placeholder="使用前(${esc(sp.weightUnit)})" style="width:76px" oninput="rsWeightInput('${id}',${si},${i},'beforeWeight',this.value)"></td>
+        <td><input value="${esc(s.afterWeight)}" type="number" step="0.001" placeholder="使用後(${esc(sp.weightUnit)})" style="width:76px" oninput="rsWeightInput('${id}',${si},${i},'afterWeight',this.value)"></td>
         <td class="mute" id="consumed-${id}-${si}-${i}" style="text-align:right">${consumed}</td>` : ''}
         <td><div class="cellwrap"><input value="${esc(s.memo)}" placeholder="メモ" oninput="rsStepInput('${id}',${si},${i},'memo',this.value)"><button type="button" class="cellexp" onclick="openCellEditor('${id}',${si},${i},'memo')" title="拡大して編集">⤢</button></div></td>
         <td><button class="step-del" onclick="rsRemoveStep('${id}',${si},${i})">×</button></td>
@@ -1871,9 +1991,12 @@ function renderResearchDetail(id){
         <div class="field"><label>重量変化（自動）</label><input id="diff-${id}-${si}-weight" value="${diffCalc(sp.specs.weight.b,sp.specs.weight.a,'g')}" readonly></div>
       </div>
 
-      <div class="section-label">${isDurability?'加工工程表（工具の消耗を記録）':'加工工程表'}</div>
+      <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <span>${isDurability?'加工工程表（工具の消耗を記録）':'加工工程表'}</span>
+        ${isDurability?`<span style="display:flex;align-items:center;gap:6px;font-weight:400"><label style="font-size:11px;color:var(--ink-soft)">消耗量の単位</label><select style="width:auto" onchange="rsSpecimenField('${id}',${si},'weightUnit',this.value)">${WEIGHT_UNIT_LIST.map(u=>`<option ${sp.weightUnit===u?'selected':''}>${u}</option>`).join('')}</select></span>`:''}
+      </div>
       <table class="step-table">
-        <thead><tr><th style="width:22px">#</th><th style="width:14%">工程名称</th><th style="width:18%">工具</th><th style="width:9%">番手/粒径</th><th style="width:6%">時間</th><th style="width:9%">押し圧</th>${isDurability?'<th style="width:9%">使用前(g)</th><th style="width:9%">使用後(g)</th><th style="width:8%">消耗(g)</th>':''}<th>メモ</th><th style="width:18px"></th></tr></thead>
+        <thead><tr><th style="width:22px">#</th><th style="width:14%">工程名称</th><th style="width:18%">工具</th><th style="width:9%">番手/粒径</th><th style="width:6%">時間</th><th style="width:9%">押し圧</th>${isDurability?`<th style="width:9%">使用前(${esc(sp.weightUnit)})</th><th style="width:9%">使用後(${esc(sp.weightUnit)})</th><th style="width:8%">消耗(${esc(sp.weightUnit)})</th>`:''}<th>メモ</th><th style="width:18px"></th></tr></thead>
         <tbody>${stepsRows}</tbody>
       </table>
       <button class="btn sm ghost" style="margin-top:8px" onclick="rsAddStep('${id}',${si})" ${sp.steps.length>=20?'disabled':''}>＋ 工程を追加（${sp.steps.length}/20）</button>
@@ -1982,14 +2105,15 @@ function rsField(id,key,val){
     r.no = newNo;
     const t = state.todos.find(x=>x.linkedResearchId===r.id);
     if(t){ t.biz=val; t.no=newNo; }
-    saveState(); render(); return;
+    touch(r); saveState(); render(); return;
   }
   r[key]=val;
+  touch(r);
   syncTodoFromResearch(r,key,val);
   saveState(); if(key==='type'||key==='status') render();
 }
-function rsObj(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].obj[key]=val; saveState(); }
-function rsSpecInput(id,si,key,ba,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].specs[key][ba]=val; saveState(); updateDiffDisplays(id,si); }
+function rsObj(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].obj[key]=val; touch(r); saveState(); }
+function rsSpecInput(id,si,key,ba,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].specs[key][ba]=val; touch(r); saveState(); updateDiffDisplays(id,si); }
 function updateDiffDisplays(id,si){
   const r=state.research.find(x=>x.id===id); const sp=r.specimens[si];
   const map=[['maxDia','mm'],['minDia','mm'],['length','mm'],['weight','g']];
@@ -1998,19 +2122,19 @@ function updateDiffDisplays(id,si){
     if(el) el.value=diffCalc(sp.specs[key].b, sp.specs[key].a, unit);
   });
 }
-function rsCompare(id,key,val){ const r=state.research.find(x=>x.id===id); r.compare[key]=val; saveState(); }
-function rsPre(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].pre[key]=val; saveState(); }
-function rsCost(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].cost[key]=val; saveState(); render(); }
-function rsResult(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].result[key]=val; saveState(); }
-function rsSpecimenField(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si][key]=val; saveState(); render(); }
-function rsAddSpecimen(id){ const r=state.research.find(x=>x.id===id); r.specimens.push(emptySpecimen('N'+(r.specimens.length+1))); saveState(); render(); }
-function rsRemoveSpecimen(id,si){ const r=state.research.find(x=>x.id===id); if(!confirm('この試料を削除しますか？')) return; r.specimens.splice(si,1); saveState(); render(); }
-function rsAddStep(id,si){ const r=state.research.find(x=>x.id===id); const sp=r.specimens[si]; if(sp.steps.length>=20) return; sp.steps.push({processName:'',tool:'',grit:'',time:'',pressure:'',memo:'',beforeWeight:'',afterWeight:''}); saveState(); render(); }
-function rsRemoveStep(id,si,i){ const r=state.research.find(x=>x.id===id); r.specimens[si].steps.splice(i,1); saveState(); render(); }
-function rsStepInput(id,si,i,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].steps[i][key]=val; saveState(); }
+function rsCompare(id,key,val){ const r=state.research.find(x=>x.id===id); r.compare[key]=val; touch(r); saveState(); }
+function rsPre(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].pre[key]=val; touch(r); saveState(); }
+function rsCost(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].cost[key]=val; touch(r); saveState(); render(); }
+function rsResult(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].result[key]=val; touch(r); saveState(); }
+function rsSpecimenField(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si][key]=val; touch(r); saveState(); render(); }
+function rsAddSpecimen(id){ const r=state.research.find(x=>x.id===id); r.specimens.push(emptySpecimen('N'+(r.specimens.length+1))); touch(r); saveState(); render(); }
+function rsRemoveSpecimen(id,si){ const r=state.research.find(x=>x.id===id); if(!confirm('この試料を削除しますか？')) return; r.specimens.splice(si,1); touch(r); saveState(); render(); }
+function rsAddStep(id,si){ const r=state.research.find(x=>x.id===id); const sp=r.specimens[si]; if(sp.steps.length>=20) return; sp.steps.push({processName:'',tool:'',grit:'',time:'',pressure:'',memo:'',beforeWeight:'',afterWeight:''}); touch(r); saveState(); render(); }
+function rsRemoveStep(id,si,i){ const r=state.research.find(x=>x.id===id); r.specimens[si].steps.splice(i,1); touch(r); saveState(); render(); }
+function rsStepInput(id,si,i,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].steps[i][key]=val; touch(r); saveState(); }
 function rsWeightInput(id,si,i,key,val){
-  const r=state.research.find(x=>x.id===id); const s=r.specimens[si].steps[i];
-  s[key]=val; saveState();
+  const r=state.research.find(x=>x.id===id); const sp=r.specimens[si]; const s=sp.steps[i];
+  s[key]=val; touch(r); saveState();
   const cell=document.getElementById(`consumed-${id}-${si}-${i}`);
   if(cell){
     const consumed=(s.beforeWeight!=='' && s.beforeWeight!=null && s.afterWeight!=='' && s.afterWeight!=null)
@@ -2026,12 +2150,14 @@ function renderDurabilityLiveSummary(r){
     if(!s.tool) return;
     if(s.beforeWeight===''||s.beforeWeight==null||s.afterWeight===''||s.afterWeight==null) return;
     const diff=Number(s.beforeWeight)-Number(s.afterWeight);
-    if(!map[s.tool]) map[s.tool]={count:0,consumed:0};
-    map[s.tool].count+=1; map[s.tool].consumed+=diff;
+    const unit=sp.weightUnit||'g';
+    const key=s.tool+'\u0001'+unit;
+    if(!map[key]) map[key]={tool:s.tool,unit,count:0,consumed:0};
+    map[key].count+=1; map[key].consumed+=diff;
   }));
-  const names=Object.keys(map);
-  if(!names.length) return `<span class="mute">使用前・使用後の重量を入力すると、ここに工具ごとの消耗量が表示されます</span>`;
-  return names.map(n=>`<span class="tag" style="background:var(--paper-deep);margin-right:6px">${esc(n)}：${Math.round(map[n].consumed*1000)/1000}g（${map[n].count}回）</span>`).join('');
+  const keys=Object.keys(map);
+  if(!keys.length) return `<span class="mute">使用前・使用後の重量を入力すると、ここに工具ごとの消耗量が表示されます</span>`;
+  return keys.map(k=>{const u=map[k]; return `<span class="tag" style="background:var(--paper-deep);margin-right:6px">${esc(u.tool)}：${Math.round(u.consumed*1000)/1000}${esc(u.unit)}（${u.count}回）</span>`;}).join('');
 }
 
 /* ---- セルの拡大編集ポップアップ（工程表・面粗度比較で共用） ---- */
@@ -2058,7 +2184,7 @@ function saveCellEditor(){
   if(!cellEditCtx) return;
   const val=document.getElementById('cellEditTextarea').value;
   if(cellEditCtx.kind==='rough'){
-    const row=state.roughness.find(x=>x.id===cellEditCtx.id); if(row){ row[cellEditCtx.key]=val; saveState(); }
+    const row=state.roughness.find(x=>x.id===cellEditCtx.id); if(row){ row[cellEditCtx.key]=val; touch(row); saveState(); }
   } else {
     rsStepInput(cellEditCtx.id,cellEditCtx.si,cellEditCtx.i,cellEditCtx.key,val);
   }
@@ -2072,7 +2198,7 @@ function rsStepToolChange(id,si,i,toolName){
     const lastAfter = findLastAfterWeight(toolName, id, si, i);
     if(lastAfter!==null) step.beforeWeight = lastAfter;
   }
-  saveState(); render();
+  touch(r); saveState(); render();
 }
 function findLastAfterWeight(toolName, excludeResearchId, excludeSi, excludeStepIdx){
   let best=null, bestTime=-Infinity;
@@ -2094,11 +2220,11 @@ function rsAddSpecimenPhotos(id,si,files){
   const r=state.research.find(x=>x.id===id); const sp=r.specimens[si]; sp.photos=sp.photos||[];
   Array.from(files).forEach(file=>{
     const reader=new FileReader();
-    reader.onload=()=>{ sp.photos.push(reader.result); saveState(); render(); };
+    reader.onload=()=>{ sp.photos.push(reader.result); touch(r); saveState(); render(); };
     reader.readAsDataURL(file);
   });
 }
-function rsRemoveSpecimenPhoto(id,si,i){ const r=state.research.find(x=>x.id===id); r.specimens[si].photos.splice(i,1); saveState(); render(); }
+function rsRemoveSpecimenPhoto(id,si,i){ const r=state.research.find(x=>x.id===id); r.specimens[si].photos.splice(i,1); touch(r); saveState(); render(); }
 function rsDelete(id){
   const r=state.research.find(x=>x.id===id); if(!r) return;
   if(!confirm('この研究記録を削除しますか？（ゴミ箱に移動します。紐づくToDoも連動して移動します）')) return;
@@ -2171,6 +2297,7 @@ function renderToolsPage(container){
   const bizChips=BIZ_LIST.map(b=>`<span class="pill biz-${b} ${toolFilterBiz.has(b)?'active':''}" onclick="toolFilterBiz.has('${b}')?toolFilterBiz.delete('${b}'):toolFilterBiz.add('${b}');render();">${b}</span>`).join('');
   let items=[...state.tools].sort((a,b)=>(b.starter?1:0)-(a.starter?1:0)||b.createdAt-a.createdAt);
   if(toolFilterBiz.size) items=items.filter(t=>toolFilterBiz.has(t.biz));
+  items=items.filter(t=>passDateFilter('tools',t));
   const rows=items.length?items.map(t=>{
     const unit=(t.price&&t.life)?Math.round((Number(t.price)/Number(t.life))*10)/10:null;
     const thumb=t.photos&&t.photos[0]?`<img class="thumb" src="${t.photos[0]}">`:`<div class="thumb empty-thumb">具</div>`;
@@ -2184,6 +2311,7 @@ function renderToolsPage(container){
           <div class="ttl">${esc(t.name)}</div>
           <div class="meta"><span class="tag biz-${t.biz}">${t.biz}</span>${t.cat?`<span>${esc(t.cat)}</span>`:''}${t.spec?`<span>${esc(t.spec)}</span>`:''}${t.price?`<span>${Number(t.price).toLocaleString()}円</span>`:''}${unit!==null?`<span>原価/回 ${unit}円</span>`:''}
           ${t.link?`<span><a href="${esc(t.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">購入先↗</a></span>`:''}</div>
+          <div class="datestamp">作成 ${fmtDT(t.createdAt)}　更新 ${fmtDT(t.updatedAt)}</div>
         </div>
         <div class="right">
           <button class="delbtn" onclick="event.stopPropagation();toolDeleteDirect('${t.id}')" title="削除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg></button>
@@ -2195,6 +2323,7 @@ function renderToolsPage(container){
     <button class="btn sm ghost" onclick="toolFilterBiz.clear();render();">絞込解除</button>
     <div class="spacer"></div><button class="btn sm" onclick="exportToolsCSV()">CSV出力</button>
     <button class="btn primary sm" onclick="openToolModal()">＋ 工具を追加</button></div>
+    ${renderDateFilterBar('tools')}
     <div class="rowlist">${rows}</div>`;
   document.querySelectorAll('.swiperow').forEach(row=>attachSwipe(row,()=>{}));
 }
@@ -2206,7 +2335,7 @@ function toolDeleteDirect(id){
 }
 function toolToggleStarter(id){
   const t=state.tools.find(x=>x.id===id); if(!t) return;
-  t.starter=!t.starter; saveState(); render();
+  t.starter=!t.starter; touch(t); saveState(); render();
   toast(t.starter?`「${t.name}」をスタメンにしました`:`「${t.name}」をスタメンから外しました`);
 }
 let editingToolId=null, toolPhotoBuffer=[];
@@ -2285,8 +2414,8 @@ function submitTool(){
   const name=document.getElementById('tl_name').value.trim();
   if(!name){ toast('工具名を入力してください'); return; }
   const data={biz:document.getElementById('tl_biz').value,cat:document.getElementById('tl_cat').value.trim(),name,spec:document.getElementById('tl_spec').value.trim(),starter:document.getElementById('tl_starter').checked,price:document.getElementById('tl_price').value,life:document.getElementById('tl_life').value,createdDate:document.getElementById('tl_created').value||todayStr(),link:normalizeUrl(document.getElementById('tl_link').value),note:document.getElementById('tl_note').value.trim(),photos:toolPhotoBuffer.slice()};
-  if(editingToolId){ Object.assign(state.tools.find(x=>x.id===editingToolId),data); }
-  else{ state.tools.push(Object.assign({id:uid('tl_'),createdAt:Date.now()},data)); }
+  if(editingToolId){ const t=state.tools.find(x=>x.id===editingToolId); Object.assign(t,data); touch(t); }
+  else{ state.tools.push(Object.assign({id:uid('tl_'),createdAt:Date.now(),updatedAt:Date.now()},data)); }
   saveState(); closeOv('ov-tool'); render(); toast('保存しました');
 }
 function deleteToolFromModal(){
@@ -2309,6 +2438,7 @@ function renderCustomersPage(container){
   const bizChips=['研磨','動画編集','3Dプリンタ'].map(b=>`<span class="pill biz-${b} ${custFilterBiz.has(b)?'active':''}" onclick="custFilterBiz.has('${b}')?custFilterBiz.delete('${b}'):custFilterBiz.add('${b}');render();">${b}</span>`).join('');
   let items=[...state.customers].sort((a,b)=>b.createdAt-a.createdAt);
   if(custFilterBiz.size) items=items.filter(c=>(c.biz||[]).some(b=>custFilterBiz.has(b)));
+  items=items.filter(c=>passDateFilter('customers',c));
   const rows=items.length?items.map(c=>`
     <div class="swiperow" data-rowid="${c.id}">
       <div class="swipe-del"><button onclick="customerDeleteDirect('${c.id}')">削除</button></div>
@@ -2318,6 +2448,7 @@ function renderCustomersPage(container){
         <div class="main" onclick="editCustomer('${c.id}')">
           <div class="ttl">${esc(c.name)}</div>
           <div class="meta">${(c.biz||[]).map(b=>`<span class="tag biz-${b}">${b}</span>`).join('')}${c.tags?`<span>${esc(c.tags)}</span>`:''}</div>
+          <div class="datestamp">作成 ${fmtDT(c.createdAt)}　更新 ${fmtDT(c.updatedAt)}</div>
         </div>
         <div class="right"><span class="st-chip st-${c.status}">${c.status}</span>
           <button class="delbtn" onclick="event.stopPropagation();customerDeleteDirect('${c.id}')" title="削除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg></button>
@@ -2328,6 +2459,7 @@ function renderCustomersPage(container){
     <button class="btn sm ghost" onclick="custFilterBiz.clear();render();">絞込解除</button>
     <div class="spacer"></div><button class="btn sm" onclick="exportCustomersCSV()">CSV出力</button>
     <button class="btn primary sm" onclick="openCustomerModal()">＋ 顧客を追加</button></div>
+    ${renderDateFilterBar('customers')}
     <div class="rowlist">${rows}</div>`;
   document.querySelectorAll('.swiperow').forEach(row=>attachSwipe(row,()=>{}));
 }
@@ -2371,8 +2503,8 @@ function submitCustomer(){
   if(!name){ toast('お名前を入力してください'); return; }
   const biz=Array.from(document.getElementById('cu_biz').selectedOptions).map(o=>o.value);
   const data={name,status:document.getElementById('cu_status').value,biz,contact:document.getElementById('cu_contact').value.trim(),sns:document.getElementById('cu_sns').value.trim(),createdDate:document.getElementById('cu_created').value||todayStr(),tags:document.getElementById('cu_tags').value.trim(),note:document.getElementById('cu_note').value.trim()};
-  if(editingCustomerId){ Object.assign(state.customers.find(x=>x.id===editingCustomerId),data); }
-  else{ state.customers.push(Object.assign({id:uid('cu_'),createdAt:Date.now()},data)); }
+  if(editingCustomerId){ const c=state.customers.find(x=>x.id===editingCustomerId); Object.assign(c,data); touch(c); }
+  else{ state.customers.push(Object.assign({id:uid('cu_'),createdAt:Date.now(),updatedAt:Date.now()},data)); }
   saveState(); closeOv('ov-customer'); render(); toast('保存しました');
 }
 function deleteCustomerFromModal(){
