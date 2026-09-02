@@ -1098,7 +1098,8 @@ function renderTimer(){
   const sp = specimens[timer.specimenIdx];
   const steps = sp ? (sp.steps||[]) : [];
 
-  const researchOpts = state.research.map(x=>`<option value="${x.id}" ${x.id===timer.researchId?'selected':''}>No.${x.no}　${esc(x.title||'（無題）')}</option>`).join('');
+  const timerResearchList = state.research.filter(x=>x.status==='進行中' || x.id===timer.researchId);
+  const researchOpts = timerResearchList.map(x=>`<option value="${x.id}" ${x.id===timer.researchId?'selected':''}>No.${x.no}　${esc(x.title||'（無題）')}${x.status!=='進行中'?`（${x.status}）`:''}</option>`).join('');
   const specimenOpts = specimens.map((s,i)=>`<option value="${i}" ${i===timer.specimenIdx?'selected':''}>${esc(s.label)}</option>`).join('');
   const stepOpts = steps.map((s,i)=>`<option value="${i}" ${i===timer.stepIndex?'selected':''}>${i+1}. ${esc(s.processName||s.tool||'（工程名なし）')}</option>`).join('');
 
