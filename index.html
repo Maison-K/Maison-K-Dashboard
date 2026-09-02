@@ -237,8 +237,8 @@ button{font-family:inherit;}
 .itemrow .meta{font-size:11px;color:var(--ink-soft);display:flex;gap:10px;flex-wrap:wrap;}
 .itemrow .meta span{white-space:nowrap;}
 .itemrow .right{display:flex;align-items:center;gap:8px;flex:0 0 auto;}
-.datefilter{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
-.datefilter input[type=date]{width:auto;padding:5px 6px;font-size:11px;border:1px solid var(--line-strong);border-radius:var(--radius);background:var(--white);color:var(--ink);}
+.sortbar{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.sortbar select{padding:5px 6px;font-size:11px;border:1px solid var(--line-strong);border-radius:var(--radius);background:var(--white);color:var(--ink);}
 .datestamp{font-size:10px;color:var(--ink-faint);margin-top:2px;}
 .itemrow .right .detail-link{font-size:12px;font-weight:600;color:var(--green);text-decoration:underline;cursor:pointer;white-space:nowrap;padding:6px 2px;}
 .itemrow .right .detail-link:hover{color:var(--green-deep);}
@@ -669,32 +669,31 @@ function fmtDT(ts){
   const p=n=>String(n).padStart(2,'0');
   return `${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
-/* ---- 日付レンジフィルター（作成日・更新日／各ページ共通） ---- */
-let dateFilters={};
-function getDateFilter(page){ return dateFilters[page] || (dateFilters[page]={cFrom:'',cTo:'',uFrom:'',uTo:''}); }
-function setDateFilter(page,key,val){ getDateFilter(page)[key]=val; render(); }
-function clearDateFilter(page){ dateFilters[page]={cFrom:'',cTo:'',uFrom:'',uTo:''}; render(); }
-function dateRangeMatch(ts,fromStr,toStr){
-  if(!fromStr && !toStr) return true;
-  if(!ts) return false;
-  if(fromStr && ts < new Date(fromStr+'T00:00:00').getTime()) return false;
-  if(toStr && ts > new Date(toStr+'T23:59:59').getTime()) return false;
-  return true;
+/* ---- 並び替え（作成日時・更新日時／各ページ共通） ---- */
+let sortConfigs={};
+const DATE_SORT_OPTIONS=[
+  {value:'updatedAt|desc',label:'更新日時が新しい順'},
+  {value:'updatedAt|asc',label:'更新日時が古い順'},
+  {value:'createdAt|desc',label:'作成日時が新しい順'},
+  {value:'createdAt|asc',label:'作成日時が古い順'},
+];
+function getSortConfig(page,defaultValue){ return sortConfigs[page] || (sortConfigs[page]=Object.assign({},defaultValue)); }
+function setSortConfig(page,val){ const [field,dir]=val.split('|'); sortConfigs[page]={field,dir}; render(); }
+function applySort(page,items,defaultValue){
+  const cfg=getSortConfig(page,defaultValue);
+  return items.slice().sort((a,b)=>{
+    const av=a[cfg.field], bv=b[cfg.field];
+    if(typeof av==='string' || typeof bv==='string'){
+      return cfg.dir==='asc' ? String(av||'').localeCompare(String(bv||'')) : String(bv||'').localeCompare(String(av||''));
+    }
+    return cfg.dir==='asc' ? (av||0)-(bv||0) : (bv||0)-(av||0);
+  });
 }
-function passDateFilter(page,item){
-  const f=getDateFilter(page);
-  return dateRangeMatch(item.createdAt,f.cFrom,f.cTo) && dateRangeMatch(item.updatedAt,f.uFrom,f.uTo);
-}
-function renderDateFilterBar(page){
-  const f=getDateFilter(page);
-  const active = f.cFrom||f.cTo||f.uFrom||f.uTo;
-  return `<div class="datefilter">
-    <span class="mute" style="font-size:11px">作成日</span>
-    <input type="date" value="${f.cFrom}" onchange="setDateFilter('${page}','cFrom',this.value)">〜<input type="date" value="${f.cTo}" onchange="setDateFilter('${page}','cTo',this.value)">
-    <span class="mute" style="font-size:11px;margin-left:6px">更新日</span>
-    <input type="date" value="${f.uFrom}" onchange="setDateFilter('${page}','uFrom',this.value)">〜<input type="date" value="${f.uTo}" onchange="setDateFilter('${page}','uTo',this.value)">
-    ${active?`<button class="btn sm ghost" onclick="clearDateFilter('${page}')">日付解除</button>`:''}
-  </div>`;
+function renderSortBar(page,options,defaultValue){
+  const cfg=getSortConfig(page,defaultValue);
+  const cur=`${cfg.field}|${cfg.dir}`;
+  const opts=options.map(o=>`<option value="${o.value}" ${cur===o.value?'selected':''}>${o.label}</option>`).join('');
+  return `<div class="sortbar"><span class="mute" style="font-size:11px">並び替え</span><select onchange="setSortConfig('${page}',this.value)">${opts}</select></div>`;
 }
 function uid(p){ return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function addDays(dateStr,n){ const d=new Date(dateStr+'T00:00:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
@@ -1386,8 +1385,7 @@ function renderTodo(){
   let items=state.todos.slice();
   if(todoFilterBiz.size) items=items.filter(t=>todoFilterBiz.has(t.biz));
   if(todoFilterGenre.size) items=items.filter(t=>todoFilterGenre.has(t.genre));
-  items=items.filter(t=>passDateFilter('todo',t));
-  items.sort((a,b)=>(a.order||0)-(b.order||0));
+  items=applySort('todo',items,{field:'order',dir:'asc'});
   const cols=STATUS_LIST.map(st=>{
     const cardsHtml=items.filter(t=>t.status===st).map(t=>{
       const late=t.due&&t.due<todayStr()&&st!=='完了';
@@ -1413,7 +1411,7 @@ function renderTodo(){
     <button class="btn sm ghost" onclick="todoFilterBiz.clear();todoFilterGenre.clear();render();">絞込解除</button>
     <div class="spacer"></div><button class="btn sm" onclick="exportCSV(todoRowsForCSV(),'ToDoリスト')">CSV出力</button>
     <button class="btn primary sm" onclick="openTodoModal()">＋ ToDoを追加</button></div>
-    ${renderDateFilterBar('todo')}
+    ${renderSortBar('todo',[{value:'order|asc',label:'追加順（既定）'}].concat(DATE_SORT_OPTIONS),{field:'order',dir:'asc'})}
     <div class="kanban">${cols}</div>`;
 }
 function todoRowsForCSV(){ return state.todos.map(t=>({タイトル:t.title,事業:t.biz,ジャンル:t.genre,優先度:t.priority,開始日:t.start||'',期限:t.due||'',状態:t.status,メモ:t.note||''})); }
@@ -1612,10 +1610,10 @@ function renderResearchPage(container){
   if(researchDetailId){ container.innerHTML=renderResearchDetail(researchDetailId); attachDetailPhotoDrop(); return; }
   const bizChips=BIZ_LIST.filter(b=>b!=='全般').map(b=>`<span class="pill biz-${b} ${researchFilterBiz.has(b)?'active':''}" onclick="researchFilterBiz.has('${b}')?researchFilterBiz.delete('${b}'):researchFilterBiz.add('${b}');render();">${b}</span>`).join('');
   const genreChips=['製造','加工研究'].map(g=>`<span class="pill ${researchFilterGenre.has(g)?'active':''}" onclick="researchFilterGenre.has('${g}')?researchFilterGenre.delete('${g}'):researchFilterGenre.add('${g}');render();">${g}</span>`).join('');
-  let items=[...state.research].filter(r=>r.genre!=='耐用・測定テスト').sort((a,b)=>b.createdAt-a.createdAt);
+  let items=[...state.research].filter(r=>r.genre!=='耐用・測定テスト');
   if(researchFilterBiz.size) items=items.filter(r=>researchFilterBiz.has(r.biz));
   if(researchFilterGenre.size) items=items.filter(r=>researchFilterGenre.has(r.genre));
-  items=items.filter(r=>passDateFilter('research',r));
+  items=applySort('research',items,{field:'createdAt',dir:'desc'});
   const rows=items.length?items.map(r=>{
     const firstSp=(r.specimens&&r.specimens[0])||{};
     const thumb=r.photos&&r.photos[0]?`<img class="thumb" src="${r.photos[0]}">`:`<div class="thumb empty-thumb">研</div>`;
@@ -1627,7 +1625,7 @@ function renderResearchPage(container){
         ${thumb}
         <div class="main" onclick="openResearchDetail('${r.id}')">
           <div class="ttl">No.${r.no}　${esc(r.title||'（無題）')} ${r.type==='チャット由来'?'<span class="mute" style="font-size:10px">［チャット由来メモ］</span>':''}</div>
-          <div class="meta"><span class="tag" style="background:var(--paper-deep);color:var(--ink-soft)">${r.genre}</span><span class="tag biz-${r.biz}">${r.biz}</span><span>${r.createdDate||r.date||''}</span>${firstSp.obj&&firstSp.obj.material?`<span>${esc(firstSp.obj.material)}</span>`:''}${spCount>1?`<span>試料${spCount}件</span>`:''}</div>
+          <div class="meta"><span class="tag" style="background:var(--paper-deep);color:var(--ink-soft)">${r.genre}</span><span class="tag biz-${r.biz}">${r.biz}</span>${firstSp.obj&&firstSp.obj.material?`<span>${esc(firstSp.obj.material)}</span>`:''}${spCount>1?`<span>試料${spCount}件</span>`:''}</div>
           <div class="datestamp">作成 ${fmtDT(r.createdAt)}　更新 ${fmtDT(r.updatedAt)}</div>
         </div>
         <div class="right"><span class="st-chip st-${r.status}">${r.status}</span>
@@ -1640,7 +1638,7 @@ function renderResearchPage(container){
     <button class="btn sm ghost" onclick="researchFilterBiz.clear();researchFilterGenre.clear();render();">絞込解除</button>
     <div class="spacer"></div><button class="btn sm" onclick="exportResearchCSV()">CSV出力</button>
     <button class="btn primary sm" onclick="openNewResearchModal()">＋ 新規追加</button></div>
-    ${renderDateFilterBar('research')}
+    ${renderSortBar('research',DATE_SORT_OPTIONS,{field:'createdAt',dir:'desc'})}
     <div class="rowlist">${rows}</div>`;
   document.querySelectorAll('.swiperow').forEach(row=>attachSwipe(row, ()=>{}));
 }
@@ -1745,11 +1743,11 @@ function renderDurabilityPage(container){
     </div>`;
   }).join('') : `<div class="empty">まだ使用前後の重量が記録された工程がありません。加工研究を「耐用・測定テスト」ジャンルで作成し、工程表で工具を選んで使用前後の重量を入力してください。</div>`;
 
-  let items=[...state.research].filter(r=>r.genre==='耐用・測定テスト').sort((a,b)=>b.createdAt-a.createdAt);
+  let items=[...state.research].filter(r=>r.genre==='耐用・測定テスト');
   if(durabilityFilterTool){
     items=items.filter(r=>(r.specimens||[]).some(sp=>(sp.steps||[]).some(s=>s.tool===durabilityFilterTool)));
   }
-  items=items.filter(r=>passDateFilter('durability',r));
+  items=applySort('durability',items,{field:'createdAt',dir:'desc'});
   const rows=items.length?items.map(r=>{
     const firstSp=(r.specimens&&r.specimens[0])||{};
     const thumb=r.photos&&r.photos[0]?`<img class="thumb" src="${r.photos[0]}">`:`<div class="thumb empty-thumb">測</div>`;
@@ -1760,7 +1758,7 @@ function renderDurabilityPage(container){
         ${thumb}
         <div class="main" onclick="openResearchDetail('${r.id}')">
           <div class="ttl">No.${r.no}　${esc(r.title||'（無題）')}</div>
-          <div class="meta"><span class="tag biz-${r.biz}">${r.biz}</span><span>${r.createdDate||''}</span></div>
+          <div class="meta"><span class="tag biz-${r.biz}">${r.biz}</span></div>
           <div class="datestamp">作成 ${fmtDT(r.createdAt)}　更新 ${fmtDT(r.updatedAt)}</div>
         </div>
         <div class="right"><span class="st-chip st-${r.status}">${r.status}</span>
@@ -1776,9 +1774,7 @@ function renderDurabilityPage(container){
     <div class="rowlist" style="margin-bottom:20px">${summaryRows}</div>
 
     <div class="section-label">記録一覧</div>
-    ${renderDateFilterBar('durability')}
-    <div class="filterbar"><div class="spacer"></div>
-      <button class="btn primary sm" onclick="openNewResearchModal('耐用・測定テスト')">＋ 新規記録</button></div>
+    ${renderSortBar('durability',DATE_SORT_OPTIONS,{field:'createdAt',dir:'desc'})}
     <div class="rowlist">${rows}</div>`;
   document.querySelectorAll('.swiperow').forEach(row=>attachSwipe(row, ()=>{}));
 }
@@ -1812,8 +1808,8 @@ function exportRoughnessCSV(){
   exportCSV(rows,'面粗度比較');
 }
 function renderRoughnessPage(container){
-  let items=[...state.roughness].sort((a,b)=>(a.no||0)-(b.no||0));
-  items=items.filter(r=>passDateFilter('roughness',r));
+  let items=[...state.roughness];
+  items=applySort('roughness',items,{field:'no',dir:'asc'});
   const bodyRows = items.length ? items.map(r=>`
     <tr>
       <td style="text-align:center;font-weight:700">${r.no}</td>
@@ -1838,7 +1834,7 @@ function renderRoughnessPage(container){
       <td><button class="step-del" onclick="roughDelete('${r.id}')" title="削除">×</button></td>
     </tr>`).join('') : '';
   container.innerHTML=`
-    ${renderDateFilterBar('roughness')}
+    ${renderSortBar('roughness',[{value:'no|asc',label:'No.順（既定）'}].concat(DATE_SORT_OPTIONS),{field:'no',dir:'asc'})}
     <div class="filterbar"><div class="spacer"></div>
       <button class="btn sm" onclick="exportRoughnessCSV()">CSV出力</button>
       <button class="btn primary sm" onclick="roughAdd()">＋ 行を追加</button></div>
@@ -2295,9 +2291,10 @@ document.addEventListener('paste',(ev)=>{
 let toolFilterBiz=new Set();
 function renderToolsPage(container){
   const bizChips=BIZ_LIST.map(b=>`<span class="pill biz-${b} ${toolFilterBiz.has(b)?'active':''}" onclick="toolFilterBiz.has('${b}')?toolFilterBiz.delete('${b}'):toolFilterBiz.add('${b}');render();">${b}</span>`).join('');
-  let items=[...state.tools].sort((a,b)=>(b.starter?1:0)-(a.starter?1:0)||b.createdAt-a.createdAt);
+  let items=[...state.tools];
   if(toolFilterBiz.size) items=items.filter(t=>toolFilterBiz.has(t.biz));
-  items=items.filter(t=>passDateFilter('tools',t));
+  items=applySort('tools',items,{field:'createdAt',dir:'desc'});
+  items.sort((a,b)=>(b.starter?1:0)-(a.starter?1:0)); // スタメンは並び替え設定を保ったまま常に先頭に固定（安定ソート）
   const rows=items.length?items.map(t=>{
     const unit=(t.price&&t.life)?Math.round((Number(t.price)/Number(t.life))*10)/10:null;
     const thumb=t.photos&&t.photos[0]?`<img class="thumb" src="${t.photos[0]}">`:`<div class="thumb empty-thumb">具</div>`;
@@ -2323,7 +2320,7 @@ function renderToolsPage(container){
     <button class="btn sm ghost" onclick="toolFilterBiz.clear();render();">絞込解除</button>
     <div class="spacer"></div><button class="btn sm" onclick="exportToolsCSV()">CSV出力</button>
     <button class="btn primary sm" onclick="openToolModal()">＋ 工具を追加</button></div>
-    ${renderDateFilterBar('tools')}
+    ${renderSortBar('tools',DATE_SORT_OPTIONS,{field:'createdAt',dir:'desc'})}
     <div class="rowlist">${rows}</div>`;
   document.querySelectorAll('.swiperow').forEach(row=>attachSwipe(row,()=>{}));
 }
@@ -2436,9 +2433,9 @@ function exportToolsCSV(){
 let custFilterBiz=new Set();
 function renderCustomersPage(container){
   const bizChips=['研磨','動画編集','3Dプリンタ'].map(b=>`<span class="pill biz-${b} ${custFilterBiz.has(b)?'active':''}" onclick="custFilterBiz.has('${b}')?custFilterBiz.delete('${b}'):custFilterBiz.add('${b}');render();">${b}</span>`).join('');
-  let items=[...state.customers].sort((a,b)=>b.createdAt-a.createdAt);
+  let items=[...state.customers];
   if(custFilterBiz.size) items=items.filter(c=>(c.biz||[]).some(b=>custFilterBiz.has(b)));
-  items=items.filter(c=>passDateFilter('customers',c));
+  items=applySort('customers',items,{field:'createdAt',dir:'desc'});
   const rows=items.length?items.map(c=>`
     <div class="swiperow" data-rowid="${c.id}">
       <div class="swipe-del"><button onclick="customerDeleteDirect('${c.id}')">削除</button></div>
@@ -2459,7 +2456,7 @@ function renderCustomersPage(container){
     <button class="btn sm ghost" onclick="custFilterBiz.clear();render();">絞込解除</button>
     <div class="spacer"></div><button class="btn sm" onclick="exportCustomersCSV()">CSV出力</button>
     <button class="btn primary sm" onclick="openCustomerModal()">＋ 顧客を追加</button></div>
-    ${renderDateFilterBar('customers')}
+    ${renderSortBar('customers',DATE_SORT_OPTIONS,{field:'createdAt',dir:'desc'})}
     <div class="rowlist">${rows}</div>`;
   document.querySelectorAll('.swiperow').forEach(row=>attachSwipe(row,()=>{}));
 }
