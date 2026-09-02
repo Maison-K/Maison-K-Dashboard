@@ -1792,12 +1792,10 @@ function renderResearchDetail(id){
         <div class="field"><label>合計材料費（自動＝材料費×QTY）</label><input value="${Math.round(totalMaterial)} 円" readonly></div>
       </div>
       <div class="field-row">
-        <div class="field"><label>梱包材費（1回・円／設定初期値・上書き可）</label><input type="number" value="${esc(sp.cost.packaging)}" onchange="rsCost('${id}',${si},'packaging',this.value)"></div>
-        <div class="field"><label>送料（1回・円／設定初期値・上書き可）</label><input type="number" value="${esc(sp.cost.shipping)}" onchange="rsCost('${id}',${si},'shipping',this.value)"></div>
-      </div>
-      <div class="field-row">
         <div class="field"><label>合計原価（自動＝時給×合計時間＋合計材料費）</label><input value="${Math.round(total)} 円" readonly></div>
-        <div class="field"><label>想定売価（自動＝合計原価＋梱包＋送料）</label><input value="${Math.round(total + (Number(sp.cost.packaging)||0) + (Number(sp.cost.shipping)||0))} 円" readonly style="background:#e3f0ea;font-weight:600;"></div>
+        <div class="field"><label>想定売価（自動＝合計原価＋梱包＋送料）</label><input value="${Math.round(total + (Number(state.settings.packMaterial)||0) + (Number(state.settings.shipping)||0))} 円" readonly style="background:#e3f0ea;font-weight:600;"></div>
+      </div>
+      <div class="mute" style="font-size:10.5px;margin:-6px 0 4px">※梱包材費${state.settings.packMaterial}円・送料${state.settings.shipping}円（左メニューの設定値をそのまま使用）</div>
       </div>
 
       <div class="section-label">結果</div>
