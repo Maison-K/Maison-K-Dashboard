@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Maison K — ダッシュボード</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* ==========================================================================
    design tokens — 白 / グレー / 深緑 / 黒
@@ -304,12 +305,64 @@ button{font-family:inherit;}
   body{background:#fff;}
 }
 .mute{color:var(--ink-faint);}
+
+/* ---- ログイン画面 ---- */
+.login-screen{
+  position:fixed;inset:0;background:var(--paper);z-index:900;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.login-box{background:var(--white);border:1px solid var(--line);border-radius:6px;padding:34px 30px;width:380px;max-width:100%;box-shadow:0 10px 34px rgba(20,22,20,.1);}
+.login-box h1{font-family:var(--serif);font-size:24px;margin:0 0 4px;}
+.login-box .tagline{font-size:10px;color:var(--ink-faint);letter-spacing:.12em;text-transform:uppercase;font-family:var(--mono);margin-bottom:26px;}
+.login-err{background:var(--red-tint);color:var(--red);padding:9px 12px;border-radius:var(--radius);font-size:11.5px;margin-bottom:14px;display:none;}
+.login-err.show{display:block;}
+.sync-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;color:#8b8e87;}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green-bright);}
+.sync-dot.saving{background:var(--orange);}
+.sync-dot.error{background:var(--red);}
+.sync-dot.offline{background:#8b8e87;}
+
+/* ---- 作業タイマー ---- */
+.timer-hero{background:var(--ink);color:#fff;border-radius:6px;padding:28px 24px;text-align:center;margin-bottom:18px;}
+.timer-display{font-family:var(--mono);font-size:52px;font-weight:600;letter-spacing:.02em;line-height:1.1;}
+@media (max-width:520px){.timer-display{font-size:40px;}}
+.timer-sub{font-size:11px;color:#8b8e87;margin-top:6px;font-family:var(--mono);}
+.timer-controls{display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap;}
+.timer-btn{border:none;border-radius:26px;padding:13px 26px;font-size:13px;font-weight:700;cursor:pointer;min-width:104px;}
+.timer-btn.start{background:var(--green-bright);color:#fff;}
+.timer-btn.pause{background:var(--orange);color:#fff;}
+.timer-btn.stop{background:var(--red);color:#fff;}
+.timer-btn.lap{background:#3a3c38;color:#fff;}
+.timer-btn.save{background:var(--white);color:var(--ink);}
+.timer-btn:disabled{opacity:.35;cursor:default;}
+.lap-list{max-height:180px;overflow:auto;}
+.lap-row{display:flex;justify-content:space-between;padding:7px 14px;border-bottom:1px solid var(--line);font-size:12px;font-family:var(--mono);}
+.lap-row:last-child{border-bottom:none;}
+.session-row{display:flex;gap:12px;align-items:center;padding:11px 15px;border-bottom:1px solid var(--line);font-size:12px;}
+.session-row:last-child{border-bottom:none;}
+.session-row .n{font-family:var(--mono);font-weight:700;}
 hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
 .checklist{display:flex;flex-direction:column;gap:8px;}
 .trash-notice{background:var(--orange-tint);border:1px solid var(--orange);color:#7a5615;padding:10px 14px;border-radius:var(--radius);font-size:11.5px;margin-bottom:16px;}
 </style>
 </head>
 <body>
+
+<!-- ============ ログイン画面 ============ -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <h1>Maison K</h1>
+    <div class="tagline">Atelier Dashboard</div>
+    <div class="login-err" id="loginErr"></div>
+    <div class="field"><label>メールアドレス</label><input id="lg_email" type="email" autocomplete="username"></div>
+    <div class="field"><label>パスワード</label><input id="lg_pass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn primary" style="width:100%;padding:11px" onclick="doLogin()" id="lg_btn">ログイン</button>
+    <div class="hint" style="margin-top:16px;line-height:1.6">
+      データはクラウドに保存され、iPhone・iPad・PCのどこからでも同じ状態で開けます。<br>
+      アカウントはSupabaseの管理画面から発行してください。
+    </div>
+  </div>
+</div>
 
 <div class="shell">
   <aside class="sidebar" id="sidebar">
@@ -325,6 +378,7 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
         <button class="btn sm" style="flex:1" onclick="document.getElementById('importFile').click()">読込</button>
       </div>
       <button class="gear" onclick="openSettingsModal()">⚙ 設定（時給・固定費）</button>
+      <button class="gear" onclick="doLogout()">ログアウト</button>
       <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
     </div>
   </aside>
@@ -648,21 +702,97 @@ function emptyResearch(biz){
 function emptyTool(){ return {id:null,biz:'研磨',cat:'',name:'',spec:'',starter:false,price:'',life:'',link:'',note:'',createdDate:todayStr(),photos:[],createdAt:Date.now()}; }
 function emptyCustomer(){ return {id:null,name:'',status:'見込',biz:[],contact:'',sns:'',tags:'',note:'',createdDate:todayStr(),createdAt:Date.now()}; }
 
-/* ---- 永続化 ---- */
+/* ==========================================================================
+   Supabase 接続
+   ========================================================================== */
+const SUPABASE_URL = 'https://nppetcndkpftvummafqw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wcGV0Y25ka3BmdHZ1bW1hZnF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNzA5NjYsImV4cCI6MjA4MTc0Njk2Nn0.RJ9TbeAwW-AHtVETFYgH1nTIM6PKp609VpPSVQEV2F8';
+let sb = null, currentUser = null;
+let syncStatus = 'idle'; // idle | saving | error | offline
+
+function initSupabase(){
+  if(SUPABASE_URL.startsWith('YOUR_')){
+    console.warn('SupabaseのURL/キーが未設定です。オフライン(この端末のみ)で動作します。');
+    return false;
+  }
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return true;
+}
+
+async function doLogin(){
+  const email=document.getElementById('lg_email').value.trim();
+  const pass=document.getElementById('lg_pass').value;
+  const errEl=document.getElementById('loginErr');
+  const btn=document.getElementById('lg_btn');
+  errEl.classList.remove('show');
+  if(!email||!pass){ errEl.textContent='メールアドレスとパスワードを入力してください'; errEl.classList.add('show'); return; }
+  btn.disabled=true; btn.textContent='ログイン中…';
+  try{
+    const {data,error} = await sb.auth.signInWithPassword({email,password:pass});
+    if(error) throw error;
+    currentUser = data.user;
+    await afterLogin();
+  }catch(e){
+    errEl.textContent = 'ログインに失敗しました：'+(e.message||e);
+    errEl.classList.add('show');
+  }finally{
+    btn.disabled=false; btn.textContent='ログイン';
+  }
+}
+async function doLogout(){
+  if(!confirm('ログアウトしますか？（保存済みデータはクラウドに残ります）')) return;
+  await sb.auth.signOut();
+  location.reload();
+}
+async function afterLogin(){
+  document.getElementById('loginScreen').style.display='none';
+  await loadState();
+  await loadSessions();
+  render();
+}
+
+/* ---- 永続化（クラウド優先・ローカルは予備） ---- */
 async function loadState(){
-  const saved = await idbGet('state');
-  if(saved){ state = migrateState(saved); }
+  let cloud = null;
+  if(sb && currentUser){
+    try{
+      const {data,error} = await sb.from('app_state').select('state').eq('owner_id',currentUser.id).maybeSingle();
+      if(error) throw error;
+      if(data && data.state) cloud = data.state;
+    }catch(e){ console.error('クラウド読込に失敗:',e); syncStatus='error'; }
+  }
+  if(cloud){ state = migrateState(cloud); await idbSet('state',state); }
+  else{
+    const saved = await idbGet('state');
+    if(saved) state = migrateState(saved);
+  }
   updateStorageNote();
 }
 let saveTimer=null;
 function saveState(){
   clearTimeout(saveTimer);
-  saveTimer=setTimeout(async()=>{ await idbSet('state',state); updateStorageNote(); },250);
+  syncStatus='saving'; updateStorageNote();
+  saveTimer=setTimeout(async()=>{
+    await idbSet('state',state);           // まずローカルに退避
+    if(sb && currentUser){
+      try{
+        const {error} = await sb.from('app_state')
+          .upsert({owner_id:currentUser.id, state:state}, {onConflict:'owner_id'});
+        if(error) throw error;
+        syncStatus='idle';
+      }catch(e){ console.error('クラウド保存に失敗:',e); syncStatus='error'; }
+    }else{ syncStatus='offline'; }
+    updateStorageNote();
+  },600);
 }
 function updateStorageNote(){
   const el=document.getElementById('storageNote'); if(!el) return;
   const cnt=state.todos.length+state.research.length+state.tools.length+state.customers.length;
-  el.innerHTML=`ブラウザ内(IndexedDB)に自動保存<br>件数：${cnt} 件　ゴミ箱：${state.trash.length}件<br>最終保存：${new Date().toLocaleTimeString('ja-JP')}`;
+  const label={idle:'同期済み',saving:'保存中…',error:'同期エラー（ローカルには保存済み）',offline:'この端末のみ'}[syncStatus];
+  el.innerHTML=`<span class="sync-badge"><span class="sync-dot ${syncStatus==='idle'?'':syncStatus}"></span>${label}</span><br>
+    件数：${cnt} 件　ゴミ箱：${state.trash.length}件<br>
+    ${currentUser?esc(currentUser.email):'未ログイン'}<br>
+    最終更新：${new Date().toLocaleTimeString('ja-JP')}`;
 }
 function exportJSON(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
@@ -672,7 +802,7 @@ function exportJSON(){
 function importJSON(ev){
   const file=ev.target.files[0]; if(!file) return;
   const reader=new FileReader();
-  reader.onload=async()=>{ try{ state=migrateState(JSON.parse(reader.result)); await idbSet('state',state); render(); toast('読み込みました'); }catch(e){ console.error(e); toast('読み込みに失敗しました'); } };
+  reader.onload=async()=>{ try{ state=migrateState(JSON.parse(reader.result)); await idbSet('state',state); saveState(); render(); toast('読み込みました（クラウドにも保存されます）'); }catch(e){ console.error(e); toast('読み込みに失敗しました'); } };
   reader.readAsText(file); ev.target.value='';
 }
 
@@ -731,6 +861,7 @@ const ICONS = {
   tools:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.7 6.3a4 4 0 1 1-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 1 5.4-5.4z"/></svg>`,
   cust:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.5 2.5-6 5.5-6s5.5 2.5 5.5 6"/><circle cx="18" cy="9" r="2.3"/><path d="M15.5 20c.2-2.8 1.9-4.8 4-4.8"/></svg>`,
   trash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg>`,
+  timer:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>`,
 };
 let currentPage='dash';
 function setPage(p){ currentPage=p; render(); }
@@ -738,6 +869,7 @@ function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('o
 function renderNav(){
   const items=[
     {id:'dash',label:'ダッシュボード',icon:ICONS.dash},
+    {id:'timer',label:'作業タイマー',icon:ICONS.timer},
     {id:'todo',label:'ToDoリスト',icon:ICONS.todo,count:state.todos.filter(t=>t.status!=='完了').length},
     {id:'research',label:'加工研究',icon:ICONS.research,count:state.research.length},
     {id:'tools',label:'工具マスタ',icon:ICONS.tools,count:state.tools.length},
@@ -787,12 +919,13 @@ function closeOv(id){ document.getElementById(id).classList.remove('show'); }
    ========================================================================== */
 function render(){
   renderNav();
-  const titleMap={dash:'ダッシュボード',todo:'ToDoリスト',research:'加工研究',tools:'工具マスタ',customers:'顧客管理',trash:'ゴミ箱'};
+  const titleMap={dash:'ダッシュボード',timer:'作業タイマー',todo:'ToDoリスト',research:'加工研究',tools:'工具マスタ',customers:'顧客管理',trash:'ゴミ箱'};
   document.getElementById('pageTitle').textContent=titleMap[currentPage]||'';
-  const subMap={dash:todayStr(),todo:'定常業務・加工研究・事務を横断管理',research:'比較検証の記録',tools:'保有工具・消耗品の台帳',customers:'見込み〜取引先の管理',trash:'削除済みアイテムの復元・完全削除'};
+  const subMap={dash:todayStr(),timer:'実作業時間を計測して工程表に反映',todo:'定常業務・加工研究・事務を横断管理',research:'比較検証の記録',tools:'保有工具・消耗品の台帳',customers:'見込み〜取引先の管理',trash:'削除済みアイテムの復元・完全削除'};
   document.getElementById('pageSub').textContent=subMap[currentPage]||'';
   const c=document.getElementById('content');
   if(currentPage==='dash') c.innerHTML=renderDash();
+  else if(currentPage==='timer') c.innerHTML=renderTimer();
   else if(currentPage==='todo') c.innerHTML=renderTodo();
   else if(currentPage==='research') renderResearchPage(c);
   else if(currentPage==='tools') renderToolsPage(c);
@@ -931,6 +1064,190 @@ function renderGanttOnly(){
   initGanttDrag();
 }
 
+/* ==========================================================================
+   作業タイマー
+   ========================================================================== */
+let timer = {
+  running:false, startedAt:null, accumSec:0, tickId:null,
+  researchId:'', specimenIdx:0, stepIndex:-1, laps:[], sessionId:null,
+};
+let recentSessions = [];
+
+function fmtHMS(sec){
+  const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=Math.floor(sec%60);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function timerElapsed(){
+  let sec = timer.accumSec;
+  if(timer.running && timer.startedAt) sec += (Date.now()-timer.startedAt)/1000;
+  return sec;
+}
+async function loadSessions(){
+  if(!sb||!currentUser) return;
+  try{
+    const {data,error} = await sb.from('work_sessions').select('*').eq('owner_id',currentUser.id).order('created_at',{ascending:false}).limit(20);
+    if(error) throw error;
+    recentSessions = data||[];
+  }catch(e){ console.error('作業ログ読込に失敗:',e); }
+}
+
+function renderTimer(){
+  const elapsed = timerElapsed();
+  const r = state.research.find(x=>x.id===timer.researchId);
+  const specimens = r ? (r.specimens||[]) : [];
+  const sp = specimens[timer.specimenIdx];
+  const steps = sp ? (sp.steps||[]) : [];
+
+  const researchOpts = state.research.map(x=>`<option value="${x.id}" ${x.id===timer.researchId?'selected':''}>No.${x.no}　${esc(x.title||'（無題）')}</option>`).join('');
+  const specimenOpts = specimens.map((s,i)=>`<option value="${i}" ${i===timer.specimenIdx?'selected':''}>${esc(s.label)}</option>`).join('');
+  const stepOpts = steps.map((s,i)=>`<option value="${i}" ${i===timer.stepIndex?'selected':''}>${i+1}. ${esc(s.processName||s.tool||'（工程名なし）')}</option>`).join('');
+
+  const lapsHtml = timer.laps.length ? timer.laps.map((l,i)=>`<div class="lap-row"><span>ラップ ${i+1}</span><span>${fmtHMS(l)}</span></div>`).join('') : `<div class="empty" style="padding:18px">ラップ記録なし</div>`;
+
+  const sessionsHtml = recentSessions.length ? recentSessions.slice(0,10).map(s=>`
+    <div class="session-row">
+      <span class="n">${fmtHMS(s.elapsed_sec)}</span>
+      <span style="flex:1">${esc(s.step_name||'（工程未指定）')}${s.is_finished?'':' <span class="mute">［途中保存］</span>'}</span>
+      ${s.qty_done?`<span class="mute">${s.qty_done}個</span>`:''}
+      ${s.min_per_unit?`<span class="mute">${Math.round(s.min_per_unit*10)/10}分/個</span>`:''}
+      <span class="mute">${new Date(s.created_at).toLocaleDateString('ja-JP')}</span>
+    </div>`).join('') : `<div class="empty">作業ログはまだありません</div>`;
+
+  return `
+    <div class="timer-hero">
+      <div class="timer-display" id="timerDisplay">${fmtHMS(elapsed)}</div>
+      <div class="timer-sub">${timer.running?'計測中':(elapsed>0?'一時停止中':'待機中')}</div>
+      <div class="timer-controls">
+        ${timer.running
+          ? `<button class="timer-btn pause" onclick="timerPause()">一時停止</button>
+             <button class="timer-btn lap" onclick="timerLap()">ラップ</button>`
+          : `<button class="timer-btn start" onclick="timerStart()">${elapsed>0?'再開':'開始'}</button>`}
+        <button class="timer-btn save" onclick="timerSaveProgress()" ${elapsed>0?'':'disabled'}>途中保存</button>
+        <button class="timer-btn stop" onclick="timerFinish()" ${elapsed>0?'':'disabled'}>終了</button>
+      </div>
+    </div>
+
+    <div class="section-label">対象の工程</div>
+    <div class="field-row">
+      <div class="field"><label>加工研究</label>
+        <select onchange="timerSet('researchId',this.value)"><option value="">（選択してください）</option>${researchOpts}</select></div>
+      <div class="field"><label>試料</label>
+        <select onchange="timerSet('specimenIdx',Number(this.value))" ${specimens.length?'':'disabled'}>${specimenOpts||'<option>—</option>'}</select></div>
+      <div class="field"><label>工程</label>
+        <select onchange="timerSet('stepIndex',Number(this.value))" ${steps.length?'':'disabled'}>
+          <option value="-1">（工程を選択）</option>${stepOpts}</select></div>
+    </div>
+    <div class="hint">終了時に完了個数を入力すると、1個あたりの所要時間を計算して、選択した工程の「時間」欄に自動で書き込みます。</div>
+
+    <div class="section-label">ラップ</div>
+    <div class="card lap-list">${lapsHtml}</div>
+
+    <div class="section-label">最近の作業ログ</div>
+    <div class="card">${sessionsHtml}</div>
+  `;
+}
+function timerSet(key,val){
+  timer[key]=val;
+  if(key==='researchId'){ timer.specimenIdx=0; timer.stepIndex=-1; }
+  if(key==='specimenIdx'){ timer.stepIndex=-1; }
+  render();
+}
+function timerTick(){
+  const el=document.getElementById('timerDisplay');
+  if(el) el.textContent=fmtHMS(timerElapsed());
+}
+function timerStart(){
+  timer.running=true; timer.startedAt=Date.now();
+  if(timer.tickId) clearInterval(timer.tickId);
+  timer.tickId=setInterval(timerTick,500);
+  render();
+}
+function timerPause(){
+  if(!timer.running) return;
+  timer.accumSec = timerElapsed();
+  timer.running=false; timer.startedAt=null;
+  clearInterval(timer.tickId); timer.tickId=null;
+  render();
+}
+function timerLap(){
+  timer.laps.push(Math.floor(timerElapsed()));
+  render();
+}
+function timerReset(){
+  timer.running=false; timer.startedAt=null; timer.accumSec=0; timer.laps=[]; timer.sessionId=null;
+  if(timer.tickId){ clearInterval(timer.tickId); timer.tickId=null; }
+}
+function currentStepName(){
+  const r=state.research.find(x=>x.id===timer.researchId); if(!r) return '';
+  const sp=(r.specimens||[])[timer.specimenIdx]; if(!sp) return '';
+  const st=(sp.steps||[])[timer.stepIndex]; if(!st) return '';
+  return st.processName||st.tool||`工程${timer.stepIndex+1}`;
+}
+async function saveSession(isFinished, qtyDone){
+  const elapsed = Math.floor(timerElapsed());
+  const minPerUnit = (qtyDone && qtyDone>0) ? (elapsed/60)/qtyDone : null;
+  const payload = {
+    owner_id: currentUser?currentUser.id:null,
+    research_id: timer.researchId||null,
+    specimen_idx: timer.specimenIdx,
+    step_index: timer.stepIndex>=0?timer.stepIndex:null,
+    step_name: currentStepName()||null,
+    ended_at: isFinished ? new Date().toISOString() : null,
+    elapsed_sec: elapsed,
+    qty_done: qtyDone||null,
+    min_per_unit: minPerUnit,
+    laps: timer.laps,
+    is_finished: isFinished,
+  };
+  if(!sb||!currentUser){ toast('未ログインのため作業ログを保存できません'); return null; }
+  try{
+    if(timer.sessionId){
+      const {error}=await sb.from('work_sessions').update(payload).eq('id',timer.sessionId);
+      if(error) throw error;
+    }else{
+      const {data,error}=await sb.from('work_sessions').insert(payload).select('id').single();
+      if(error) throw error;
+      timer.sessionId=data.id;
+    }
+    await loadSessions();
+    return minPerUnit;
+  }catch(e){ console.error('作業ログ保存に失敗:',e); toast('作業ログの保存に失敗しました'); return null; }
+}
+async function timerSaveProgress(){
+  timerPause();
+  await saveSession(false, null);
+  toast('ここまでの経過時間を保存しました（作業は継続できます）');
+  render();
+}
+async function timerFinish(){
+  timerPause();
+  const elapsed=Math.floor(timerElapsed());
+  const input = prompt(`完了した個数を入力してください。\n（経過時間：${fmtHMS(elapsed)}）\n\n空欄のままOKすると、時間だけ記録します。`,'');
+  if(input===null){ render(); return; }
+  const qty = input.trim()===''?null:Number(input);
+  if(input.trim()!=='' && (isNaN(qty)||qty<=0)){ toast('個数は1以上の数字で入力してください'); return; }
+
+  const minPerUnit = await saveSession(true, qty);
+
+  if(qty && timer.researchId && timer.stepIndex>=0){
+    const r=state.research.find(x=>x.id===timer.researchId);
+    const sp=r&&r.specimens[timer.specimenIdx];
+    const st=sp&&sp.steps[timer.stepIndex];
+    if(st){
+      st.time = Math.round(((elapsed/60)/qty)*10)/10;
+      sp.qty = qty;
+      // 工程時間の合計を、試料の実時間(1本あたり)へ反映
+      const sumMin = (sp.steps||[]).reduce((a,s)=>a+(Number(s.time)||0),0);
+      sp.cost.actualMin = Math.round(sumMin*10)/10;
+      saveState();
+      toast(`1個あたり ${st.time}分 として工程表に反映しました`);
+    }
+  }else{
+    toast('作業を終了しました');
+  }
+  timerReset();
+  render();
+}
 /* ==========================================================================
    ToDoリスト
    ========================================================================== */
@@ -1685,8 +2002,22 @@ function exportCSV(rows, baseName){
    起動
    ========================================================================== */
 (async function init(){
-  await loadState();
-  render();
+  const hasSupabase = initSupabase();
+  if(!hasSupabase){
+    // URL/キー未設定時はローカル動作（従来通り）
+    document.getElementById('loginScreen').style.display='none';
+    syncStatus='offline';
+    await loadState();
+    render();
+    return;
+  }
+  const {data} = await sb.auth.getSession();
+  if(data && data.session){
+    currentUser = data.session.user;
+    await afterLogin();
+  }else{
+    document.getElementById('loginScreen').style.display='flex';
+  }
 })();
 </script>
 </body>
