@@ -228,6 +228,8 @@ button{font-family:inherit;}
 .itemrow .delbtn{flex:0 0 auto;width:38px;height:38px;border-radius:var(--radius);border:1px solid var(--red);background:var(--red-tint);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--red);}
 .itemrow .delbtn:hover,.itemrow .delbtn:active{border-color:var(--red);color:#fff;background:var(--red);}
 .itemrow .delbtn svg{width:15px;height:15px;}
+.itemrow .starbtn{flex:0 0 auto;width:34px;height:34px;border-radius:var(--radius);border:1px solid var(--line-strong);background:var(--paper);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-faint);font-size:18px;line-height:1;padding:0;}
+.itemrow .starbtn.active{border-color:#d9a521;color:#d9a521;background:#fdf6e3;}
 .itemrow .thumb{width:52px;height:52px;border-radius:var(--radius);background:var(--paper-deep);border:1px solid var(--line);object-fit:cover;flex:0 0 auto;}
 .itemrow .thumb.empty-thumb{display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-size:16px;font-family:var(--serif);}
 .itemrow .main{flex:1;min-width:0;cursor:pointer;}
@@ -298,10 +300,10 @@ button{font-family:inherit;}
 .gantt-bar{
   position:absolute;top:7px;height:28px;border-radius:14px;cursor:grab;
   display:flex;align-items:center;padding:0 10px;font-size:10.5px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;
-  border-width:2px;border-style:solid;
+  border-width:2px;border-style:solid;touch-action:none;
 }
 .gantt-bar:active{cursor:grabbing;}
-.gantt-bar .resize{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:ew-resize;}
+.gantt-bar .resize{position:absolute;right:0;top:0;bottom:0;width:16px;cursor:ew-resize;touch-action:none;}
 .gantt-head{display:flex;border-bottom:2px solid var(--line-strong);position:sticky;top:0;background:var(--white);z-index:2;}
 .gantt-head .gantt-label{background:var(--white);}
 .gantt-daycell{flex:0 0 var(--daywidth,28px);width:var(--daywidth,28px);text-align:center;font-size:9.5px;color:var(--ink-faint);padding:6px 0;font-family:var(--mono);border-right:1px solid var(--line);}
@@ -1074,7 +1076,7 @@ function renderGantt(){
     const width = Math.max(dayDiff(start,due),1)*dayW;
     const color = t.status==='未着手'?'var(--red)':t.status==='進行中'?'var(--orange)':'var(--green)';
     return `<div class="gantt-row">
-      <div class="gantt-label"><span class="tag biz-${t.biz}">${t.biz}</span>${esc(t.title).slice(0,14)}</div>
+      <div class="gantt-label" onclick="editTodo('${t.id}')" style="cursor:pointer"><span class="tag biz-${t.biz}">${t.biz}</span>${esc(t.title).slice(0,14)}</div>
       <div class="gantt-track" style="--daywidth:${dayW}px">
         <div class="gantt-bar" data-id="${t.id}" style="left:${offset}px;width:${width}px;background:${color};border-color:${color}"
              title="${esc(t.title)}（${start} 〜 ${due}）">
@@ -1099,24 +1101,26 @@ function renderGantt(){
 let ganttDrag = null;
 function initGanttDrag(){
   document.querySelectorAll('.gantt-bar').forEach(bar=>{
-    bar.onmousedown = (ev)=>{
+    bar.onpointerdown = (ev)=>{
       if(ev.target.classList.contains('resize')) return;
       const id = bar.dataset.id;
       const t = state.todos.find(x=>x.id===id); if(!t) return;
       ganttDrag = {mode:'move', id, startX:ev.clientX, origStart:t.start||t.due||todayStr(), origDue:t.due||t.start||todayStr()};
+      bar.setPointerCapture(ev.pointerId);
       ev.preventDefault();
     };
   });
   document.querySelectorAll('.gantt-bar .resize').forEach(handle=>{
-    handle.onmousedown = (ev)=>{
+    handle.onpointerdown = (ev)=>{
       const id = handle.dataset.id;
       const t = state.todos.find(x=>x.id===id); if(!t) return;
       ganttDrag = {mode:'resize', id, startX:ev.clientX, origDue:t.due||t.start||todayStr()};
+      handle.setPointerCapture(ev.pointerId);
       ev.preventDefault(); ev.stopPropagation();
     };
   });
 }
-document.addEventListener('mousemove',(ev)=>{
+document.addEventListener('pointermove',(ev)=>{
   if(!ganttDrag) return;
   const dayW=30;
   const dx = ev.clientX - ganttDrag.startX;
@@ -1131,7 +1135,7 @@ document.addEventListener('mousemove',(ev)=>{
   }
   renderGanttOnly();
 });
-document.addEventListener('mouseup',()=>{
+document.addEventListener('pointerup',()=>{
   if(ganttDrag){ saveState(); ganttDrag=null; }
 });
 function renderGanttOnly(){
@@ -1331,7 +1335,6 @@ async function timerFinish(){
    ToDoリスト
    ========================================================================== */
 let todoFilterBiz=new Set(), todoFilterGenre=new Set();
-let draggingTodoId=null;
 function renderTodo(){
   const bizChips=BIZ_LIST.map(b=>`<span class="pill biz-${b} ${todoFilterBiz.has(b)?'active':''}" onclick="toggleTodoFilter('biz','${b}')">${b}</span>`).join('');
   const genreChips=GENRE_LIST.map(g=>`<span class="pill ${todoFilterGenre.has(g)?'active':''}" onclick="toggleTodoFilter('genre','${g}')">${g}</span>`).join('');
@@ -1343,7 +1346,7 @@ function renderTodo(){
     const cardsHtml=items.filter(t=>t.status===st).map(t=>{
       const late=t.due&&t.due<todayStr()&&st!=='完了';
       const stIdx = STATUS_LIST.indexOf(t.status);
-      return `<div class="todo-card st-border st-${t.status}" draggable="true" data-id="${t.id}" ondragstart="onTodoDragStart(event,'${t.id}')" ondragend="onTodoDragEnd(event)" onclick="editTodo('${t.id}')">
+      return `<div class="todo-card st-border st-${t.status}" data-id="${t.id}" onclick="editTodo('${t.id}')">
         <div class="top"><span class="tag biz-${t.biz}">${t.biz}</span><span class="pill" style="pointer-events:none;padding:2px 8px"><span class="prio ${t.priority}"></span>${t.genre}</span></div>
         <div class="title">${t.no!=null?`<span class="mute" style="font-weight:700;margin-right:4px">No.${t.no}</span>`:''}${esc(t.title)}</div>
         ${t.note?`<div class="note">${esc(t.note).slice(0,60)}${t.note.length>60?'…':''}</div>`:''}
@@ -1355,7 +1358,7 @@ function renderTodo(){
       </div>`;
     }).join('');
     return `<div class="kcol"><div class="kcol-head"><span class="t">${st}</span><span class="c">${items.filter(t=>t.status===st).length}</span></div>
-      <div class="kcol-body" data-status="${st}" ondragover="onKcolDragOver(event)" ondragleave="onKcolDragLeave(event)" ondrop="onKcolDrop(event,'${st}')">
+      <div class="kcol-body" data-status="${st}">
         ${cardsHtml||'<div class="empty" style="padding:20px 8px">なし</div>'}
       </div></div>`;
   }).join('');
@@ -1377,10 +1380,6 @@ function moveTodoStatus(id, dir){
   saveState(); render();
   toast(`「${t.title}」を${t.status}へ`);
 }
-function onTodoDragStart(ev,id){ draggingTodoId=id; ev.target.classList.add('dragging'); ev.dataTransfer.effectAllowed='move'; }
-function onTodoDragEnd(ev){ ev.target.classList.remove('dragging'); }
-function onKcolDragOver(ev){ ev.preventDefault(); ev.currentTarget.classList.add('dragover'); }
-function onKcolDragLeave(ev){ ev.currentTarget.classList.remove('dragover'); }
 function syncResearchFromTodo(todo){
   if(!todo.linkedResearchId) return;
   const r = state.research.find(x=>x.id===todo.linkedResearchId);
@@ -1389,11 +1388,6 @@ function syncResearchFromTodo(todo){
   if(todo.biz) r.biz = todo.biz;
   r.startDate = todo.start || r.startDate;
   r.endDate = todo.due || r.endDate;
-}
-function onKcolDrop(ev,status){
-  ev.preventDefault(); ev.currentTarget.classList.remove('dragover');
-  const t=state.todos.find(x=>x.id===draggingTodoId);
-  if(t){ t.status=status; syncResearchFromTodo(t); saveState(); render(); toast(`「${t.title}」を${status}へ`); }
 }
 let editingTodoId=null;
 function openTodoModal(){
@@ -1818,9 +1812,9 @@ function renderResearchDetail(id){
         <td><input value="${esc(s.time)}" type="number" placeholder="分" style="width:56px" oninput="rsStepInput('${id}',${si},${i},'time',this.value)"></td>
         <td><div class="cellwrap"><input value="${esc(s.pressure)}" placeholder="押し圧" oninput="rsStepInput('${id}',${si},${i},'pressure',this.value)"><button type="button" class="cellexp" onclick="openCellEditor('${id}',${si},${i},'pressure')" title="拡大して編集">⤢</button></div></td>
         ${isDurability ? `
-        <td><input value="${esc(s.beforeWeight)}" type="number" step="0.001" placeholder="使用前(g)" style="width:76px" oninput="rsStepInput('${id}',${si},${i},'beforeWeight',this.value)"></td>
-        <td><input value="${esc(s.afterWeight)}" type="number" step="0.001" placeholder="使用後(g)" style="width:76px" oninput="rsStepInput('${id}',${si},${i},'afterWeight',this.value)"></td>
-        <td class="mute" style="text-align:right">${consumed}</td>` : ''}
+        <td><input value="${esc(s.beforeWeight)}" type="number" step="0.001" placeholder="使用前(g)" style="width:76px" oninput="rsWeightInput('${id}',${si},${i},'beforeWeight',this.value)"></td>
+        <td><input value="${esc(s.afterWeight)}" type="number" step="0.001" placeholder="使用後(g)" style="width:76px" oninput="rsWeightInput('${id}',${si},${i},'afterWeight',this.value)"></td>
+        <td class="mute" id="consumed-${id}-${si}-${i}" style="text-align:right">${consumed}</td>` : ''}
         <td><div class="cellwrap"><input value="${esc(s.memo)}" placeholder="メモ" oninput="rsStepInput('${id}',${si},${i},'memo',this.value)"><button type="button" class="cellexp" onclick="openCellEditor('${id}',${si},${i},'memo')" title="拡大して編集">⤢</button></div></td>
         <td><button class="step-del" onclick="rsRemoveStep('${id}',${si},${i})">×</button></td>
       </tr>`;
@@ -1859,22 +1853,22 @@ function renderResearchDetail(id){
       <div class="field-row">
         <div class="field"><label>最大径（前）</label><input value="${esc(sp.specs.maxDia.b)}" oninput="rsSpecInput('${id}',${si},'maxDia','b',this.value)"></div>
         <div class="field"><label>最大径（後）</label><input value="${esc(sp.specs.maxDia.a)}" oninput="rsSpecInput('${id}',${si},'maxDia','a',this.value)"></div>
-        <div class="field"><label>径変化（自動）</label><input value="${diffCalc(sp.specs.maxDia.b,sp.specs.maxDia.a,'mm')}" readonly></div>
+        <div class="field"><label>径変化（自動）</label><input id="diff-${id}-${si}-maxDia" value="${diffCalc(sp.specs.maxDia.b,sp.specs.maxDia.a,'mm')}" readonly></div>
       </div>
       <div class="field-row">
         <div class="field"><label>最小径（前）</label><input value="${esc(sp.specs.minDia.b)}" oninput="rsSpecInput('${id}',${si},'minDia','b',this.value)"></div>
         <div class="field"><label>最小径（後）</label><input value="${esc(sp.specs.minDia.a)}" oninput="rsSpecInput('${id}',${si},'minDia','a',this.value)"></div>
-        <div class="field"><label>径変化（自動）</label><input value="${diffCalc(sp.specs.minDia.b,sp.specs.minDia.a,'mm')}" readonly></div>
+        <div class="field"><label>径変化（自動）</label><input id="diff-${id}-${si}-minDia" value="${diffCalc(sp.specs.minDia.b,sp.specs.minDia.a,'mm')}" readonly></div>
       </div>
       <div class="field-row">
         <div class="field"><label>長さ（前）</label><input value="${esc(sp.specs.length.b)}" oninput="rsSpecInput('${id}',${si},'length','b',this.value)"></div>
         <div class="field"><label>長さ（後）</label><input value="${esc(sp.specs.length.a)}" oninput="rsSpecInput('${id}',${si},'length','a',this.value)"></div>
-        <div class="field"><label>変化（自動）</label><input value="${diffCalc(sp.specs.length.b,sp.specs.length.a,'mm')}" readonly></div>
+        <div class="field"><label>変化（自動）</label><input id="diff-${id}-${si}-length" value="${diffCalc(sp.specs.length.b,sp.specs.length.a,'mm')}" readonly></div>
       </div>
       <div class="field-row">
         <div class="field"><label>重量（前）</label><input value="${esc(sp.specs.weight.b)}" oninput="rsSpecInput('${id}',${si},'weight','b',this.value)"></div>
         <div class="field"><label>重量（後）</label><input value="${esc(sp.specs.weight.a)}" oninput="rsSpecInput('${id}',${si},'weight','a',this.value)"></div>
-        <div class="field"><label>重量変化（自動）</label><input value="${diffCalc(sp.specs.weight.b,sp.specs.weight.a,'g')}" readonly></div>
+        <div class="field"><label>重量変化（自動）</label><input id="diff-${id}-${si}-weight" value="${diffCalc(sp.specs.weight.b,sp.specs.weight.a,'g')}" readonly></div>
       </div>
 
       <div class="section-label">${isDurability?'加工工程表（工具の消耗を記録）':'加工工程表'}</div>
@@ -1961,6 +1955,7 @@ function renderResearchDetail(id){
       </div>
 
       <div class="section-label">試料（比較対象を複数登録できます）</div>
+      ${isDurability ? `<div class="card" style="margin-bottom:12px"><div class="mute" style="font-size:10px;margin-bottom:6px">工具ごとの消耗量（このレコード内・自動集計）</div><div id="durability-live-total-${id}">${renderDurabilityLiveSummary(r)}</div></div>` : ''}
       ${specimensHtml}
       <button class="btn brass sm" style="background:var(--green);border-color:var(--green);color:#fff" onclick="rsAddSpecimen('${id}')">＋ 比較試料を追加（N${r.specimens.length+1}）</button>
 
@@ -1994,7 +1989,15 @@ function rsField(id,key,val){
   saveState(); if(key==='type'||key==='status') render();
 }
 function rsObj(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].obj[key]=val; saveState(); }
-function rsSpecInput(id,si,key,ba,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].specs[key][ba]=val; saveState(); render(); }
+function rsSpecInput(id,si,key,ba,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].specs[key][ba]=val; saveState(); updateDiffDisplays(id,si); }
+function updateDiffDisplays(id,si){
+  const r=state.research.find(x=>x.id===id); const sp=r.specimens[si];
+  const map=[['maxDia','mm'],['minDia','mm'],['length','mm'],['weight','g']];
+  map.forEach(([key,unit])=>{
+    const el=document.getElementById(`diff-${id}-${si}-${key}`);
+    if(el) el.value=diffCalc(sp.specs[key].b, sp.specs[key].a, unit);
+  });
+}
 function rsCompare(id,key,val){ const r=state.research.find(x=>x.id===id); r.compare[key]=val; saveState(); }
 function rsPre(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].pre[key]=val; saveState(); }
 function rsCost(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].cost[key]=val; saveState(); render(); }
@@ -2005,6 +2008,31 @@ function rsRemoveSpecimen(id,si){ const r=state.research.find(x=>x.id===id); if(
 function rsAddStep(id,si){ const r=state.research.find(x=>x.id===id); const sp=r.specimens[si]; if(sp.steps.length>=20) return; sp.steps.push({processName:'',tool:'',grit:'',time:'',pressure:'',memo:'',beforeWeight:'',afterWeight:''}); saveState(); render(); }
 function rsRemoveStep(id,si,i){ const r=state.research.find(x=>x.id===id); r.specimens[si].steps.splice(i,1); saveState(); render(); }
 function rsStepInput(id,si,i,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].steps[i][key]=val; saveState(); }
+function rsWeightInput(id,si,i,key,val){
+  const r=state.research.find(x=>x.id===id); const s=r.specimens[si].steps[i];
+  s[key]=val; saveState();
+  const cell=document.getElementById(`consumed-${id}-${si}-${i}`);
+  if(cell){
+    const consumed=(s.beforeWeight!=='' && s.beforeWeight!=null && s.afterWeight!=='' && s.afterWeight!=null)
+      ? (Math.round((Number(s.beforeWeight)-Number(s.afterWeight))*1000)/1000) : '';
+    cell.textContent=consumed;
+  }
+  const totalEl=document.getElementById(`durability-live-total-${id}`);
+  if(totalEl) totalEl.innerHTML=renderDurabilityLiveSummary(r);
+}
+function renderDurabilityLiveSummary(r){
+  const map={};
+  (r.specimens||[]).forEach(sp=>(sp.steps||[]).forEach(s=>{
+    if(!s.tool) return;
+    if(s.beforeWeight===''||s.beforeWeight==null||s.afterWeight===''||s.afterWeight==null) return;
+    const diff=Number(s.beforeWeight)-Number(s.afterWeight);
+    if(!map[s.tool]) map[s.tool]={count:0,consumed:0};
+    map[s.tool].count+=1; map[s.tool].consumed+=diff;
+  }));
+  const names=Object.keys(map);
+  if(!names.length) return `<span class="mute">使用前・使用後の重量を入力すると、ここに工具ごとの消耗量が表示されます</span>`;
+  return names.map(n=>`<span class="tag" style="background:var(--paper-deep);margin-right:6px">${esc(n)}：${Math.round(map[n].consumed*1000)/1000}g（${map[n].count}回）</span>`).join('');
+}
 
 /* ---- セルの拡大編集ポップアップ（工程表・面粗度比較で共用） ---- */
 let cellEditCtx=null;
@@ -2150,9 +2178,10 @@ function renderToolsPage(container){
       <div class="swipe-del"><button onclick="toolDeleteDirect('${t.id}')">削除</button></div>
       <div class="itemrow" style="border-color:var(--line)">
         <button class="editbtn" onclick="event.stopPropagation();editTool('${t.id}')" title="編集"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+        <button class="starbtn ${t.starter?'active':''}" onclick="event.stopPropagation();toolToggleStarter('${t.id}')" title="スタメン切替">${t.starter?'★':'☆'}</button>
         ${thumb}
         <div class="main" onclick="openToolDetail('${t.id}')">
-          <div class="ttl">${t.starter?'<span class="star">★</span> ':''}${esc(t.name)}</div>
+          <div class="ttl">${esc(t.name)}</div>
           <div class="meta"><span class="tag biz-${t.biz}">${t.biz}</span>${t.cat?`<span>${esc(t.cat)}</span>`:''}${t.spec?`<span>${esc(t.spec)}</span>`:''}${t.price?`<span>${Number(t.price).toLocaleString()}円</span>`:''}${unit!==null?`<span>原価/回 ${unit}円</span>`:''}
           ${t.link?`<span><a href="${esc(t.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">購入先↗</a></span>`:''}</div>
         </div>
@@ -2174,6 +2203,11 @@ function toolDeleteDirect(id){
   const t=state.tools.find(x=>x.id===id); if(!t) return;
   if(!confirm(`「${t.name}」を削除しますか？（ゴミ箱に移動します）`)) return;
   state.tools=state.tools.filter(x=>x.id!==id); moveToTrash('tool',t); saveState(); render(); toast('ゴミ箱へ移動しました');
+}
+function toolToggleStarter(id){
+  const t=state.tools.find(x=>x.id===id); if(!t) return;
+  t.starter=!t.starter; saveState(); render();
+  toast(t.starter?`「${t.name}」をスタメンにしました`:`「${t.name}」をスタメンから外しました`);
 }
 let editingToolId=null, toolPhotoBuffer=[];
 function renderToolPhotoStrip(){
