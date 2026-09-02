@@ -259,6 +259,13 @@ button{font-family:inherit;}
 .step-table td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
 .step-table td input,.step-table td select{width:100%;border:1px solid transparent;background:none;padding:4px 5px;font-size:12px;border-radius:2px;font-family:inherit;}
 .step-table td input:focus,.step-table td select:focus{border-color:var(--green);background:var(--white);outline:none;}
+.rough-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--white);-webkit-overflow-scrolling:touch;}
+.rough-table{width:max-content;min-width:100%;border-collapse:collapse;font-size:12px;}
+.rough-table th{position:sticky;top:0;background:var(--paper-deep);text-align:left;font-size:10px;color:var(--ink-soft);font-weight:600;padding:8px 8px;border-bottom:1px solid var(--line-strong);white-space:nowrap;}
+.rough-table td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top;}
+.rough-table td input,.rough-table td select{width:100%;min-width:64px;border:1px solid transparent;background:none;padding:4px 5px;font-size:12px;border-radius:2px;font-family:inherit;}
+.rough-table td input:focus,.rough-table td select:focus{border-color:var(--green);background:var(--white);outline:none;}
+.rough-table tr:hover td{background:var(--paper);}
 .cellwrap{display:flex;align-items:center;gap:2px;}
 .cellwrap input{min-width:0;flex:1;}
 .cellexp{flex:0 0 auto;width:22px;height:22px;border:1px solid var(--line-strong);background:var(--paper);border-radius:2px;color:var(--ink-faint);font-size:11px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
@@ -644,7 +651,7 @@ const GENRE_LIST = ['定常業務','製造','加工研究','耐用・測定テ�
 const STATUS_LIST = ['未着手','進行中','完了'];
 
 let state = {
-  todos: [], research: [], tools: [], customers: [], trash: [],
+  todos: [], research: [], tools: [], customers: [], trash: [], roughness: [],
   settings: {hourly:1800, packMaterial:70, shipping:870, packMin:30},
 };
 function todayStr(){ return new Date().toISOString().slice(0,10); }
@@ -686,6 +693,7 @@ function migrateResearchRecord(raw){
 }
 function migrateToolRecord(raw){ return Object.assign(emptyTool(), raw, {createdDate: raw.createdDate||todayStr()}); }
 function migrateCustomerRecord(raw){ return Object.assign(emptyCustomer(), raw, {createdDate: raw.createdDate||todayStr()}); }
+function migrateRoughnessRecord(raw){ return Object.assign(emptyRoughness(), raw); }
 function migrateState(raw){
   raw = raw||{};
   return {
@@ -693,6 +701,7 @@ function migrateState(raw){
     research: Array.isArray(raw.research)?raw.research.map(migrateResearchRecord):[],
     tools: Array.isArray(raw.tools)?raw.tools.map(migrateToolRecord):[],
     customers: Array.isArray(raw.customers)?raw.customers.map(migrateCustomerRecord):[],
+    roughness: Array.isArray(raw.roughness)?raw.roughness.map(migrateRoughnessRecord):[],
     trash: Array.isArray(raw.trash)?raw.trash:[],
     settings: Object.assign({hourly:1800,packMaterial:70,shipping:870,packMin:30}, raw.settings||{}),
   };
@@ -722,6 +731,15 @@ function emptyResearch(biz){
 }
 function emptyTool(){ return {id:null,biz:'研磨',cat:'',name:'',spec:'',starter:false,price:'',life:'',link:'',note:'',createdDate:todayStr(),photos:[],createdAt:Date.now()}; }
 function emptyCustomer(){ return {id:null,name:'',status:'見込',biz:[],contact:'',sns:'',tags:'',note:'',createdDate:todayStr(),createdAt:Date.now()}; }
+function emptyRoughness(){
+  return {
+    id:null, no:null, checked:false, personName:'',
+    origin:'', maker:'', product:'', wRatio:'', magnetism:'非磁性',
+    condition:'', preOverhaul:'', cmp:'',
+    method:'', priority:'中', ohFee:'', measureFee:'',
+    ra:'', note:'', createdAt:Date.now(),
+  };
+}
 
 /* ==========================================================================
    Supabase 接続
@@ -808,7 +826,7 @@ function saveState(){
 }
 function updateStorageNote(){
   const el=document.getElementById('storageNote'); if(!el) return;
-  const cnt=state.todos.length+state.research.length+state.tools.length+state.customers.length;
+  const cnt=state.todos.length+state.research.length+state.tools.length+state.customers.length+state.roughness.length;
   const label={idle:'同期済み',saving:'保存中…',error:'同期エラー（ローカルには保存済み）',offline:'この端末のみ'}[syncStatus];
   el.innerHTML=`<span class="sync-badge"><span class="sync-dot ${syncStatus==='idle'?'':syncStatus}"></span>${label}</span><br>
     件数：${cnt} 件　ゴミ箱：${state.trash.length}件<br>
@@ -917,6 +935,7 @@ const ICONS = {
   trash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg>`,
   timer:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>`,
   durability:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v4M6 5l2.5 2.5M18 5l-2.5 2.5"/><circle cx="12" cy="14" r="7"/><path d="M12 14l3-3"/></svg>`,
+  roughness:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 17c2-4 4-6 6-2s4 6 6 2 4-6 6-2"/><path d="M3 21h18"/></svg>`,
 };
 let currentPage='dash';
 function setPage(p){ currentPage=p; researchDetailId=null; render(); }
@@ -928,6 +947,7 @@ function renderNav(){
     {id:'todo',label:'ToDoリスト',icon:ICONS.todo,count:state.todos.filter(t=>t.status!=='完了').length},
     {id:'research',label:'工程表',icon:ICONS.research,count:state.research.filter(r=>r.genre!=='耐用・測定テスト').length},
     {id:'durability',label:'耐用・測定記録',icon:ICONS.durability,count:state.research.filter(r=>r.genre==='耐用・測定テスト').length},
+    {id:'roughness',label:'面粗度比較',icon:ICONS.roughness,count:state.roughness.length},
     {id:'tools',label:'工具マスタ',icon:ICONS.tools,count:state.tools.length},
     {id:'customers',label:'顧客管理',icon:ICONS.cust,count:state.customers.length},
   ];
@@ -975,9 +995,9 @@ function closeOv(id){ document.getElementById(id).classList.remove('show'); }
    ========================================================================== */
 function render(){
   renderNav();
-  const titleMap={dash:'ダッシュボード',timer:'作業タイマー',todo:'ToDoリスト',research:'工程表',durability:'耐用・測定記録',tools:'工具マスタ',customers:'顧客管理',trash:'ゴミ箱'};
+  const titleMap={dash:'ダッシュボード',timer:'作業タイマー',todo:'ToDoリスト',research:'工程表',durability:'耐用・測定記録',roughness:'面粗度比較',tools:'工具マスタ',customers:'顧客管理',trash:'ゴミ箱'};
   document.getElementById('pageTitle').textContent=titleMap[currentPage]||'';
-  const subMap={dash:todayStr(),timer:'実作業時間を計測して工程表に反映',todo:'定常業務・加工研究・事務を横断管理',research:'比較検証の記録',durability:'工具・消耗品の使用量を工具ごとに集計',tools:'保有工具・消耗品の台帳',customers:'見込み〜取引先の管理',trash:'削除済みアイテムの復元・完全削除'};
+  const subMap={dash:todayStr(),timer:'実作業時間を計測して工程表に反映',todo:'定常業務・加工研究・事務を横断管理',research:'比較検証の記録',durability:'工具・消耗品の使用量を工具ごとに集計',roughness:'条件別の面粗度(Ra)測定計画・結果',tools:'保有工具・消耗品の台帳',customers:'見込み〜取引先の管理',trash:'削除済みアイテムの復元・完全削除'};
   document.getElementById('pageSub').textContent=subMap[currentPage]||'';
   const c=document.getElementById('content');
   if(currentPage==='dash') c.innerHTML=renderDash();
@@ -985,6 +1005,7 @@ function render(){
   else if(currentPage==='todo') c.innerHTML=renderTodo();
   else if(currentPage==='research') renderResearchPage(c);
   else if(currentPage==='durability') renderDurabilityPage(c);
+  else if(currentPage==='roughness') renderRoughnessPage(c);
   else if(currentPage==='tools') renderToolsPage(c);
   else if(currentPage==='customers') renderCustomersPage(c);
   else if(currentPage==='trash') c.innerHTML=renderTrash();
@@ -1651,6 +1672,74 @@ function renderDurabilityPage(container){
     <div class="rowlist">${rows}</div>`;
   document.querySelectorAll('.swiperow').forEach(row=>attachSwipe(row, ()=>{}));
 }
+
+/* ==========================================================================
+   面粗度比較
+   ========================================================================== */
+function nextRoughnessNo(){ return state.roughness.reduce((m,x)=>Math.max(m,x.no||0),0)+1; }
+function roughField(id,key,val){
+  const row=state.roughness.find(x=>x.id===id); if(!row) return;
+  row[key]=val; saveState();
+  if(key==='checked'||key==='magnetism'||key==='priority') render();
+}
+function roughAdd(){
+  const row=emptyRoughness(); row.id=uid('rg_'); row.no=nextRoughnessNo();
+  state.roughness.push(row); saveState(); render();
+  toast(`No.${row.no} を追加しました`);
+}
+function roughDelete(id){
+  const row=state.roughness.find(x=>x.id===id); if(!row) return;
+  if(!confirm(`No.${row.no}（${row.personName||'氏名未設定'}）を削除しますか？`)) return;
+  state.roughness=state.roughness.filter(x=>x.id!==id);
+  saveState(); render(); toast('削除しました');
+}
+function exportRoughnessCSV(){
+  const rows=state.roughness.map(r=>({
+    No:r.no, チェック済:r.checked?'済':'', 氏名:r.personName, W産出国:r.origin, メーカー:r.maker, 製品名:r.product,
+    W比率:r.wRatio, 磁性:r.magnetism, 新品中古:r.condition, 事前研磨:r.preOverhaul, CMP有無:r.cmp,
+    達成手法:r.method, 優先度:r.priority, OH依頼額:r.ohFee, 測定依頼費用:r.measureFee, 面粗度Ra:r.ra, 備考:r.note,
+  }));
+  exportCSV(rows,'面粗度比較');
+}
+function renderRoughnessPage(container){
+  const items=[...state.roughness].sort((a,b)=>(a.no||0)-(b.no||0));
+  const bodyRows = items.length ? items.map(r=>`
+    <tr>
+      <td style="text-align:center;font-weight:700">${r.no}</td>
+      <td style="text-align:center"><input type="checkbox" ${r.checked?'checked':''} onchange="roughField('${r.id}','checked',this.checked)"></td>
+      <td><div class="cellwrap"><input value="${esc(r.personName)}" onchange="roughField('${r.id}','personName',this.value)"><button type="button" class="cellexp" onclick="openRoughCellEditor('${r.id}','personName')">⤢</button></div></td>
+      <td><input value="${esc(r.origin)}" placeholder="例）中国産" onchange="roughField('${r.id}','origin',this.value)"></td>
+      <td><div class="cellwrap"><input value="${esc(r.maker)}" onchange="roughField('${r.id}','maker',this.value)"><button type="button" class="cellexp" onclick="openRoughCellEditor('${r.id}','maker')">⤢</button></div></td>
+      <td><div class="cellwrap"><input value="${esc(r.product)}" onchange="roughField('${r.id}','product',this.value)"><button type="button" class="cellexp" onclick="openRoughCellEditor('${r.id}','product')">⤢</button></div></td>
+      <td><input value="${esc(r.wRatio)}" placeholder="0.95" style="width:56px" onchange="roughField('${r.id}','wRatio',this.value)"></td>
+      <td><select onchange="roughField('${r.id}','magnetism',this.value)"><option ${r.magnetism==='非磁性'?'selected':''}>非磁性</option><option ${r.magnetism==='磁性あり'?'selected':''}>磁性あり</option></select></td>
+      <td><select onchange="roughField('${r.id}','condition',this.value)"><option value="" ${!r.condition?'selected':''}>未設定</option><option ${r.condition==='新品'?'selected':''}>新品</option><option ${r.condition==='中古品'?'selected':''}>中古品</option></select></td>
+      <td><select onchange="roughField('${r.id}','preOverhaul',this.value)"><option value="" ${!r.preOverhaul?'selected':''}>未設定</option><option ${r.preOverhaul==='あり'?'selected':''}>あり</option><option ${r.preOverhaul==='なし'?'selected':''}>なし</option></select></td>
+      <td><select onchange="roughField('${r.id}','cmp',this.value)"><option value="" ${!r.cmp?'selected':''}>未設定</option><option ${r.cmp==='有り'?'selected':''}>有り</option><option ${r.cmp==='なし'?'selected':''}>なし</option></select></td>
+      <td><div class="cellwrap"><input value="${esc(r.method)}" placeholder="入手経路→測定の流れ" onchange="roughField('${r.id}','method',this.value)"><button type="button" class="cellexp" onclick="openRoughCellEditor('${r.id}','method')">⤢</button></div></td>
+      <td><select onchange="roughField('${r.id}','priority',this.value)"><option ${r.priority==='高'?'selected':''}>高</option><option ${r.priority==='中'?'selected':''}>中</option><option ${r.priority==='低'?'selected':''}>低</option></select></td>
+      <td><input type="number" value="${esc(r.ohFee)}" placeholder="円" style="width:64px" onchange="roughField('${r.id}','ohFee',this.value)"></td>
+      <td><input type="number" value="${esc(r.measureFee)}" placeholder="円" style="width:64px" onchange="roughField('${r.id}','measureFee',this.value)"></td>
+      <td><input value="${esc(r.ra)}" placeholder="実測値" style="width:64px" onchange="roughField('${r.id}','ra',this.value)"></td>
+      <td><div class="cellwrap"><input value="${esc(r.note)}" onchange="roughField('${r.id}','note',this.value)"><button type="button" class="cellexp" onclick="openRoughCellEditor('${r.id}','note')">⤢</button></div></td>
+      <td><button class="step-del" onclick="roughDelete('${r.id}')" title="削除">×</button></td>
+    </tr>`).join('') : '';
+  container.innerHTML=`
+    <div class="filterbar"><div class="spacer"></div>
+      <button class="btn sm" onclick="exportRoughnessCSV()">CSV出力</button>
+      <button class="btn primary sm" onclick="roughAdd()">＋ 行を追加</button></div>
+    ${items.length ? `
+    <div class="rough-scroll">
+      <table class="rough-table">
+        <thead><tr>
+          <th>No</th><th>済</th><th>氏名</th><th>W産出国</th><th>メーカー</th><th>製品名</th><th>W比率</th><th>磁性</th>
+          <th>新品/中古</th><th>事前研磨</th><th>CMP</th><th>達成手法</th><th>優先度</th><th>OH依頼額</th><th>測定費用</th><th>面粗度(Ra)</th><th>備考</th><th></th>
+        </tr></thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    </div>` : `<div class="empty">面粗度比較の記録はまだありません。「＋ 行を追加」で登録してください。</div>`}
+  `;
+}
 function newResearchDirect(title, biz, genre){
   genre = genre || '加工研究';
   const r=emptyResearch(biz||'研磨'); r.id=uid('rs_'); r.genre=genre; r.no=nextResearchNo(biz||'研磨', genre); r.title=title||'';
@@ -1848,7 +1937,7 @@ function renderResearchDetail(id){
     </div>
 
     <div class="field-row">
-      <div class="field"><label>種別</label><select onchange="rsField('${id}','type',this.value)"><option value="実験" ${!isChat?'selected':''}>実験（条件・工程を記録）</option><option value="チャット由来" ${isChat?'selected':''}>チャット由来メモ（結論のみ）</option></select></div>
+      <div class="field"><label>種別</label><select onchange="rsField('${id}','type',this.value)"><option value="実験" ${r.type==='実験'?'selected':''}>実験（条件・工程を記録）</option><option value="製造" ${r.type==='製造'?'selected':''}>製造（条件・工程を記録）</option><option value="チャット由来" ${isChat?'selected':''}>チャット由来メモ（結論のみ）</option></select></div>
       <div class="field"><label>事業</label><select onchange="rsField('${id}','biz',this.value)">${BIZ_LIST.filter(b=>b!=='全般').map(b=>`<option ${r.biz===b?'selected':''}>${b}</option>`).join('')}</select></div>
       <div class="field"><label>状態</label><select onchange="rsField('${id}','status',this.value)"><option ${r.status==='未着手'?'selected':''}>未着手</option><option ${r.status==='進行中'?'selected':''}>進行中</option><option ${r.status==='完了'?'selected':''}>完了</option><option ${r.status==='中止'?'selected':''}>中止</option></select></div>
     </div>
@@ -1917,21 +2006,34 @@ function rsAddStep(id,si){ const r=state.research.find(x=>x.id===id); const sp=r
 function rsRemoveStep(id,si,i){ const r=state.research.find(x=>x.id===id); r.specimens[si].steps.splice(i,1); saveState(); render(); }
 function rsStepInput(id,si,i,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].steps[i][key]=val; saveState(); }
 
-/* ---- 工程表セルの拡大編集ポップアップ ---- */
+/* ---- セルの拡大編集ポップアップ（工程表・面粗度比較で共用） ---- */
 let cellEditCtx=null;
-const CELL_EDIT_LABELS={processName:'工程名称',tool:'工具（自由入力）',grit:'番手/粒径',pressure:'押し圧',memo:'メモ'};
+const CELL_EDIT_LABELS={processName:'工程名称',tool:'工具（自由入力）',grit:'番手/粒径',pressure:'押し圧',memo:'メモ',
+  personName:'氏名',method:'達成手法',note:'備考',product:'製品名',maker:'メーカー'};
 function openCellEditor(id,si,i,key){
   const r=state.research.find(x=>x.id===id); const step=r.specimens[si].steps[i];
-  cellEditCtx={id,si,i,key};
+  cellEditCtx={kind:'step',id,si,i,key};
   document.getElementById('cellEditLabel').textContent=`${i+1}. ${CELL_EDIT_LABELS[key]||key}`;
   document.getElementById('cellEditTextarea').value=step[key]||'';
+  openOv('ov-cellEdit');
+  setTimeout(()=>document.getElementById('cellEditTextarea').focus(),50);
+}
+function openRoughCellEditor(id,key){
+  const row=state.roughness.find(x=>x.id===id); if(!row) return;
+  cellEditCtx={kind:'rough',id,key};
+  document.getElementById('cellEditLabel').textContent=`No.${row.no} ${CELL_EDIT_LABELS[key]||key}`;
+  document.getElementById('cellEditTextarea').value=row[key]||'';
   openOv('ov-cellEdit');
   setTimeout(()=>document.getElementById('cellEditTextarea').focus(),50);
 }
 function saveCellEditor(){
   if(!cellEditCtx) return;
   const val=document.getElementById('cellEditTextarea').value;
-  rsStepInput(cellEditCtx.id,cellEditCtx.si,cellEditCtx.i,cellEditCtx.key,val);
+  if(cellEditCtx.kind==='rough'){
+    const row=state.roughness.find(x=>x.id===cellEditCtx.id); if(row){ row[cellEditCtx.key]=val; saveState(); }
+  } else {
+    rsStepInput(cellEditCtx.id,cellEditCtx.si,cellEditCtx.i,cellEditCtx.key,val);
+  }
   closeCellEditor(); render();
 }
 function closeCellEditor(){ cellEditCtx=null; closeOv('ov-cellEdit'); }
