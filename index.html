@@ -1368,7 +1368,9 @@ function submitTodo(){
       const r=emptyResearch(data.biz); r.id=uid('rs_'); r.genre=genre; r.no=nextResearchNo(data.biz, genre); r.title=title; r.status=data.status;
       r.startDate = data.start || r.startDate; r.endDate = data.due || r.endDate;
       state.research.push(r);
-      state.todos[state.todos.length-1].linkedResearchId=r.id;
+      const t2 = state.todos[state.todos.length-1];
+      t2.linkedResearchId=r.id;
+      t2.title = `No.${r.no}　${title}`;
       toast('ToDoを追加し、'+genre+'レコードも作成しました');
     }
   }
