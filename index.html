@@ -211,7 +211,7 @@ button{font-family:inherit;}
 
 /* ---- swipe list rows ---- */
 .rowlist{display:flex;flex-direction:column;gap:10px;}
-.swiperow{position:relative;overflow:hidden;border-radius:var(--radius);}
+.swiperow{position:relative;overflow:hidden;border-radius:var(--radius);touch-action:pan-y;}
 .swipe-del{position:absolute;inset:0;background:var(--red);display:flex;align-items:center;justify-content:flex-end;padding-right:20px;}
 .swipe-del button{background:#fff;color:var(--red);border:none;border-radius:var(--radius);padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;}
 .itemrow{
@@ -225,9 +225,9 @@ button{font-family:inherit;}
 }
 .itemrow .editbtn:hover{border-color:var(--green);color:var(--green);}
 .itemrow .editbtn svg{width:13px;height:13px;}
-.itemrow .delbtn{flex:0 0 auto;width:30px;height:30px;border-radius:var(--radius);border:1px solid var(--line-strong);background:var(--paper);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-faint);}
-.itemrow .delbtn:hover{border-color:var(--red);color:var(--red);background:var(--red-tint);}
-.itemrow .delbtn svg{width:13px;height:13px;}
+.itemrow .delbtn{flex:0 0 auto;width:38px;height:38px;border-radius:var(--radius);border:1px solid var(--red);background:var(--red-tint);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--red);}
+.itemrow .delbtn:hover,.itemrow .delbtn:active{border-color:var(--red);color:#fff;background:var(--red);}
+.itemrow .delbtn svg{width:15px;height:15px;}
 .itemrow .thumb{width:52px;height:52px;border-radius:var(--radius);background:var(--paper-deep);border:1px solid var(--line);object-fit:cover;flex:0 0 auto;}
 .itemrow .thumb.empty-thumb{display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-size:16px;font-family:var(--serif);}
 .itemrow .main{flex:1;min-width:0;cursor:pointer;}
@@ -404,9 +404,10 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
       <div class="field"><label>タイトル</label><input id="td_title" placeholder="例）W95・希釈10%でのCMP再検証"></div>
       <div class="field-row">
         <div class="field"><label>事業</label><select id="td_biz"><option>研磨</option><option>動画編集</option><option>3Dプリンタ</option><option>全般</option></select></div>
-        <div class="field"><label>ジャンル</label><select id="td_genre"><option>定常業務</option><option>加工研究</option><option>デザイン</option><option>事務業務</option><option>禁止事項</option></select></div>
+        <div class="field"><label>ジャンル</label><select id="td_genre"><option>定常業務</option><option>加工研究</option><option>耐用・測定テスト</option><option>デザイン</option><option>事務業務</option><option>禁止事項</option></select></div>
       </div>
       <div class="field-row">
+        <div class="field" style="max-width:100px"><label>No.</label><input id="td_no" value="" readonly style="background:var(--paper-deep);color:var(--ink-faint)"></div>
         <div class="field"><label>優先度</label><select id="td_priority"><option>高</option><option selected>中</option><option>低</option></select></div>
         <div class="field"><label>状態</label><select id="td_status"><option>未着手</option><option>進行中</option><option>完了</option></select></div>
       </div>
@@ -834,16 +835,49 @@ function moveToTrash(type, item){
 }
 function restoreFromTrash(trashId){
   const t = state.trash.find(x=>x.trashId===trashId); if(!t) return;
-  if(t.type==='todo') state.todos.push(t.item);
-  else if(t.type==='research') state.research.push(t.item);
-  else if(t.type==='tool') state.tools.push(t.item);
-  else if(t.type==='customer') state.customers.push(t.item);
-  state.trash = state.trash.filter(x=>x.trashId!==trashId);
-  saveState(); render(); toast('復元しました');
+  if(t.type==='todo'){
+    const todo = t.item;
+    const pairedTrash = todo.linkedResearchId ? state.trash.find(x=>x.type==='research' && x.item.id===todo.linkedResearchId) : null;
+    const isResearchGenre = RESEARCH_GENRES.includes(todo.genre);
+    const newNo = isResearchGenre ? nextResearchNo(todo.biz, todo.genre) : nextTodoNo(todo.biz, todo.genre);
+    todo.no = newNo;
+    state.todos.push(todo);
+    state.trash = state.trash.filter(x=>x.trashId!==trashId);
+    if(pairedTrash){
+      pairedTrash.item.no = newNo;
+      state.research.push(pairedTrash.item);
+      state.trash = state.trash.filter(x=>x.trashId!==pairedTrash.trashId);
+      toast('復元しました（紐づく研究記録も連動して復元）');
+    } else { toast('復元しました'); }
+  }
+  else if(t.type==='research'){
+    const r = t.item;
+    const pairedTrash = state.trash.find(x=>x.type==='todo' && x.item.linkedResearchId===r.id);
+    const newNo = nextResearchNo(r.biz, r.genre);
+    r.no = newNo;
+    state.research.push(r);
+    state.trash = state.trash.filter(x=>x.trashId!==trashId);
+    if(pairedTrash){
+      pairedTrash.item.no = newNo;
+      state.todos.push(pairedTrash.item);
+      state.trash = state.trash.filter(x=>x.trashId!==pairedTrash.trashId);
+      toast('復元しました（紐づくToDoも連動して復元）');
+    } else { toast('復元しました'); }
+  }
+  else if(t.type==='tool'){ state.tools.push(t.item); state.trash = state.trash.filter(x=>x.trashId!==trashId); toast('復元しました'); }
+  else if(t.type==='customer'){ state.customers.push(t.item); state.trash = state.trash.filter(x=>x.trashId!==trashId); toast('復元しました'); }
+  saveState(); render();
 }
 function purgeFromTrash(trashId){
-  if(!confirm('完全に削除します。元に戻せません。よろしいですか？')) return;
-  state.trash = state.trash.filter(x=>x.trashId!==trashId);
+  const t = state.trash.find(x=>x.trashId===trashId); if(!t) return;
+  if(!confirm('完全に削除します。元に戻せません。紐づく記録があれば、それも一緒に完全削除されます。よろしいですか？')) return;
+  let pairedTrashId=null;
+  if(t.type==='todo' && t.item.linkedResearchId){
+    const p=state.trash.find(x=>x.type==='research' && x.item.id===t.item.linkedResearchId); if(p) pairedTrashId=p.trashId;
+  } else if(t.type==='research'){
+    const p=state.trash.find(x=>x.type==='todo' && x.item.linkedResearchId===t.item.id); if(p) pairedTrashId=p.trashId;
+  }
+  state.trash = state.trash.filter(x=>x.trashId!==trashId && x.trashId!==pairedTrashId);
   saveState(); render(); toast('完全に削除しました');
 }
 function purgeAllTrash(){
@@ -1271,7 +1305,7 @@ function renderTodo(){
       const stIdx = STATUS_LIST.indexOf(t.status);
       return `<div class="todo-card st-border st-${t.status}" draggable="true" data-id="${t.id}" ondragstart="onTodoDragStart(event,'${t.id}')" ondragend="onTodoDragEnd(event)" onclick="editTodo('${t.id}')">
         <div class="top"><span class="tag biz-${t.biz}">${t.biz}</span><span class="pill" style="pointer-events:none;padding:2px 8px"><span class="prio ${t.priority}"></span>${t.genre}</span></div>
-        <div class="title">${esc(t.title)}</div>
+        <div class="title">${t.no!=null?`<span class="mute" style="font-weight:700;margin-right:4px">No.${t.no}</span>`:''}${esc(t.title)}</div>
         ${t.note?`<div class="note">${esc(t.note).slice(0,60)}${t.note.length>60?'…':''}</div>`:''}
         <div class="foot"><span class="due ${late?'late':''}">${t.due||''}</span>${t.linkedResearchId?`<span class="mute" style="font-size:10px;cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();openLinkedResearch('${t.linkedResearchId}')">🔗研究</span>`:''}</div>
         <div class="movebtns">
@@ -1328,6 +1362,7 @@ function openTodoModal(){
   document.getElementById('td_title').value='';
   document.getElementById('td_biz').value='研磨';
   document.getElementById('td_genre').value='定常業務';
+  document.getElementById('td_no').value='（保存時に自動割当）';
   document.getElementById('td_priority').value='中';
   document.getElementById('td_status').value='未着手';
   document.getElementById('td_start').value='';
@@ -1343,6 +1378,7 @@ function editTodo(id){
   document.getElementById('td_title').value=t.title;
   document.getElementById('td_biz').value=t.biz;
   document.getElementById('td_genre').value=t.genre;
+  document.getElementById('td_no').value=(t.no!=null)?`No.${t.no}`:'（未割当）';
   document.getElementById('td_priority').value=t.priority;
   document.getElementById('td_status').value=t.status;
   document.getElementById('td_start').value=t.start||'';
@@ -1356,38 +1392,102 @@ function submitTodo(){
   if(!title){ toast('タイトルを入力してください'); return; }
   const genre=document.getElementById('td_genre').value;
   const data={title,biz:document.getElementById('td_biz').value,genre,priority:document.getElementById('td_priority').value,status:document.getElementById('td_status').value,start:document.getElementById('td_start').value,due:document.getElementById('td_due').value,note:document.getElementById('td_note').value.trim()};
+  const isResearchGenre = RESEARCH_GENRES.includes(data.genre);
+
   if(editingTodoId){
     const t = state.todos.find(x=>x.id===editingTodoId);
+    const oldBiz=t.biz, oldGenre=t.genre, oldNo=t.no;
+    const comboChanged = (oldBiz!==data.biz) || (oldGenre!==data.genre);
     Object.assign(t,data);
+
+    if(comboChanged){
+      const wasResearchGenre = RESEARCH_GENRES.includes(oldGenre);
+      const linkedResearch = t.linkedResearchId ? state.research.find(r=>r.id===t.linkedResearchId) : null;
+
+      if(isResearchGenre){
+        if(wasResearchGenre && linkedResearch){
+          // 研究ジャンル同士の間での事業/ジャンル変更：同じ研究レコードを新しい組み合わせへ移す
+          if(oldNo!=null) shiftNosDown(oldBiz, oldGenre, oldNo);
+          const newNo = nextResearchNo(data.biz, data.genre);
+          linkedResearch.biz = data.biz; linkedResearch.genre = data.genre; linkedResearch.no = newNo;
+          t.no = newNo;
+        } else {
+          // 通常ジャンル → 研究ジャンルへ変更：研究レコードを新規自動生成
+          if(oldNo!=null) shiftNosDown(oldBiz, oldGenre, oldNo);
+          const r=emptyResearch(data.biz); r.id=uid('rs_'); r.genre=data.genre; r.no=nextResearchNo(data.biz, data.genre); r.title=data.title; r.status=data.status;
+          r.startDate = data.start || r.startDate; r.endDate = data.due || r.endDate;
+          state.research.push(r);
+          t.linkedResearchId = r.id;
+          t.no = r.no;
+          toast('加工研究レコードも自動生成しました');
+        }
+      } else {
+        if(wasResearchGenre && linkedResearch){
+          // 研究ジャンル → 通常ジャンルへ変更：紐づいていた研究レコードは削除し、旧No.を繰り上げる
+          state.research = state.research.filter(x=>x.id!==linkedResearch.id);
+          moveToTrash('research', linkedResearch);
+          if(oldNo!=null) shiftNosDown(oldBiz, oldGenre, oldNo);
+          t.linkedResearchId = null;
+          t.no = nextTodoNo(data.biz, data.genre);
+          toast('ジャンル変更のため、紐づいていた研究レコードをゴミ箱へ移動しました');
+        } else {
+          // 通常ジャンル同士の間での事業/ジャンル変更
+          if(oldNo!=null) shiftNosDown(oldBiz, oldGenre, oldNo);
+          t.no = nextTodoNo(data.biz, data.genre);
+        }
+      }
+    }
     syncResearchFromTodo(t);
   }
   else{
     const id=uid('td_');
-    state.todos.push(Object.assign({id,order:state.todos.length,createdAt:Date.now(),linkedResearchId:null},data));
-    if(genre==='加工研究' || genre==='耐用・測定テスト'){
+    const newTodo = Object.assign({id,order:state.todos.length,createdAt:Date.now(),linkedResearchId:null,no:null},data);
+    state.todos.push(newTodo);
+    if(isResearchGenre){
       const r=emptyResearch(data.biz); r.id=uid('rs_'); r.genre=genre; r.no=nextResearchNo(data.biz, genre); r.title=title; r.status=data.status;
       r.startDate = data.start || r.startDate; r.endDate = data.due || r.endDate;
       state.research.push(r);
-      const t2 = state.todos[state.todos.length-1];
-      t2.linkedResearchId=r.id;
-      t2.title = `No.${r.no}　${title}`;
+      newTodo.linkedResearchId=r.id;
+      newTodo.no=r.no;
       toast('ToDoを追加し、'+genre+'レコードも作成しました');
+    } else {
+      newTodo.no = nextTodoNo(data.biz, data.genre);
     }
   }
   saveState(); closeOv('ov-todo'); render();
-  if(!editingTodoId && genre!=='加工研究' && genre!=='耐用・測定テスト') toast('ToDoを追加しました');
+  if(!editingTodoId && !isResearchGenre) toast('ToDoを追加しました');
 }
 function deleteTodoFromModal(){
   if(!editingTodoId) return;
   const t=state.todos.find(x=>x.id===editingTodoId);
   state.todos=state.todos.filter(x=>x.id!==editingTodoId);
   moveToTrash('todo',t);
-  saveState(); closeOv('ov-todo'); render(); toast('ゴミ箱へ移動しました');
+  if(t.no!=null) shiftNosDown(t.biz, t.genre, t.no);
+  // 紐づく研究レコードも連動して削除
+  if(t.linkedResearchId){
+    const r = state.research.find(x=>x.id===t.linkedResearchId);
+    if(r){
+      state.research = state.research.filter(x=>x.id!==r.id);
+      moveToTrash('research', r);
+    }
+  }
+  saveState(); closeOv('ov-todo'); render(); toast('ゴミ箱へ移動しました（紐づく研究記録があれば連動して移動）');
 }
 function nextResearchNo(biz, genre){ 
   const filtered = state.research.filter(r => r.biz===biz && r.genre===genre);
   return filtered.reduce((m,r)=>Math.max(m,r.no||0),0)+1;
 }
+function nextTodoNo(biz, genre){
+  const filtered = state.todos.filter(t => t.biz===biz && t.genre===genre);
+  return filtered.reduce((m,t)=>Math.max(m,t.no||0),0)+1;
+}
+// biz×genreの組み合わせの中で、削除・変更で空いたNo.より大きいものを1つずつ繰り上げる
+function shiftNosDown(biz, genre, removedNo){
+  if(removedNo==null) return;
+  state.todos.forEach(t=>{ if(t.biz===biz && t.genre===genre && t.no!=null && t.no>removedNo) t.no--; });
+  state.research.forEach(r=>{ if(r.biz===biz && r.genre===genre && r.no!=null && r.no>removedNo) r.no--; });
+}
+const RESEARCH_GENRES = ['加工研究','耐用・測定テスト'];
 
 /* ==========================================================================
    スワイプ削除の共通ハンドラ
@@ -1535,7 +1635,7 @@ function newResearchDirect(title, biz, genre){
   const r=emptyResearch(biz||'研磨'); r.id=uid('rs_'); r.genre=genre; r.no=nextResearchNo(biz||'研磨', genre); r.title=title||'';
   state.research.push(r);
   const todoId=uid('td_');
-  state.todos.push({id:todoId,title:`No.${r.no}　${title||'（無題）'}`,biz:r.biz,genre:genre,priority:'中',status:r.status,start:r.startDate||'',due:r.endDate||'',note:'',order:state.todos.length,createdAt:Date.now(),linkedResearchId:r.id});
+  state.todos.push({id:todoId,title:title||'（無題）',no:r.no,biz:r.biz,genre:genre,priority:'中',status:r.status,start:r.startDate||'',due:r.endDate||'',note:'',order:state.todos.length,createdAt:Date.now(),linkedResearchId:r.id});
   saveState(); openResearchDetail(r.id);
   toast(genre+'を追加し、ToDoリストにも連携しました');
 }
@@ -1762,16 +1862,27 @@ function renderResearchDetail(id){
 }
 function syncTodoFromResearch(r, key, val){
   const t = state.todos.find(x=>x.linkedResearchId===r.id); if(!t) return;
-  if(key==='title') t.title = `No.${r.no}　${val}`;
+  if(key==='title') t.title = val;
   else if(key==='status') t.status = val;
   else if(key==='biz') t.biz = val;
   else if(key==='startDate') t.start = val;
   else if(key==='endDate') t.due = val;
 }
 function rsField(id,key,val){
-  const r=state.research.find(x=>x.id===id); r[key]=val;
+  const r=state.research.find(x=>x.id===id);
+  if(key==='biz' && val!==r.biz){
+    const oldBiz=r.biz, oldGenre=r.genre, oldNo=r.no;
+    r.biz=val;
+    if(oldNo!=null) shiftNosDown(oldBiz, oldGenre, oldNo);
+    const newNo = nextResearchNo(val, oldGenre);
+    r.no = newNo;
+    const t = state.todos.find(x=>x.linkedResearchId===r.id);
+    if(t){ t.biz=val; t.no=newNo; }
+    saveState(); render(); return;
+  }
+  r[key]=val;
   syncTodoFromResearch(r,key,val);
-  saveState(); if(key==='biz'||key==='type'||key==='status') render();
+  saveState(); if(key==='type'||key==='status') render();
 }
 function rsObj(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].obj[key]=val; saveState(); }
 function rsSpecInput(id,si,key,ba,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].specs[key][ba]=val; saveState(); render(); }
@@ -1821,11 +1932,16 @@ function rsAddSpecimenPhotos(id,si,files){
 function rsRemoveSpecimenPhoto(id,si,i){ const r=state.research.find(x=>x.id===id); r.specimens[si].photos.splice(i,1); saveState(); render(); }
 function rsDelete(id){
   const r=state.research.find(x=>x.id===id); if(!r) return;
-  if(!confirm('この研究記録を削除しますか？（ゴミ箱に移動します）')) return;
+  if(!confirm('この研究記録を削除しますか？（ゴミ箱に移動します。紐づくToDoも連動して移動します）')) return;
   state.research=state.research.filter(x=>x.id!==id);
-  state.todos.forEach(t=>{ if(t.linkedResearchId===id) t.linkedResearchId=null; });
+  const linkedTodo = state.todos.find(t=>t.linkedResearchId===id);
+  if(linkedTodo){
+    state.todos = state.todos.filter(t=>t.id!==linkedTodo.id);
+    moveToTrash('todo', linkedTodo);
+  }
+  if(r.no!=null) shiftNosDown(r.biz, r.genre, r.no);
   moveToTrash('research',r);
-  saveState(); researchDetailId=null; render(); toast('ゴミ箱へ移動しました');
+  saveState(); researchDetailId=null; render(); toast('ゴミ箱へ移動しました（紐づくToDoがあれば連動して移動）');
 }
 function exportResearchCSV(){
   const rows=[];
