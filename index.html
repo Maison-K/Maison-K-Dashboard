@@ -1,1 +1,2158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maison K — ダッシュボード</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ==========================================================================
+   design tokens — 白 / グレー / 深緑 / 黒
+   ========================================================================== */
+:root{
+  --white:#ffffff;
+  --paper:#f4f5f4;
+  --paper-deep:#e9eae8;
+  --line:#dcdedb;
+  --line-strong:#c3c6c1;
+  --ink:#141614;
+  --ink-soft:#53564f;
+  --ink-faint:#8b8e87;
+  --green:#0f5c3f;
+  --green-deep:#0a4630;
+  --green-tint:#e3f0ea;
+  --green-bright:#12724d;
+  --red:#b23b2e;
+  --red-tint:#fbe9e6;
+  --orange:#c07a1f;
+  --orange-tint:#faf0df;
+  --radius:4px;
+  --serif:"Iowan Old Style","Hoefler Text","Yu Mincho","Hiragino Mincho ProN",Georgia,serif;
+  --sans:"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo UI",sans-serif;
+  --mono:"Cascadia Mono","Consolas","Yu Gothic UI",monospace;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:13px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+a{color:var(--green);}
+button{font-family:inherit;}
 
+.shell{display:grid;grid-template-columns:222px 1fr;min-height:100vh;}
+@media (max-width:860px){.shell{grid-template-columns:1fr;} .sidebar{display:none;} .sidebar.open{display:block;position:fixed;inset:0 18% 0 0;z-index:200;}}
+
+.sidebar{background:var(--ink);color:#eee;display:flex;flex-direction:column;}
+.mark{padding:24px 20px 18px;border-bottom:1px solid #2a2c29;}
+.mark h1{font-family:var(--serif);font-size:19px;margin:0;font-weight:600;letter-spacing:.01em;color:#fff;}
+.mark p{margin:4px 0 0;font-size:10px;color:#8b8e87;letter-spacing:.1em;text-transform:uppercase;font-family:var(--mono);}
+
+.nav{padding:14px 10px;flex:1;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius);cursor:pointer;color:#b7b9b3;font-size:12.5px;user-select:none;border-left:2px solid transparent;}
+.nav-item svg{width:15px;height:15px;flex:0 0 auto;opacity:.75;}
+.nav-item:hover{background:#1e201d;color:#fff;}
+.nav-item.active{background:#1e201d;color:#fff;border-left-color:var(--green-bright);font-weight:600;}
+.nav-item.active svg{opacity:1;stroke:var(--green-bright);}
+.nav-badge{margin-left:auto;font-family:var(--mono);font-size:10px;color:#8b8e87;}
+.nav-sep{height:1px;background:#2a2c29;margin:10px 6px;}
+
+.sidebar-foot{padding:14px;border-top:1px solid #2a2c29;}
+.storage-note{font-size:9.5px;color:#8b8e87;line-height:1.5;margin-bottom:10px;}
+.foot-btns{display:flex;gap:6px;}
+.gear{background:none;border:1px solid #3a3c38;color:#b7b9b3;border-radius:var(--radius);width:100%;padding:7px;font-size:11px;cursor:pointer;margin-top:6px;}
+.gear:hover{border-color:var(--green-bright);color:#fff;}
+
+.main{display:flex;flex-direction:column;min-width:0;}
+.topbar{height:58px;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 24px;gap:16px;background:var(--white);flex:0 0 auto;}
+.topbar h2{font-family:var(--serif);font-size:17px;margin:0;font-weight:600;}
+.topbar .sub{font-size:11px;color:var(--ink-faint);font-family:var(--mono);}
+.spacer{flex:1;}
+.hamburger{display:none;background:none;border:1px solid var(--line);border-radius:var(--radius);width:32px;height:32px;cursor:pointer;}
+@media (max-width:860px){.hamburger{display:block;}}
+.content{flex:1;overflow:auto;padding:24px;}
+@media (max-width:640px){.content{padding:14px;}}
+
+/* ---- atoms ---- */
+.btn{background:var(--white);border:1px solid var(--line-strong);color:var(--ink);padding:8px 15px;border-radius:var(--radius);font-size:12px;cursor:pointer;transition:border-color .12s;}
+.btn:hover{border-color:var(--ink-faint);}
+.btn.primary{background:var(--green);border-color:var(--green);color:#fff;}
+.btn.primary:hover{background:var(--green-deep);}
+.btn.ghost{border-color:transparent;background:none;}
+.btn.ghost:hover{border-color:var(--line-strong);}
+.btn.danger{color:var(--red);border-color:var(--red);background:none;}
+.btn.danger:hover{background:var(--red-tint);}
+.btn.sm{padding:5px 10px;font-size:11px;}
+.btn:disabled{opacity:.4;cursor:default;}
+.iconbtn{background:none;border:1px solid var(--line-strong);border-radius:var(--radius);width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-soft);flex:0 0 auto;}
+.iconbtn:hover{border-color:var(--green);color:var(--green);}
+.iconbtn svg{width:14px;height:14px;}
+
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;padding:2px 9px;border-radius:20px;border:1px solid var(--line-strong);color:var(--ink-soft);cursor:pointer;user-select:none;white-space:nowrap;background:var(--white);}
+.pill.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+.pill.biz-研磨.active{background:var(--green);border-color:var(--green);}
+.pill.biz-動画編集.active{background:#4a5a8a;border-color:#4a5a8a;}
+.pill.biz-3Dプリンタ.active{background:#8a6a4a;border-color:#8a6a4a;}
+.filterbar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;align-items:center;}
+.filterbar .divider{width:1px;height:16px;background:var(--line-strong);margin:0 4px;}
+
+.section-label{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin:26px 0 10px;font-weight:600;display:flex;align-items:center;gap:10px;}
+.section-label:first-child{margin-top:0;}
+.section-label::after{content:'';flex:1;height:1px;background:var(--line);}
+
+.card{background:var(--white);border:1px solid var(--line);border-radius:var(--radius);}
+.empty{padding:40px 20px;text-align:center;color:var(--ink-faint);font-size:12px;border:1px dashed var(--line-strong);border-radius:var(--radius);}
+
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:11px;color:var(--ink-soft);margin-bottom:5px;font-weight:600;}
+.field .hint{font-size:10px;color:var(--ink-faint);margin-top:4px;}
+.field input,.field select,.field textarea{width:100%;background:var(--paper);border:1px solid var(--line-strong);color:var(--ink);border-radius:var(--radius);padding:8px 10px;font-size:12.5px;font-family:var(--sans);}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--green);background:var(--white);}
+.field textarea{resize:vertical;min-height:56px;}
+.field-row{display:flex;gap:12px;}
+.field-row .field{flex:1;min-width:0;}
+.field.check{display:flex;align-items:center;gap:8px;}
+.field.check label{margin:0;}
+.field input[readonly]{background:var(--paper-deep);color:var(--ink-faint);}
+.ac-wrap{position:relative;}
+.ac-list{
+  display:none;position:absolute;top:100%;left:0;right:0;z-index:60;
+  background:var(--white);border:1px solid var(--line-strong);border-radius:var(--radius);
+  max-height:200px;overflow-y:auto;box-shadow:0 8px 20px rgba(20,22,20,.14);margin-top:2px;
+}
+.ac-item{padding:8px 12px;font-size:12px;cursor:pointer;}
+.ac-item:hover{background:var(--green-tint);color:var(--green-deep);}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--ink);color:#fff;padding:10px 20px;border-radius:var(--radius);font-size:12px;z-index:500;opacity:0;pointer-events:none;transition:.2s;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.overlay{position:fixed;inset:0;background:rgba(20,22,20,.5);display:none;align-items:flex-start;justify-content:center;z-index:300;overflow:auto;padding:40px 16px;}
+.overlay.show{display:flex;}
+.modal{background:var(--white);border:1px solid var(--line);border-radius:var(--radius);width:600px;max-width:100%;box-shadow:0 14px 44px rgba(20,22,20,.2);}
+.modal.wide{width:840px;}
+.modal-head{padding:16px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;}
+.modal-head h3{font-family:var(--serif);font-size:16px;margin:0;flex:1;font-weight:600;}
+.modal-close{background:none;border:none;color:var(--ink-faint);font-size:18px;cursor:pointer;line-height:1;}
+.modal-body{padding:20px 22px;max-height:72vh;overflow:auto;}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;}
+
+/* ---- ステータス縁取り(強調) ---- */
+.st-border{border-width:3px !important;border-style:solid;}
+.st-未着手{border-color:var(--red) !important;}
+.st-進行中{border-color:var(--orange) !important;}
+.st-完了{border-color:var(--green) !important;}
+.st-中止{border-color:var(--ink-faint) !important;}
+.st-取引中{border-color:var(--green) !important;}
+.st-見込{border-color:var(--orange) !important;}
+.st-休眠{border-color:var(--ink-faint) !important;}
+.st-chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px;}
+.st-chip.st-未着手{background:var(--red-tint);color:var(--red);}
+.st-chip.st-進行中{background:var(--orange-tint);color:var(--orange);}
+.st-chip.st-完了{background:var(--green-tint);color:var(--green);}
+.st-chip.st-中止{background:var(--paper-deep);color:var(--ink-faint);}
+.st-chip.st-取引中{background:var(--green-tint);color:var(--green);}
+.st-chip.st-見込{background:var(--orange-tint);color:var(--orange);}
+.st-chip.st-休眠{background:var(--paper-deep);color:var(--ink-faint);}
+
+/* ---- dashboard ---- */
+.dash-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+@media (max-width:760px){.dash-grid{grid-template-columns:1fr;}}
+.stat{padding:18px 20px;background:var(--white);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:var(--radius);}
+.stat.biz-動画編集{border-left-color:#4a5a8a;}
+.stat.biz-3Dプリンタ{border-left-color:#8a6a4a;}
+.stat .n{font-family:var(--serif);font-size:28px;font-weight:600;}
+.stat .l{font-size:11px;color:var(--ink-soft);margin-top:2px;}
+
+.timeline-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);font-size:12px;}
+.timeline-row:last-child{border-bottom:none;}
+.timeline-row:hover{background:var(--paper);cursor:pointer;}
+.tag{font-size:9.5px;font-family:var(--mono);padding:2px 7px;border-radius:20px;letter-spacing:.03em;}
+.tag.biz-研磨{background:var(--green-tint);color:var(--green-deep);}
+.tag.biz-動画編集{background:#e6e9f2;color:#4a5a8a;}
+.tag.biz-3Dプリンタ{background:#f2ebe3;color:#8a6a4a;}
+.tag.biz-全般{background:var(--paper-deep);color:var(--ink-soft);}
+
+/* ---- digest (成功/失敗集約) ---- */
+.digest-item{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start;}
+.digest-item:last-child{border-bottom:none;}
+.digest-item .txt{flex:1;font-size:12px;line-height:1.6;}
+.digest-item .src{font-size:10.5px;color:var(--ink-faint);margin-top:3px;}
+.digest-good{border-left:3px solid var(--green);}
+.digest-bad{border-left:3px solid var(--red);}
+
+/* ---- kanban / todo ---- */
+.kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start;}
+@media (max-width:900px){
+  .kanban{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;grid-template-columns:none;padding-bottom:8px;-webkit-overflow-scrolling:touch;}
+  .kcol{flex:0 0 82vw;scroll-snap-align:start;min-width:0;}
+}
+.kcol{background:var(--paper-deep);border:1px solid var(--line);border-radius:var(--radius);min-height:120px;}
+.kcol-head{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;}
+.kcol-head .t{font-size:12px;font-weight:700;flex:1;}
+.kcol-head .c{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);}
+.kcol-body{padding:10px;display:flex;flex-direction:column;gap:8px;min-height:60px;}
+.kcol-body.dragover{background:var(--green-tint);}
+.todo-card{background:var(--white);border:2px solid var(--line);border-radius:var(--radius);padding:11px 13px;cursor:grab;position:relative;}
+.todo-card:active{cursor:grabbing;}
+.todo-card.dragging{opacity:.4;}
+.todo-card .top{display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;}
+.todo-card .title{font-size:12.5px;font-weight:600;margin-bottom:4px;line-height:1.4;}
+.todo-card .note{font-size:11px;color:var(--ink-soft);line-height:1.5;}
+.todo-card .foot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;}
+.todo-card .due{font-family:var(--mono);font-size:10px;color:var(--ink-faint);}
+.todo-card .due.late{color:var(--red);font-weight:600;}
+.todo-card .movebtns{display:flex;justify-content:space-between;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
+.movebtn{flex:1;background:var(--paper);border:1px solid var(--line-strong);border-radius:var(--radius);padding:6px 4px;font-size:10.5px;color:var(--ink-soft);cursor:pointer;}
+.movebtn:hover{border-color:var(--green);color:var(--green);background:var(--green-tint);}
+.prio{width:6px;height:6px;border-radius:50%;display:inline-block;}
+.prio.高{background:var(--red);}
+.prio.中{background:var(--orange);}
+.prio.低{background:var(--ink-faint);}
+
+/* ---- swipe list rows ---- */
+.rowlist{display:flex;flex-direction:column;gap:10px;}
+.swiperow{position:relative;overflow:hidden;border-radius:var(--radius);}
+.swipe-del{position:absolute;inset:0;background:var(--red);display:flex;align-items:center;justify-content:flex-end;padding-right:20px;}
+.swipe-del button{background:#fff;color:var(--red);border:none;border-radius:var(--radius);padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;}
+.itemrow{
+  background:var(--white);border:2px solid var(--line);border-radius:var(--radius);
+  padding:14px 16px;display:flex;gap:12px;align-items:center;position:relative;
+  touch-action:pan-y;user-select:none;
+}
+.itemrow .editbtn{
+  flex:0 0 auto;width:30px;height:30px;border-radius:var(--radius);border:1px solid var(--line-strong);
+  background:var(--paper);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-soft);
+}
+.itemrow .editbtn:hover{border-color:var(--green);color:var(--green);}
+.itemrow .editbtn svg{width:13px;height:13px;}
+.itemrow .delbtn{flex:0 0 auto;width:30px;height:30px;border-radius:var(--radius);border:1px solid var(--line-strong);background:var(--paper);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-faint);}
+.itemrow .delbtn:hover{border-color:var(--red);color:var(--red);background:var(--red-tint);}
+.itemrow .delbtn svg{width:13px;height:13px;}
+.itemrow .thumb{width:52px;height:52px;border-radius:var(--radius);background:var(--paper-deep);border:1px solid var(--line);object-fit:cover;flex:0 0 auto;}
+.itemrow .thumb.empty-thumb{display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-size:16px;font-family:var(--serif);}
+.itemrow .main{flex:1;min-width:0;cursor:pointer;}
+.itemrow .ttl{font-size:13px;font-weight:700;margin-bottom:3px;}
+.itemrow .meta{font-size:11px;color:var(--ink-soft);display:flex;gap:10px;flex-wrap:wrap;}
+.itemrow .meta span{white-space:nowrap;}
+.itemrow .right{display:flex;align-items:center;gap:8px;flex:0 0 auto;}
+.star{color:var(--green);}
+
+/* ---- detail ---- */
+.detail-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:16px;flex-wrap:wrap;}
+.detail-head h2{font-family:var(--serif);font-size:20px;margin:0 0 6px;}
+.detail-actions{display:flex;gap:8px;}
+.spec-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 24px;}
+@media (max-width:640px){.spec-grid{grid-template-columns:1fr;}}
+.spec-item{padding:9px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;}
+.spec-item .k{font-size:11px;color:var(--ink-soft);}
+.spec-item .v{font-size:12.5px;font-weight:600;text-align:right;}
+.spec-item .v .arrow{color:var(--ink-faint);margin:0 5px;font-weight:400;}
+
+.specimen-block{border:2px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px;background:var(--paper);}
+.specimen-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.specimen-head .label{font-family:var(--serif);font-size:15px;font-weight:700;}
+.specimen-head input.labelinput{font-family:var(--serif);font-size:15px;font-weight:700;border:none;background:none;padding:2px 4px;width:120px;}
+.specimen-head input.labelinput:focus{outline:1px solid var(--green);border-radius:2px;}
+
+.step-table{width:100%;border-collapse:collapse;font-size:12px;}
+.step-table th{text-align:left;font-size:10px;color:var(--ink-faint);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line-strong);text-transform:uppercase;letter-spacing:.05em;}
+.step-table td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
+.step-table td input,.step-table td select{width:100%;border:1px solid transparent;background:none;padding:4px 5px;font-size:12px;border-radius:2px;font-family:inherit;}
+.step-table td input:focus,.step-table td select:focus{border-color:var(--green);background:var(--white);outline:none;}
+.step-num{font-family:var(--mono);color:var(--ink-faint);font-size:11px;}
+.step-del{background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:14px;}
+.step-del:hover{color:var(--red);}
+
+.photo-strip{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+.photo-thumb{position:relative;width:76px;height:76px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;cursor:zoom-in;}
+.photo-thumb img:hover{opacity:.9;}
+.photo-thumb .x{position:absolute;top:2px;right:2px;background:rgba(20,22,20,.7);color:#fff;border:none;width:18px;height:18px;border-radius:50%;font-size:11px;cursor:pointer;line-height:1;}
+.photo-add{
+  width:76px;height:76px;border:2px dashed var(--line-strong);border-radius:var(--radius);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--ink-faint);
+  cursor:pointer;font-size:20px;text-align:center;padding:4px;
+}
+.photo-add span{font-size:8.5px;line-height:1.3;margin-top:2px;}
+.photo-add:hover{border-color:var(--green);color:var(--green);}
+.photo-add.dragover{border-color:var(--green);background:var(--green-tint);color:var(--green);}
+.paste-target-row{margin-bottom:8px;}
+
+/* ---- gantt ---- */
+.gantt-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--white);}
+.gantt{display:grid;position:relative;}
+.gantt-row{display:flex;border-bottom:1px solid var(--line);}
+.gantt-label{width:200px;flex:0 0 auto;padding:10px 12px;font-size:11.5px;border-right:1px solid var(--line);display:flex;align-items:center;gap:6px;background:var(--paper);position:sticky;left:0;}
+.gantt-track{position:relative;flex:1;min-width:600px;height:42px;background-image:repeating-linear-gradient(to right, var(--line) 0, var(--line) 1px, transparent 1px, transparent var(--daywidth,28px));}
+.gantt-bar{
+  position:absolute;top:7px;height:28px;border-radius:14px;cursor:grab;
+  display:flex;align-items:center;padding:0 10px;font-size:10.5px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;
+  border-width:2px;border-style:solid;
+}
+.gantt-bar:active{cursor:grabbing;}
+.gantt-bar .resize{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:ew-resize;}
+.gantt-head{display:flex;border-bottom:2px solid var(--line-strong);position:sticky;top:0;background:var(--white);z-index:2;}
+.gantt-head .gantt-label{background:var(--white);}
+.gantt-daycell{flex:0 0 var(--daywidth,28px);width:var(--daywidth,28px);text-align:center;font-size:9.5px;color:var(--ink-faint);padding:6px 0;font-family:var(--mono);border-right:1px solid var(--line);}
+.gantt-daycell.today{background:var(--green-tint);color:var(--green-deep);font-weight:700;}
+.gantt-today-line{position:absolute;top:0;bottom:0;width:2px;background:var(--red);z-index:1;}
+
+/* print */
+@media print{
+  .sidebar,.topbar,.filterbar,.btn,.hamburger,.detail-actions,.toast,.editbtn{display:none !important;}
+  .shell{display:block;}
+  .content{padding:0;overflow:visible;}
+  body{background:#fff;}
+}
+.mute{color:var(--ink-faint);}
+
+/* ---- ログイン画面 ---- */
+.login-screen{
+  position:fixed;inset:0;background:var(--paper);z-index:900;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.login-box{background:var(--white);border:1px solid var(--line);border-radius:6px;padding:34px 30px;width:380px;max-width:100%;box-shadow:0 10px 34px rgba(20,22,20,.1);}
+.login-box h1{font-family:var(--serif);font-size:24px;margin:0 0 4px;}
+.login-box .tagline{font-size:10px;color:var(--ink-faint);letter-spacing:.12em;text-transform:uppercase;font-family:var(--mono);margin-bottom:26px;}
+.login-err{background:var(--red-tint);color:var(--red);padding:9px 12px;border-radius:var(--radius);font-size:11.5px;margin-bottom:14px;display:none;}
+.login-err.show{display:block;}
+.sync-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;color:#8b8e87;}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green-bright);}
+.sync-dot.saving{background:var(--orange);}
+.sync-dot.error{background:var(--red);}
+.sync-dot.offline{background:#8b8e87;}
+
+/* ---- 作業タイマー ---- */
+.timer-hero{background:var(--ink);color:#fff;border-radius:6px;padding:28px 24px;text-align:center;margin-bottom:18px;}
+.timer-display{font-family:var(--mono);font-size:52px;font-weight:600;letter-spacing:.02em;line-height:1.1;}
+@media (max-width:520px){.timer-display{font-size:40px;}}
+.timer-sub{font-size:11px;color:#8b8e87;margin-top:6px;font-family:var(--mono);}
+.timer-controls{display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap;}
+.timer-btn{border:none;border-radius:26px;padding:13px 26px;font-size:13px;font-weight:700;cursor:pointer;min-width:104px;}
+.timer-btn.start{background:var(--green-bright);color:#fff;}
+.timer-btn.pause{background:var(--orange);color:#fff;}
+.timer-btn.stop{background:var(--red);color:#fff;}
+.timer-btn.lap{background:#3a3c38;color:#fff;}
+.timer-btn.save{background:var(--white);color:var(--ink);}
+.timer-btn:disabled{opacity:.35;cursor:default;}
+.lap-list{max-height:180px;overflow:auto;}
+.lap-row{display:flex;justify-content:space-between;padding:7px 14px;border-bottom:1px solid var(--line);font-size:12px;font-family:var(--mono);}
+.lap-row:last-child{border-bottom:none;}
+.session-row{display:flex;gap:12px;align-items:center;padding:11px 15px;border-bottom:1px solid var(--line);font-size:12px;}
+.session-row:last-child{border-bottom:none;}
+.session-row .n{font-family:var(--mono);font-weight:700;}
+hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
+.checklist{display:flex;flex-direction:column;gap:8px;}
+.trash-notice{background:var(--orange-tint);border:1px solid var(--orange);color:#7a5615;padding:10px 14px;border-radius:var(--radius);font-size:11.5px;margin-bottom:16px;}
+</style>
+</head>
+<body>
+
+<!-- ============ ログイン画面 ============ -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <h1>Maison K</h1>
+    <div class="tagline">Atelier Dashboard</div>
+    <div class="login-err" id="loginErr"></div>
+    <div class="field"><label>メールアドレス</label><input id="lg_email" type="email" autocomplete="username"></div>
+    <div class="field"><label>パスワード</label><input id="lg_pass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn primary" style="width:100%;padding:11px" onclick="doLogin()" id="lg_btn">ログイン</button>
+    <div class="hint" style="margin-top:16px;line-height:1.6">
+      データはクラウドに保存され、iPhone・iPad・PCのどこからでも同じ状態で開けます。<br>
+      アカウントはSupabaseの管理画面から発行してください。
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="mark">
+      <h1>Maison K</h1>
+      <p>Atelier Dashboard</p>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="sidebar-foot">
+      <div class="storage-note" id="storageNote">読み込み中…</div>
+      <div class="foot-btns">
+        <button class="btn sm" style="flex:1" onclick="exportJSON()">JSON書出</button>
+        <button class="btn sm" style="flex:1" onclick="document.getElementById('importFile').click()">読込</button>
+      </div>
+      <button class="gear" onclick="openSettingsModal()">⚙ 設定（時給・固定費）</button>
+      <button class="gear" onclick="doLogout()">ログアウト</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()">☰</button>
+      <div><h2 id="pageTitle">ダッシュボード</h2></div>
+      <div class="spacer"></div>
+      <span class="sub" id="pageSub"></span>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ============ ToDo編集 ============ -->
+<div class="overlay" id="ov-todo">
+  <div class="modal">
+    <div class="modal-head"><h3 id="todoModalTitle">ToDoを追加</h3><button class="modal-close" onclick="closeOv('ov-todo')">×</button></div>
+    <div class="modal-body">
+      <div class="field"><label>タイトル</label><input id="td_title" placeholder="例）W95・希釈10%でのCMP再検証"></div>
+      <div class="field-row">
+        <div class="field"><label>事業</label><select id="td_biz"><option>研磨</option><option>動画編集</option><option>3Dプリンタ</option><option>全般</option></select></div>
+        <div class="field"><label>ジャンル</label><select id="td_genre"><option>定常業務</option><option>加工研究</option><option>デザイン</option><option>事務業務</option><option>禁止事項</option></select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>優先度</label><select id="td_priority"><option>高</option><option selected>中</option><option>低</option></select></div>
+        <div class="field"><label>状態</label><select id="td_status"><option>未着手</option><option>進行中</option><option>完了</option></select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>開始日</label><input id="td_start" type="date"></div>
+        <div class="field"><label>期限（終了日）</label><input id="td_due" type="date"></div>
+      </div>
+      <div class="field"><label>メモ</label><textarea id="td_note"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="td_delBtn" style="display:none" onclick="deleteTodoFromModal()">削除</button>
+      <div style="flex:1"></div>
+      <button class="btn" onclick="closeOv('ov-todo')">キャンセル</button>
+      <button class="btn primary" onclick="submitTodo()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 工具マスタ編集 ============ -->
+<div class="overlay" id="ov-tool">
+  <div class="modal wide">
+    <div class="modal-head"><h3 id="toolModalTitle">工具を追加</h3><button class="modal-close" onclick="closeOv('ov-tool')">×</button></div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field"><label>事業</label><select id="tl_biz"><option>研磨</option><option>動画編集</option><option>3Dプリンタ</option><option>全般</option></select></div>
+        <div class="field"><label>カテゴリ</label><input id="tl_cat" placeholder="例）ダイヤモンドラッパー / 研磨剤 / 当て具"></div>
+      </div>
+      <div class="field">
+        <label>工具名</label>
+        <input id="tl_name" placeholder="例）ダイヤモンドハンドラッパー #2000" oninput="autofillSpec()">
+        <div class="hint" id="tl_autofillHint"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>仕様（粒径・番手相当）</label><input id="tl_spec" placeholder="工具名から自動推定されます（手動修正可）"></div>
+        <div class="field check" style="align-items:flex-end;padding-bottom:8px;"><input type="checkbox" id="tl_starter"><label for="tl_starter">現在のスタメン</label></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>価格（円・税込）</label><input id="tl_price" type="number"></div>
+        <div class="field"><label>耐用回数（回）</label><input id="tl_life" type="number"></div>
+        <div class="field"><label>原価/1回</label><input id="tl_unitcost" readonly></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>記載日</label><input id="tl_created" type="date"></div>
+        <div class="field"><label>購入先リンク</label><input id="tl_link" placeholder="https://..."></div>
+      </div>
+      <div class="field"><label>メモ</label><textarea id="tl_note"></textarea></div>
+      <div class="field">
+        <label>製品画像（ドラッグ&ドロップ / クリップボード貼り付け対応）</label>
+        <div class="photo-strip" id="tl_photoStrip"></div>
+        <input type="file" id="tl_photoInput" accept="image/*" multiple style="display:none" onchange="addToolPhoto(event)">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="tl_delBtn" style="display:none" onclick="deleteToolFromModal()">削除</button>
+      <div style="flex:1"></div>
+      <button class="btn" onclick="closeOv('ov-tool')">キャンセル</button>
+      <button class="btn primary" onclick="submitTool()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 顧客編集 ============ -->
+<div class="overlay" id="ov-customer">
+  <div class="modal">
+    <div class="modal-head"><h3 id="custModalTitle">顧客を追加</h3><button class="modal-close" onclick="closeOv('ov-customer')">×</button></div>
+    <div class="modal-body">
+      <div class="field"><label>お名前 / OG名</label><input id="cu_name"></div>
+      <div class="field-row">
+        <div class="field"><label>ステータス</label><select id="cu_status"><option>見込</option><option>取引中</option><option>休眠</option></select></div>
+        <div class="field"><label>取引のある事業</label><select id="cu_biz" multiple size="3"><option>研磨</option><option>動画編集</option><option>3Dプリンタ</option></select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>連絡先（メール等）</label><input id="cu_contact"></div>
+        <div class="field"><label>SNS / その他</label><input id="cu_sns"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>記載日</label><input id="cu_created" type="date"></div>
+        <div class="field"><label>タグ</label><input id="cu_tags" placeholder="OG、常連 など、カンマ区切り"></div>
+      </div>
+      <div class="field"><label>備考・依頼履歴メモ</label><textarea id="cu_note" style="min-height:90px"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="cu_delBtn" style="display:none" onclick="deleteCustomerFromModal()">削除</button>
+      <div style="flex:1"></div>
+      <button class="btn" onclick="closeOv('ov-customer')">キャンセル</button>
+      <button class="btn primary" onclick="submitCustomer()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 設定 ============ -->
+<div class="overlay" id="ov-settings">
+  <div class="modal">
+    <div class="modal-head"><h3>設定</h3><button class="modal-close" onclick="closeOv('ov-settings')">×</button></div>
+    <div class="modal-body">
+      <div class="section-label">原価計算のデフォルト値</div>
+      <div class="field-row">
+        <div class="field"><label>時給単価（円）</label><input id="st_hourly" type="number"></div>
+        <div class="field"><label>梱包資材費（円/件）</label><input id="st_packMaterial" type="number"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>送料（円/件）</label><input id="st_shipping" type="number"></div>
+        <div class="field"><label>梱包発送 標準時間（分）</label><input id="st_packMin" type="number"></div>
+      </div>
+      <div class="hint">ここで設定した値は、新規に作成する加工研究の初期値として使われます（作成済みのものには影響しません）。</div>
+    </div>
+    <div class="modal-foot">
+      <div style="flex:1"></div>
+      <button class="btn" onclick="closeOv('ov-settings')">閉じる</button>
+      <button class="btn primary" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 新規加工研究（タイトル先聞き） ============ -->
+<div class="overlay" id="ov-newresearch">
+  <div class="modal">
+    <div class="modal-head"><h3>加工研究を追加</h3><button class="modal-close" onclick="closeOv('ov-newresearch')">×</button></div>
+    <div class="modal-body">
+      <div class="field"><label>タイトル</label><input id="nr_title" placeholder="例）センタドリル有無によるポリッシュの仕上がり確認、加工時間、作業性比較"></div>
+      <div class="field"><label>ジャンル</label><select id="nr_genre"><option value="加工研究">加工研究</option><option value="耐用・測定テスト">耐用・測定テスト</option></select></div>
+      <div class="field"><label>事業</label><select id="nr_biz"><option>研磨</option><option>動画編集</option><option>3Dプリンタ</option></select></div>
+    </div>
+    <div class="modal-foot">
+      <div style="flex:1"></div>
+      <button class="btn" onclick="closeOv('ov-newresearch')">キャンセル</button>
+      <button class="btn primary" onclick="submitNewResearch()">作成して詳細を開く</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 写真ライトボックス ============ -->
+<div class="overlay" id="ov-lightbox" style="align-items:center;background:rgba(20,22,20,.88)" onclick="if(event.target===this)closeLightbox()">
+  <div style="position:relative;max-width:90vw;max-height:88vh;">
+    <img id="lb_img" src="" style="max-width:90vw;max-height:88vh;object-fit:contain;border-radius:4px;display:block;">
+    <button onclick="closeLightbox()" style="position:absolute;top:-14px;right:-14px;width:34px;height:34px;border-radius:50%;background:#fff;border:none;font-size:18px;cursor:pointer;color:var(--ink);">×</button>
+    <button onclick="lightboxPrev()" id="lb_prev" style="position:absolute;left:-52px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.9);border:none;font-size:18px;cursor:pointer;">‹</button>
+    <button onclick="lightboxNext()" id="lb_next" style="position:absolute;right:-52px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.9);border:none;font-size:18px;cursor:pointer;">›</button>
+    <div id="lb_counter" style="text-align:center;color:#fff;font-size:11px;margin-top:10px;font-family:var(--mono)"></div>
+  </div>
+</div>
+
+<script>
+/* ==========================================================================
+   IndexedDB 永続化
+   ========================================================================== */
+const DB_NAME='maisonk_ledger', DB_VER=1, STORE='kv';
+let dbPromise=null;
+function openDB(){
+  if(dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = () => { req.result.createObjectStore(STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return dbPromise;
+}
+async function idbGet(key){
+  try{ const db=await openDB(); return await new Promise((res,rej)=>{const tx=db.transaction(STORE,'readonly');const rq=tx.objectStore(STORE).get(key);rq.onsuccess=()=>res(rq.result);rq.onerror=()=>rej(rq.error);}); }
+  catch(e){ return undefined; }
+}
+async function idbSet(key,val){
+  try{ const db=await openDB(); return await new Promise((res,rej)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(val,key);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error);}); }
+  catch(e){ return false; }
+}
+
+/* ==========================================================================
+   ブランド一覧（バレルデータベースより抽出・重複除去済み）
+   ========================================================================== */
+const BRAND_LIST = ["アマテラス","アルティマダーツ","イマジンダーツ","インターロックダーツ","ウィンモウ","エスフォー","エルスタイル","キャニスメジャー","キャラメルクラッチ","キューソウル","キューソール","キングスジャパン","コスモダーツ","サムライ","サングリアル","サングリアル/トリニダード","ジョーカードライバー","ジョーカードライバー/ヨシムラバレルズ","ジーズダーツ","ストラト","ゼファー","ゼロダーツ","ターゲット","ターゲットジャパン","ダイナスティ","ダイナスティー","ダーツハイブ","ダーツライブ","ティガ","ティガ/トリニダード","ティガダーツ","ディーエムシー","ディークラフト","トリニダード","トリニダード/サングリアル","トリニダード/ティガ","トリニダード/リュウダーツ","ノーブランド","ハローズ","ハングオーバー","バサラ","バットダーツ","ブルズファイター","プライドダーツジャパン","プロビジョン ジャパン","プロビジョンジャパン","プロビジョンゼロ","ミッションダーツ","ミラーチ","モア","モンスター","ユニコーン","ヨシムラバレルズ","ヨシムラバレルズ/ジョーカードライバー","レッドドラゴン","ワンエイティ","火の鳥","火の鳥ダーツ"];
+
+/* ==========================================================================
+   工具名 → 粒径/番手 自動推定テーブル
+   ========================================================================== */
+const GRIT_LOOKUP = [
+  {re:/#\s*600\b/i, spec:'約20〜30μm相当'},
+  {re:/#\s*800\b/i, spec:'約15〜20μm相当'},
+  {re:/#\s*1000\b/i, spec:'約11〜16μm相当'},
+  {re:/#\s*2000\b/i, spec:'約7〜9μm相当'},
+  {re:/#\s*4000\b/i, spec:'約3μm相当'},
+  {re:/#\s*6000\b/i, spec:'約2μm相当'},
+  {re:/#\s*8000\b/i, spec:'約1〜1.5μm相当'},
+  {re:/#\s*14000\b/i, spec:'約0.5〜1.5μm相当'},
+  {re:/#\s*30000\b/i, spec:'約0.3μm相当'},
+  {re:/#\s*60000\b/i, spec:'約0.25μm相当'},
+  {re:/1\/4\s*μ/i, spec:'0.25μm'},
+  {re:/0\.2\s*μ/i, spec:'0.2μm'},
+  {re:/0\.25\s*μ/i, spec:'0.25μm'},
+  {re:/(\d+(\.\d+)?)\s*μ(?!m相当)/i, spec:null}, // 数値をそのまま使う（下でハンドル）
+];
+function autofillSpec(){
+  const name = document.getElementById('tl_name').value;
+  const hintEl = document.getElementById('tl_autofillHint');
+  const specEl = document.getElementById('tl_spec');
+  if(specEl.value.trim()){ hintEl.textContent=''; return; } // 既に入力済みなら上書きしない
+  for(const rule of GRIT_LOOKUP){
+    const m = name.match(rule.re);
+    if(m){
+      const spec = rule.spec || (m[1]+'μm');
+      specEl.value = spec;
+      specEl.placeholder = spec;
+      hintEl.textContent = `「${m[0]}」から自動推定しました`;
+      return;
+    }
+  }
+  hintEl.textContent='';
+}
+
+/* ==========================================================================
+   データモデル
+   ========================================================================== */
+const BIZ_LIST = ['研磨','動画編集','3Dプリンタ','全般'];
+const GENRE_LIST = ['定常業務','加工研究','耐用・測定テスト','デザイン','事務業務','禁止事項'];
+const STATUS_LIST = ['未着手','進行中','完了'];
+
+let state = {
+  todos: [], research: [], tools: [], customers: [], trash: [],
+  settings: {hourly:1800, packMaterial:70, shipping:870, packMin:30},
+};
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function uid(p){ return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function addDays(dateStr,n){ const d=new Date(dateStr+'T00:00:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+function dayDiff(a,b){ return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000); }
+
+/* ---- 互換性補完：旧形式・欠損フィールドを持つデータでも描画が壊れないようにする ---- */
+function deepMergeSafe(target, source){
+  for(const k in (source||{})){
+    const sv=source[k];
+    if(sv && typeof sv==='object' && !Array.isArray(sv) && target[k] && typeof target[k]==='object' && !Array.isArray(target[k])){
+      deepMergeSafe(target[k], sv);
+    }else if(sv!==undefined){ target[k]=sv; }
+  }
+  return target;
+}
+function migrateResearchRecord(raw){
+  const base = emptyResearch(raw.biz||'研磨');
+  base.id = raw.id || base.id;
+  base.no = (raw.no!=null) ? raw.no : base.no;
+  base.type = raw.type || base.type;
+  base.title = raw.title || base.title;
+  base.purpose = raw.purpose || base.purpose;
+  base.createdDate = raw.createdDate || raw.date || base.createdDate;
+  base.startDate = raw.startDate || raw.date || base.startDate;
+  base.endDate = raw.endDate || base.endDate;
+  base.status = ['未着手','進行中','完了','中止'].includes(raw.status) ? raw.status : base.status;
+  base.conclusion = raw.conclusion || base.conclusion;
+  base.compare = Object.assign({}, base.compare, raw.compare||{});
+  base.photos = raw.photos || base.photos;
+  base.createdAt = raw.createdAt || base.createdAt;
+  if(Array.isArray(raw.specimens) && raw.specimens.length){
+    base.specimens = raw.specimens.map(sp=>deepMergeSafe(emptySpecimen(sp.label||'N1'), sp));
+  }else if(raw.obj){ // 旧形式（単一の対象物）からの変換
+    base.specimens = [deepMergeSafe(emptySpecimen('N1'), {obj:raw.obj,specs:raw.specs,steps:raw.steps,pre:raw.pre,cost:raw.cost,result:raw.result,photos:raw.photos})];
+  }
+  return base;
+}
+function migrateToolRecord(raw){ return Object.assign(emptyTool(), raw, {createdDate: raw.createdDate||todayStr()}); }
+function migrateCustomerRecord(raw){ return Object.assign(emptyCustomer(), raw, {createdDate: raw.createdDate||todayStr()}); }
+function migrateState(raw){
+  raw = raw||{};
+  return {
+    todos: Array.isArray(raw.todos)?raw.todos:[],
+    research: Array.isArray(raw.research)?raw.research.map(migrateResearchRecord):[],
+    tools: Array.isArray(raw.tools)?raw.tools.map(migrateToolRecord):[],
+    customers: Array.isArray(raw.customers)?raw.customers.map(migrateCustomerRecord):[],
+    trash: Array.isArray(raw.trash)?raw.trash:[],
+    settings: Object.assign({hourly:1800,packMaterial:70,shipping:870,packMin:30}, raw.settings||{}),
+  };
+}
+
+function emptySpecimen(label){
+  return {
+    label: label||'N1', qty:'',
+    obj:{maker:'',product:'',material:'',country:'',magnetism:'',cond:'新品',preOverhaul:'なし',spec:''},
+    specs:{maxDia:{b:'',a:''}, minDia:{b:'',a:''}, length:{b:'',a:''}, weight:{b:'',a:''}},
+    steps:[],
+    pre:{pretreat:'',coolant:'',wash:'',centerPress:''},
+    cost:{targetMin:'',actualMin:'', material:'', packaging:'', shipping:''},
+    result:{finish:'',good:'',bad:'',next:''},
+    photos:[],
+  };
+}
+function emptyResearch(biz){
+  return {
+    id:null, no:null, biz:biz||'研磨', genre:'加工研究', type:'実験',
+    title:'', purpose:'', createdDate:todayStr(), startDate:todayStr(), endDate:'',
+    status:'進行中', conclusion:'',
+    compare:{factor:'',fixed:'',refNo:''},
+    specimens:[emptySpecimen('N1')],
+    photos:[], createdAt:Date.now(),
+  };
+}
+function emptyTool(){ return {id:null,biz:'研磨',cat:'',name:'',spec:'',starter:false,price:'',life:'',link:'',note:'',createdDate:todayStr(),photos:[],createdAt:Date.now()}; }
+function emptyCustomer(){ return {id:null,name:'',status:'見込',biz:[],contact:'',sns:'',tags:'',note:'',createdDate:todayStr(),createdAt:Date.now()}; }
+
+/* ==========================================================================
+   Supabase 接続
+   ========================================================================== */
+const SUPABASE_URL = 'https://nppetcndkpftvummafqw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wcGV0Y25ka3BmdHZ1bW1hZnF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNzA5NjYsImV4cCI6MjA4MTc0Njk2Nn0.RJ9TbeAwW-AHtVETFYgH1nTIM6PKp609VpPSVQEV2F8';
+let sb = null, currentUser = null;
+let syncStatus = 'idle'; // idle | saving | error | offline
+
+function initSupabase(){
+  if(SUPABASE_URL.startsWith('YOUR_')){
+    console.warn('SupabaseのURL/キーが未設定です。オフライン(この端末のみ)で動作します。');
+    return false;
+  }
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return true;
+}
+
+async function doLogin(){
+  const email=document.getElementById('lg_email').value.trim();
+  const pass=document.getElementById('lg_pass').value;
+  const errEl=document.getElementById('loginErr');
+  const btn=document.getElementById('lg_btn');
+  errEl.classList.remove('show');
+  if(!email||!pass){ errEl.textContent='メールアドレスとパスワードを入力してください'; errEl.classList.add('show'); return; }
+  btn.disabled=true; btn.textContent='ログイン中…';
+  try{
+    const {data,error} = await sb.auth.signInWithPassword({email,password:pass});
+    if(error) throw error;
+    currentUser = data.user;
+    await afterLogin();
+  }catch(e){
+    errEl.textContent = 'ログインに失敗しました：'+(e.message||e);
+    errEl.classList.add('show');
+  }finally{
+    btn.disabled=false; btn.textContent='ログイン';
+  }
+}
+async function doLogout(){
+  if(!confirm('ログアウトしますか？（保存済みデータはクラウドに残ります）')) return;
+  await sb.auth.signOut();
+  location.reload();
+}
+async function afterLogin(){
+  document.getElementById('loginScreen').style.display='none';
+  await loadState();
+  await loadSessions();
+  render();
+}
+
+/* ---- 永続化（クラウド優先・ローカルは予備） ---- */
+async function loadState(){
+  let cloud = null;
+  if(sb && currentUser){
+    try{
+      const {data,error} = await sb.from('app_state').select('state').eq('owner_id',currentUser.id).maybeSingle();
+      if(error) throw error;
+      if(data && data.state) cloud = data.state;
+    }catch(e){ console.error('クラウド読込に失敗:',e); syncStatus='error'; }
+  }
+  if(cloud){ state = migrateState(cloud); await idbSet('state',state); }
+  else{
+    const saved = await idbGet('state');
+    if(saved) state = migrateState(saved);
+  }
+  updateStorageNote();
+}
+let saveTimer=null;
+function saveState(){
+  clearTimeout(saveTimer);
+  syncStatus='saving'; updateStorageNote();
+  saveTimer=setTimeout(async()=>{
+    await idbSet('state',state);           // まずローカルに退避
+    if(sb && currentUser){
+      try{
+        const {error} = await sb.from('app_state')
+          .upsert({owner_id:currentUser.id, state:state}, {onConflict:'owner_id'});
+        if(error) throw error;
+        syncStatus='idle';
+      }catch(e){ console.error('クラウド保存に失敗:',e); syncStatus='error'; }
+    }else{ syncStatus='offline'; }
+    updateStorageNote();
+  },600);
+}
+function updateStorageNote(){
+  const el=document.getElementById('storageNote'); if(!el) return;
+  const cnt=state.todos.length+state.research.length+state.tools.length+state.customers.length;
+  const label={idle:'同期済み',saving:'保存中…',error:'同期エラー（ローカルには保存済み）',offline:'この端末のみ'}[syncStatus];
+  el.innerHTML=`<span class="sync-badge"><span class="sync-dot ${syncStatus==='idle'?'':syncStatus}"></span>${label}</span><br>
+    件数：${cnt} 件　ゴミ箱：${state.trash.length}件<br>
+    ${currentUser?esc(currentUser.email):'未ログイン'}<br>
+    最終更新：${new Date().toLocaleTimeString('ja-JP')}`;
+}
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`MaisonK_バックアップ_${todayStr()}.json`; a.click();
+  toast('JSONを書き出しました');
+}
+function importJSON(ev){
+  const file=ev.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=async()=>{ try{ state=migrateState(JSON.parse(reader.result)); await idbSet('state',state); saveState(); render(); toast('読み込みました（クラウドにも保存されます）'); }catch(e){ console.error(e); toast('読み込みに失敗しました'); } };
+  reader.readAsText(file); ev.target.value='';
+}
+
+/* ---- 設定 ---- */
+function openSettingsModal(){
+  document.getElementById('st_hourly').value=state.settings.hourly;
+  document.getElementById('st_packMaterial').value=state.settings.packMaterial;
+  document.getElementById('st_shipping').value=state.settings.shipping;
+  document.getElementById('st_packMin').value=state.settings.packMin;
+  openOv('ov-settings');
+}
+function saveSettings(){
+  state.settings = {
+    hourly:Number(document.getElementById('st_hourly').value)||1800,
+    packMaterial:Number(document.getElementById('st_packMaterial').value)||0,
+    shipping:Number(document.getElementById('st_shipping').value)||0,
+    packMin:Number(document.getElementById('st_packMin').value)||0,
+  };
+  saveState(); closeOv('ov-settings'); toast('設定を保存しました');
+}
+
+/* ==========================================================================
+   ゴミ箱
+   ========================================================================== */
+function moveToTrash(type, item){
+  state.trash.push({trashId:uid('tr_'), type, item, deletedAt:Date.now()});
+  saveState();
+}
+function restoreFromTrash(trashId){
+  const t = state.trash.find(x=>x.trashId===trashId); if(!t) return;
+  if(t.type==='todo') state.todos.push(t.item);
+  else if(t.type==='research') state.research.push(t.item);
+  else if(t.type==='tool') state.tools.push(t.item);
+  else if(t.type==='customer') state.customers.push(t.item);
+  state.trash = state.trash.filter(x=>x.trashId!==trashId);
+  saveState(); render(); toast('復元しました');
+}
+function purgeFromTrash(trashId){
+  if(!confirm('完全に削除します。元に戻せません。よろしいですか？')) return;
+  state.trash = state.trash.filter(x=>x.trashId!==trashId);
+  saveState(); render(); toast('完全に削除しました');
+}
+function purgeAllTrash(){
+  if(!state.trash.length){ toast('ゴミ箱は空です'); return; }
+  if(!confirm(`ゴミ箱の${state.trash.length}件すべてを完全に削除します。元に戻せません。よろしいですか？`)) return;
+  state.trash=[]; saveState(); render(); toast('ゴミ箱を空にしました');
+}
+
+/* ==========================================================================
+   ナビゲーション
+   ========================================================================== */
+const ICONS = {
+  dash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>`,
+  todo:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="20" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>`,
+  research:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 3h6l1 4H8l1-4z"/><path d="M8 7l-3 12a2 2 0 0 0 2 2.5h10a2 2 0 0 0 2-2.5L16 7"/><path d="M7 15h10"/></svg>`,
+  tools:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.7 6.3a4 4 0 1 1-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 1 5.4-5.4z"/></svg>`,
+  cust:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.5 2.5-6 5.5-6s5.5 2.5 5.5 6"/><circle cx="18" cy="9" r="2.3"/><path d="M15.5 20c.2-2.8 1.9-4.8 4-4.8"/></svg>`,
+  trash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg>`,
+  timer:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>`,
+  durability:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v4M6 5l2.5 2.5M18 5l-2.5 2.5"/><circle cx="12" cy="14" r="7"/><path d="M12 14l3-3"/></svg>`,
+};
+let currentPage='dash';
+function setPage(p){ currentPage=p; researchDetailId=null; render(); }
+function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('open'); }
+function renderNav(){
+  const items=[
+    {id:'dash',label:'ダッシュボード',icon:ICONS.dash},
+    {id:'timer',label:'作業タイマー',icon:ICONS.timer},
+    {id:'todo',label:'ToDoリスト',icon:ICONS.todo,count:state.todos.filter(t=>t.status!=='完了').length},
+    {id:'research',label:'加工研究',icon:ICONS.research,count:state.research.filter(r=>r.genre!=='耐用・測定テスト').length},
+    {id:'durability',label:'耐用・測定記録',icon:ICONS.durability,count:state.research.filter(r=>r.genre==='耐用・測定テスト').length},
+    {id:'tools',label:'工具マスタ',icon:ICONS.tools,count:state.tools.length},
+    {id:'customers',label:'顧客管理',icon:ICONS.cust,count:state.customers.length},
+  ];
+  document.getElementById('nav').innerHTML = items.map(it=>`
+    <div class="nav-item ${currentPage===it.id?'active':''}" onclick="setPage('${it.id}')">${it.icon}<span>${it.label}</span>${it.count!==undefined?`<span class="nav-badge">${it.count}</span>`:''}</div>
+  `).join('') + `<div class="nav-sep"></div>
+    <div class="nav-item ${currentPage==='trash'?'active':''}" onclick="setPage('trash')">${ICONS.trash}<span>ゴミ箱</span><span class="nav-badge">${state.trash.length}</span></div>`;
+}
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1900); }
+
+/* ---- 写真ライトボックス ---- */
+let lightboxImages=[], lightboxIndex=0;
+function openLightboxImages(images, startIndex){
+  if(!images||!images.length) return;
+  lightboxImages = images; lightboxIndex = startIndex||0;
+  renderLightbox();
+  openOv('ov-lightbox');
+}
+function openLightbox(id,si,i){
+  const r = state.research.find(x=>x.id===id); if(!r) return;
+  openLightboxImages(r.specimens[si].photos||[], i);
+}
+function renderLightbox(){
+  document.getElementById('lb_img').src = lightboxImages[lightboxIndex];
+  document.getElementById('lb_counter').textContent = `${lightboxIndex+1} / ${lightboxImages.length}`;
+  const multi = lightboxImages.length>1;
+  document.getElementById('lb_prev').style.display = multi?'block':'none';
+  document.getElementById('lb_next').style.display = multi?'block':'none';
+}
+function lightboxPrev(){ lightboxIndex=(lightboxIndex-1+lightboxImages.length)%lightboxImages.length; renderLightbox(); }
+function lightboxNext(){ lightboxIndex=(lightboxIndex+1)%lightboxImages.length; renderLightbox(); }
+function closeLightbox(){ closeOv('ov-lightbox'); }
+document.addEventListener('keydown',(ev)=>{
+  if(!document.getElementById('ov-lightbox').classList.contains('show')) return;
+  if(ev.key==='Escape') closeLightbox();
+  if(ev.key==='ArrowLeft') lightboxPrev();
+  if(ev.key==='ArrowRight') lightboxNext();
+});
+function openOv(id){ document.getElementById(id).classList.add('show'); }
+function closeOv(id){ document.getElementById(id).classList.remove('show'); }
+
+/* ==========================================================================
+   render 振り分け
+   ========================================================================== */
+function render(){
+  renderNav();
+  const titleMap={dash:'ダッシュボード',timer:'作業タイマー',todo:'ToDoリスト',research:'加工研究',durability:'耐用・測定記録',tools:'工具マスタ',customers:'顧客管理',trash:'ゴミ箱'};
+  document.getElementById('pageTitle').textContent=titleMap[currentPage]||'';
+  const subMap={dash:todayStr(),timer:'実作業時間を計測して工程表に反映',todo:'定常業務・加工研究・事務を横断管理',research:'比較検証の記録',durability:'工具・消耗品の使用量を工具ごとに集計',tools:'保有工具・消耗品の台帳',customers:'見込み〜取引先の管理',trash:'削除済みアイテムの復元・完全削除'};
+  document.getElementById('pageSub').textContent=subMap[currentPage]||'';
+  const c=document.getElementById('content');
+  if(currentPage==='dash') c.innerHTML=renderDash();
+  else if(currentPage==='timer') c.innerHTML=renderTimer();
+  else if(currentPage==='todo') c.innerHTML=renderTodo();
+  else if(currentPage==='research') renderResearchPage(c);
+  else if(currentPage==='durability') renderDurabilityPage(c);
+  else if(currentPage==='tools') renderToolsPage(c);
+  else if(currentPage==='customers') renderCustomersPage(c);
+  else if(currentPage==='trash') c.innerHTML=renderTrash();
+  document.getElementById('sidebar').classList.remove('open');
+  if(currentPage==='dash') requestAnimationFrame(initGanttDrag);
+}
+
+/* ==========================================================================
+   ダッシュボード（統計 + ガントチャート + 成功/失敗ダイジェスト）
+   ========================================================================== */
+function renderDash(){
+  const bizStats = BIZ_LIST.filter(b=>b!=='全般').map(biz=>{
+    const openTodos=state.todos.filter(t=>t.biz===biz&&t.status!=='完了').length;
+    const activeResearch=state.research.filter(r=>r.biz===biz&&r.status==='進行中').length;
+    return `<div class="stat biz-${biz}"><div class="n">${openTodos}</div><div class="l">${biz}｜未完了ToDo　研究進行中 ${activeResearch}件</div></div>`;
+  }).join('');
+
+  const gantt = renderGantt();
+
+  const digestGood=[], digestBad=[];
+  state.research.forEach(r=>{
+    (r.specimens||[]).forEach(sp=>{
+      if(sp.result.good) digestGood.push({txt:sp.result.good, r});
+      if(sp.result.bad) digestBad.push({txt:sp.result.bad, r});
+    });
+  });
+  const digestRow=(d,cls)=>`<div class="digest-item ${cls}"><div class="txt">${esc(d.txt)}<div class="src">No.${d.r.no}　${esc(d.r.title||'（無題）')}</div></div><button class="btn sm ghost" onclick="openResearchDetail('${d.r.id}')">詳細を確認する →</button></div>`;
+  const goodHtml = digestGood.length ? digestGood.slice(0,8).map(d=>digestRow(d,'digest-good')).join('') : `<div class="empty">記録された成功点はまだありません</div>`;
+  const badHtml = digestBad.length ? digestBad.slice(0,8).map(d=>digestRow(d,'digest-bad')).join('') : `<div class="empty">記録された失敗点はまだありません</div>`;
+
+  return `
+    <div class="dash-grid">${bizStats}</div>
+    <div class="section-label">スケジュール（WBS）</div>
+    ${gantt}
+    <div class="section-label">成功点ダイジェスト</div>
+    <div class="card">${goodHtml}</div>
+    <div class="section-label">失敗点ダイジェスト</div>
+    <div class="card">${badHtml}</div>
+  `;
+}
+
+/* ---- ガントチャート ---- */
+function renderGantt(){
+  const items = state.todos.filter(t=>t.status!=='完了' || (t.due && dayDiff(t.due, todayStr())<7));
+  if(!items.length) return `<div class="empty">表示できるスケジュールがありません（ToDoに開始日・期限を設定すると表示されます）</div>`;
+  const dates = [];
+  items.forEach(t=>{ if(t.start) dates.push(t.start); if(t.due) dates.push(t.due); });
+  if(!dates.length) return `<div class="empty">開始日・期限が設定されたToDoがありません</div>`;
+  let minD = dates.reduce((a,b)=>a<b?a:b);
+  let maxD = dates.reduce((a,b)=>a>b?a:b);
+  minD = addDays(minD,-2); maxD = addDays(maxD,3);
+  const totalDays = Math.max(dayDiff(minD,maxD),7);
+  const dayW = 30;
+
+  let dayCells='';
+  for(let i=0;i<=totalDays;i++){
+    const d = addDays(minD,i);
+    const isToday = d===todayStr();
+    dayCells += `<div class="gantt-daycell ${isToday?'today':''}" style="--daywidth:${dayW}px">${d.slice(5)}</div>`;
+  }
+
+  const rows = items.map(t=>{
+    const start = t.start || t.due || todayStr();
+    const due = t.due || t.start || todayStr();
+    const offset = dayDiff(minD,start)*dayW;
+    const width = Math.max(dayDiff(start,due),1)*dayW;
+    const color = t.status==='未着手'?'var(--red)':t.status==='進行中'?'var(--orange)':'var(--green)';
+    return `<div class="gantt-row">
+      <div class="gantt-label"><span class="tag biz-${t.biz}">${t.biz}</span>${esc(t.title).slice(0,14)}</div>
+      <div class="gantt-track" style="--daywidth:${dayW}px">
+        <div class="gantt-bar" data-id="${t.id}" style="left:${offset}px;width:${width}px;background:${color};border-color:${color}"
+             title="${esc(t.title)}（${start} 〜 ${due}）">
+          ${esc(t.title).slice(0,18)}
+          <div class="resize" data-id="${t.id}"></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const todayOffset = dayDiff(minD, todayStr())*dayW + dayW/2;
+
+  return `<div class="gantt-wrap"><div class="gantt">
+    <div class="gantt-head"><div class="gantt-label">項目</div>${dayCells}</div>
+    <div style="position:relative">
+      <div class="gantt-today-line" style="left:${200+todayOffset}px"></div>
+      ${rows}
+    </div>
+  </div></div>`;
+}
+
+let ganttDrag = null;
+function initGanttDrag(){
+  document.querySelectorAll('.gantt-bar').forEach(bar=>{
+    bar.onmousedown = (ev)=>{
+      if(ev.target.classList.contains('resize')) return;
+      const id = bar.dataset.id;
+      const t = state.todos.find(x=>x.id===id); if(!t) return;
+      ganttDrag = {mode:'move', id, startX:ev.clientX, origStart:t.start||t.due||todayStr(), origDue:t.due||t.start||todayStr()};
+      ev.preventDefault();
+    };
+  });
+  document.querySelectorAll('.gantt-bar .resize').forEach(handle=>{
+    handle.onmousedown = (ev)=>{
+      const id = handle.dataset.id;
+      const t = state.todos.find(x=>x.id===id); if(!t) return;
+      ganttDrag = {mode:'resize', id, startX:ev.clientX, origDue:t.due||t.start||todayStr()};
+      ev.preventDefault(); ev.stopPropagation();
+    };
+  });
+}
+document.addEventListener('mousemove',(ev)=>{
+  if(!ganttDrag) return;
+  const dayW=30;
+  const dx = ev.clientX - ganttDrag.startX;
+  const dayShift = Math.round(dx/dayW);
+  const t = state.todos.find(x=>x.id===ganttDrag.id); if(!t) return;
+  if(ganttDrag.mode==='move'){
+    t.start = addDays(ganttDrag.origStart, dayShift);
+    t.due = addDays(ganttDrag.origDue, dayShift);
+  }else{
+    const newDue = addDays(ganttDrag.origDue, dayShift);
+    if(dayDiff(t.start||newDue,newDue) >= 0) t.due = newDue;
+  }
+  renderGanttOnly();
+});
+document.addEventListener('mouseup',()=>{
+  if(ganttDrag){ saveState(); ganttDrag=null; }
+});
+function renderGanttOnly(){
+  if(currentPage!=='dash') return;
+  const wrap = document.querySelector('.content .gantt-wrap');
+  if(!wrap) return;
+  wrap.outerHTML = renderGantt();
+  initGanttDrag();
+}
+
+/* ==========================================================================
+   作業タイマー
+   ========================================================================== */
+let timer = {
+  running:false, startedAt:null, accumSec:0, tickId:null,
+  researchId:'', specimenIdx:0, stepIndex:-1, laps:[], sessionId:null,
+};
+let recentSessions = [];
+
+function fmtHMS(sec){
+  const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=Math.floor(sec%60);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function timerElapsed(){
+  let sec = timer.accumSec;
+  if(timer.running && timer.startedAt) sec += (Date.now()-timer.startedAt)/1000;
+  return sec;
+}
+async function loadSessions(){
+  if(!sb||!currentUser) return;
+  try{
+    const {data,error} = await sb.from('work_sessions').select('*').eq('owner_id',currentUser.id).order('created_at',{ascending:false}).limit(20);
+    if(error) throw error;
+    recentSessions = data||[];
+  }catch(e){ console.error('作業ログ読込に失敗:',e); }
+}
+
+function renderTimer(){
+  const elapsed = timerElapsed();
+  const r = state.research.find(x=>x.id===timer.researchId);
+  const specimens = r ? (r.specimens||[]) : [];
+  const sp = specimens[timer.specimenIdx];
+  const steps = sp ? (sp.steps||[]) : [];
+
+  const timerResearchList = state.research.filter(x=>x.status==='進行中' || x.id===timer.researchId);
+  const researchOpts = timerResearchList.map(x=>`<option value="${x.id}" ${x.id===timer.researchId?'selected':''}>No.${x.no}　${esc(x.title||'（無題）')}${x.status!=='進行中'?`（${x.status}）`:''}</option>`).join('');
+  const specimenOpts = specimens.map((s,i)=>`<option value="${i}" ${i===timer.specimenIdx?'selected':''}>${esc(s.label)}</option>`).join('');
+  const stepOpts = steps.map((s,i)=>`<option value="${i}" ${i===timer.stepIndex?'selected':''}>${i+1}. ${esc(s.processName||s.tool||'（工程名なし）')}</option>`).join('');
+
+  const lapsHtml = timer.laps.length ? timer.laps.map((l,i)=>`<div class="lap-row"><span>ラップ ${i+1}</span><span>${fmtHMS(l)}</span></div>`).join('') : `<div class="empty" style="padding:18px">ラップ記録なし</div>`;
+
+  const sessionsHtml = recentSessions.length ? recentSessions.slice(0,10).map(s=>`
+    <div class="session-row">
+      <span class="n">${fmtHMS(s.elapsed_sec)}</span>
+      <span style="flex:1">${esc(s.step_name||'（工程未指定）')}${s.is_finished?'':' <span class="mute">［途中保存］</span>'}</span>
+      ${s.qty_done?`<span class="mute">${s.qty_done}個</span>`:''}
+      ${s.min_per_unit?`<span class="mute">${Math.round(s.min_per_unit*10)/10}分/個</span>`:''}
+      <span class="mute">${new Date(s.created_at).toLocaleDateString('ja-JP')}</span>
+    </div>`).join('') : `<div class="empty">作業ログはまだありません</div>`;
+
+  return `
+    <div class="timer-hero">
+      <div class="timer-display" id="timerDisplay">${fmtHMS(elapsed)}</div>
+      <div class="timer-sub">${timer.running?'計測中':(elapsed>0?'一時停止中':'待機中')}</div>
+      <div class="timer-controls">
+        ${timer.running
+          ? `<button class="timer-btn pause" onclick="timerPause()">一時停止</button>
+             <button class="timer-btn lap" onclick="timerLap()">ラップ</button>`
+          : `<button class="timer-btn start" onclick="timerStart()">${elapsed>0?'再開':'開始'}</button>`}
+        <button class="timer-btn save" onclick="timerSaveProgress()" ${elapsed>0?'':'disabled'}>途中保存</button>
+        <button class="timer-btn stop" onclick="timerFinish()" ${elapsed>0?'':'disabled'}>終了</button>
+      </div>
+    </div>
+
+    <div class="section-label">対象の工程</div>
+    <div class="field-row">
+      <div class="field"><label>加工研究</label>
+        <select onchange="timerSet('researchId',this.value)"><option value="">（選択してください）</option>${researchOpts}</select></div>
+      <div class="field"><label>試料</label>
+        <select onchange="timerSet('specimenIdx',Number(this.value))" ${specimens.length?'':'disabled'}>${specimenOpts||'<option>—</option>'}</select></div>
+      <div class="field"><label>工程</label>
+        <select onchange="timerSet('stepIndex',Number(this.value))" ${steps.length?'':'disabled'}>
+          <option value="-1">（工程を選択）</option>${stepOpts}</select></div>
+    </div>
+    <div class="hint">終了時に完了個数を入力すると、1個あたりの所要時間を計算して、選択した工程の「時間」欄に自動で書き込みます。</div>
+
+    <div class="section-label">ラップ</div>
+    <div class="card lap-list">${lapsHtml}</div>
+
+    <div class="section-label">最近の作業ログ</div>
+    <div class="card">${sessionsHtml}</div>
+  `;
+}
+function timerSet(key,val){
+  timer[key]=val;
+  if(key==='researchId'){ timer.specimenIdx=0; timer.stepIndex=-1; }
+  if(key==='specimenIdx'){ timer.stepIndex=-1; }
+  render();
+}
+function timerTick(){
+  const el=document.getElementById('timerDisplay');
+  if(el) el.textContent=fmtHMS(timerElapsed());
+}
+function timerStart(){
+  timer.running=true; timer.startedAt=Date.now();
+  if(timer.tickId) clearInterval(timer.tickId);
+  timer.tickId=setInterval(timerTick,500);
+  render();
+}
+function timerPause(){
+  if(!timer.running) return;
+  timer.accumSec = timerElapsed();
+  timer.running=false; timer.startedAt=null;
+  clearInterval(timer.tickId); timer.tickId=null;
+  render();
+}
+function timerLap(){
+  timer.laps.push(Math.floor(timerElapsed()));
+  render();
+}
+function timerReset(){
+  timer.running=false; timer.startedAt=null; timer.accumSec=0; timer.laps=[]; timer.sessionId=null;
+  if(timer.tickId){ clearInterval(timer.tickId); timer.tickId=null; }
+}
+function currentStepName(){
+  const r=state.research.find(x=>x.id===timer.researchId); if(!r) return '';
+  const sp=(r.specimens||[])[timer.specimenIdx]; if(!sp) return '';
+  const st=(sp.steps||[])[timer.stepIndex]; if(!st) return '';
+  return st.processName||st.tool||`工程${timer.stepIndex+1}`;
+}
+async function saveSession(isFinished, qtyDone){
+  const elapsed = Math.floor(timerElapsed());
+  const minPerUnit = (qtyDone && qtyDone>0) ? (elapsed/60)/qtyDone : null;
+  const payload = {
+    owner_id: currentUser?currentUser.id:null,
+    research_id: timer.researchId||null,
+    specimen_idx: timer.specimenIdx,
+    step_index: timer.stepIndex>=0?timer.stepIndex:null,
+    step_name: currentStepName()||null,
+    ended_at: isFinished ? new Date().toISOString() : null,
+    elapsed_sec: elapsed,
+    qty_done: qtyDone||null,
+    min_per_unit: minPerUnit,
+    laps: timer.laps,
+    is_finished: isFinished,
+  };
+  if(!sb||!currentUser){ toast('未ログインのため作業ログを保存できません'); return null; }
+  try{
+    if(timer.sessionId){
+      const {error}=await sb.from('work_sessions').update(payload).eq('id',timer.sessionId);
+      if(error) throw error;
+    }else{
+      const {data,error}=await sb.from('work_sessions').insert(payload).select('id').single();
+      if(error) throw error;
+      timer.sessionId=data.id;
+    }
+    await loadSessions();
+    return minPerUnit;
+  }catch(e){ console.error('作業ログ保存に失敗:',e); toast('作業ログの保存に失敗しました'); return null; }
+}
+async function timerSaveProgress(){
+  timerPause();
+  await saveSession(false, null);
+  toast('ここまでの経過時間を保存しました（作業は継続できます）');
+  render();
+}
+async function timerFinish(){
+  timerPause();
+  const elapsed=Math.floor(timerElapsed());
+  const input = prompt(`完了した個数を入力してください。\n（経過時間：${fmtHMS(elapsed)}）\n\n空欄のままOKすると、時間だけ記録します。`,'');
+  if(input===null){ render(); return; }
+  const qty = input.trim()===''?null:Number(input);
+  if(input.trim()!=='' && (isNaN(qty)||qty<=0)){ toast('個数は1以上の数字で入力してください'); return; }
+
+  const minPerUnit = await saveSession(true, qty);
+
+  if(qty && timer.researchId && timer.stepIndex>=0){
+    const r=state.research.find(x=>x.id===timer.researchId);
+    const sp=r&&r.specimens[timer.specimenIdx];
+    const st=sp&&sp.steps[timer.stepIndex];
+    if(st){
+      st.time = Math.round(((elapsed/60)/qty)*10)/10;
+      sp.qty = qty;
+      // 工程時間の合計を、試料の実時間(1本あたり)へ反映
+      const sumMin = (sp.steps||[]).reduce((a,s)=>a+(Number(s.time)||0),0);
+      sp.cost.actualMin = Math.round(sumMin*10)/10;
+      saveState();
+      toast(`1個あたり ${st.time}分 として工程表に反映しました`);
+    }
+  }else{
+    toast('作業を終了しました');
+  }
+  timerReset();
+  render();
+}
+/* ==========================================================================
+   ToDoリスト
+   ========================================================================== */
+let todoFilterBiz=new Set(), todoFilterGenre=new Set();
+let draggingTodoId=null;
+function renderTodo(){
+  const bizChips=BIZ_LIST.map(b=>`<span class="pill biz-${b} ${todoFilterBiz.has(b)?'active':''}" onclick="toggleTodoFilter('biz','${b}')">${b}</span>`).join('');
+  const genreChips=GENRE_LIST.map(g=>`<span class="pill ${todoFilterGenre.has(g)?'active':''}" onclick="toggleTodoFilter('genre','${g}')">${g}</span>`).join('');
+  let items=state.todos.slice();
+  if(todoFilterBiz.size) items=items.filter(t=>todoFilterBiz.has(t.biz));
+  if(todoFilterGenre.size) items=items.filter(t=>todoFilterGenre.has(t.genre));
+  items.sort((a,b)=>(a.order||0)-(b.order||0));
+  const cols=STATUS_LIST.map(st=>{
+    const cardsHtml=items.filter(t=>t.status===st).map(t=>{
+      const late=t.due&&t.due<todayStr()&&st!=='完了';
+      const stIdx = STATUS_LIST.indexOf(t.status);
+      return `<div class="todo-card st-border st-${t.status}" draggable="true" data-id="${t.id}" ondragstart="onTodoDragStart(event,'${t.id}')" ondragend="onTodoDragEnd(event)" onclick="editTodo('${t.id}')">
+        <div class="top"><span class="tag biz-${t.biz}">${t.biz}</span><span class="pill" style="pointer-events:none;padding:2px 8px"><span class="prio ${t.priority}"></span>${t.genre}</span></div>
+        <div class="title">${esc(t.title)}</div>
+        ${t.note?`<div class="note">${esc(t.note).slice(0,60)}${t.note.length>60?'…':''}</div>`:''}
+        <div class="foot"><span class="due ${late?'late':''}">${t.due||''}</span>${t.linkedResearchId?`<span class="mute" style="font-size:10px;cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();openLinkedResearch('${t.linkedResearchId}')">🔗研究</span>`:''}</div>
+        <div class="movebtns">
+          ${stIdx>0?`<button class="movebtn" onclick="event.stopPropagation();moveTodoStatus('${t.id}',-1)">‹ ${STATUS_LIST[stIdx-1]}</button>`:'<span></span>'}
+          ${stIdx<STATUS_LIST.length-1?`<button class="movebtn" onclick="event.stopPropagation();moveTodoStatus('${t.id}',1)">${STATUS_LIST[stIdx+1]} ›</button>`:'<span></span>'}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="kcol"><div class="kcol-head"><span class="t">${st}</span><span class="c">${items.filter(t=>t.status===st).length}</span></div>
+      <div class="kcol-body" data-status="${st}" ondragover="onKcolDragOver(event)" ondragleave="onKcolDragLeave(event)" ondrop="onKcolDrop(event,'${st}')">
+        ${cardsHtml||'<div class="empty" style="padding:20px 8px">なし</div>'}
+      </div></div>`;
+  }).join('');
+  return `<div class="filterbar">${bizChips}<span class="divider"></span>${genreChips}<span class="divider"></span>
+    <button class="btn sm ghost" onclick="todoFilterBiz.clear();todoFilterGenre.clear();render();">絞込解除</button>
+    <div class="spacer"></div><button class="btn sm" onclick="exportCSV(todoRowsForCSV(),'ToDoリスト')">CSV出力</button>
+    <button class="btn primary sm" onclick="openTodoModal()">＋ ToDoを追加</button></div>
+    <div class="kanban">${cols}</div>`;
+}
+function todoRowsForCSV(){ return state.todos.map(t=>({タイトル:t.title,事業:t.biz,ジャンル:t.genre,優先度:t.priority,開始日:t.start||'',期限:t.due||'',状態:t.status,メモ:t.note||''})); }
+function toggleTodoFilter(kind,val){ const set=kind==='biz'?todoFilterBiz:todoFilterGenre; if(set.has(val))set.delete(val);else set.add(val); render(); }
+function moveTodoStatus(id, dir){
+  const t = state.todos.find(x=>x.id===id); if(!t) return;
+  const idx = STATUS_LIST.indexOf(t.status);
+  const newIdx = idx + dir;
+  if(newIdx<0 || newIdx>=STATUS_LIST.length) return;
+  t.status = STATUS_LIST[newIdx];
+  syncResearchFromTodo(t);
+  saveState(); render();
+  toast(`「${t.title}」を${t.status}へ`);
+}
+function onTodoDragStart(ev,id){ draggingTodoId=id; ev.target.classList.add('dragging'); ev.dataTransfer.effectAllowed='move'; }
+function onTodoDragEnd(ev){ ev.target.classList.remove('dragging'); }
+function onKcolDragOver(ev){ ev.preventDefault(); ev.currentTarget.classList.add('dragover'); }
+function onKcolDragLeave(ev){ ev.currentTarget.classList.remove('dragover'); }
+function syncResearchFromTodo(todo){
+  if(!todo.linkedResearchId) return;
+  const r = state.research.find(x=>x.id===todo.linkedResearchId);
+  if(!r) return;
+  if(STATUS_LIST.concat(['中止']).includes(todo.status)) r.status = todo.status;
+  if(todo.biz) r.biz = todo.biz;
+  r.startDate = todo.start || r.startDate;
+  r.endDate = todo.due || r.endDate;
+}
+function onKcolDrop(ev,status){
+  ev.preventDefault(); ev.currentTarget.classList.remove('dragover');
+  const t=state.todos.find(x=>x.id===draggingTodoId);
+  if(t){ t.status=status; syncResearchFromTodo(t); saveState(); render(); toast(`「${t.title}」を${status}へ`); }
+}
+let editingTodoId=null;
+function openTodoModal(){
+  editingTodoId=null;
+  document.getElementById('todoModalTitle').textContent='ToDoを追加';
+  document.getElementById('td_title').value='';
+  document.getElementById('td_biz').value='研磨';
+  document.getElementById('td_genre').value='定常業務';
+  document.getElementById('td_priority').value='中';
+  document.getElementById('td_status').value='未着手';
+  document.getElementById('td_start').value='';
+  document.getElementById('td_due').value='';
+  document.getElementById('td_note').value='';
+  document.getElementById('td_delBtn').style.display='none';
+  openOv('ov-todo');
+}
+function editTodo(id){
+  const t=state.todos.find(x=>x.id===id); if(!t) return;
+  editingTodoId=id;
+  document.getElementById('todoModalTitle').textContent='ToDoを編集';
+  document.getElementById('td_title').value=t.title;
+  document.getElementById('td_biz').value=t.biz;
+  document.getElementById('td_genre').value=t.genre;
+  document.getElementById('td_priority').value=t.priority;
+  document.getElementById('td_status').value=t.status;
+  document.getElementById('td_start').value=t.start||'';
+  document.getElementById('td_due').value=t.due||'';
+  document.getElementById('td_note').value=t.note||'';
+  document.getElementById('td_delBtn').style.display='inline-block';
+  openOv('ov-todo');
+}
+function submitTodo(){
+  const title=document.getElementById('td_title').value.trim();
+  if(!title){ toast('タイトルを入力してください'); return; }
+  const genre=document.getElementById('td_genre').value;
+  const data={title,biz:document.getElementById('td_biz').value,genre,priority:document.getElementById('td_priority').value,status:document.getElementById('td_status').value,start:document.getElementById('td_start').value,due:document.getElementById('td_due').value,note:document.getElementById('td_note').value.trim()};
+  if(editingTodoId){
+    const t = state.todos.find(x=>x.id===editingTodoId);
+    Object.assign(t,data);
+    syncResearchFromTodo(t);
+  }
+  else{
+    const id=uid('td_');
+    state.todos.push(Object.assign({id,order:state.todos.length,createdAt:Date.now(),linkedResearchId:null},data));
+    if(genre==='加工研究' || genre==='耐用・測定テスト'){
+      const r=emptyResearch(data.biz); r.id=uid('rs_'); r.genre=genre; r.no=nextResearchNo(data.biz, genre); r.title=title; r.status=data.status;
+      r.startDate = data.start || r.startDate; r.endDate = data.due || r.endDate;
+      state.research.push(r);
+      state.todos[state.todos.length-1].linkedResearchId=r.id;
+      toast('ToDoを追加し、'+genre+'レコードも作成しました');
+    }
+  }
+  saveState(); closeOv('ov-todo'); render();
+  if(!editingTodoId && genre!=='加工研究' && genre!=='耐用・測定テスト') toast('ToDoを追加しました');
+}
+function deleteTodoFromModal(){
+  if(!editingTodoId) return;
+  const t=state.todos.find(x=>x.id===editingTodoId);
+  state.todos=state.todos.filter(x=>x.id!==editingTodoId);
+  moveToTrash('todo',t);
+  saveState(); closeOv('ov-todo'); render(); toast('ゴミ箱へ移動しました');
+}
+function nextResearchNo(biz, genre){ 
+  const filtered = state.research.filter(r => r.biz===biz && r.genre===genre);
+  return filtered.reduce((m,r)=>Math.max(m,r.no||0),0)+1;
+}
+
+/* ==========================================================================
+   スワイプ削除の共通ハンドラ
+   ========================================================================== */
+function attachSwipe(rowEl, onDelete){
+  let startX=0, curX=0, dragging=false, moved=false;
+  const threshold=-70, moveTolerance=8;
+  rowEl.addEventListener('pointerdown',(ev)=>{
+    if(ev.target.closest('.editbtn')||ev.target.closest('.delbtn')||ev.target.closest('.swipe-del')||ev.target.closest('a')||ev.target.closest('button')) return;
+    startX=ev.clientX; dragging=true; moved=false;
+  });
+  rowEl.addEventListener('pointermove',(ev)=>{
+    if(!dragging) return;
+    const dx = ev.clientX-startX;
+    if(Math.abs(dx) > moveTolerance) moved=true;
+    if(moved){
+      curX = Math.min(0, dx);
+      rowEl.style.transform = `translateX(${Math.max(curX,-90)}px)`;
+    }
+  });
+  function endDrag(){
+    if(!dragging) return; dragging=false;
+    if(moved){
+      if(curX < threshold){ rowEl.style.transform='translateX(-90px)'; }
+      else{ rowEl.style.transform='translateX(0)'; }
+    }
+    curX=0; moved=false;
+  }
+  rowEl.addEventListener('pointerup',endDrag);
+  rowEl.addEventListener('pointercancel',endDrag);
+}
+
+/* ==========================================================================
+   加工研究
+   ========================================================================== */
+let researchFilterBiz=new Set(), researchDetailId=null, durabilityFilterTool='';
+function renderResearchPage(container){
+  if(researchDetailId){ container.innerHTML=renderResearchDetail(researchDetailId); attachDetailPhotoDrop(); return; }
+  const bizChips=BIZ_LIST.filter(b=>b!=='全般').map(b=>`<span class="pill biz-${b} ${researchFilterBiz.has(b)?'active':''}" onclick="researchFilterBiz.has('${b}')?researchFilterBiz.delete('${b}'):researchFilterBiz.add('${b}');render();">${b}</span>`).join('');
+  let items=[...state.research].filter(r=>r.genre!=='耐用・測定テスト').sort((a,b)=>b.createdAt-a.createdAt);
+  if(researchFilterBiz.size) items=items.filter(r=>researchFilterBiz.has(r.biz));
+  const rows=items.length?items.map(r=>{
+    const firstSp=(r.specimens&&r.specimens[0])||{};
+    const thumb=r.photos&&r.photos[0]?`<img class="thumb" src="${r.photos[0]}">`:`<div class="thumb empty-thumb">研</div>`;
+    const spCount=(r.specimens||[]).length;
+    return `<div class="swiperow" data-rowid="${r.id}">
+      <div class="swipe-del"><button onclick="rsDelete('${r.id}')">削除</button></div>
+      <div class="itemrow st-border st-${r.status}">
+        <button class="editbtn" onclick="event.stopPropagation();openResearchDetail('${r.id}')" title="編集"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+        ${thumb}
+        <div class="main" onclick="openResearchDetail('${r.id}')">
+          <div class="ttl">No.${r.no}　${esc(r.title||'（無題）')} ${r.type==='チャット由来'?'<span class="mute" style="font-size:10px">［チャット由来メモ］</span>':''}</div>
+          <div class="meta"><span class="tag biz-${r.biz}">${r.biz}</span><span>${r.createdDate||r.date||''}</span>${firstSp.obj&&firstSp.obj.material?`<span>${esc(firstSp.obj.material)}</span>`:''}${spCount>1?`<span>試料${spCount}件</span>`:''}</div>
+        </div>
+        <div class="right"><span class="st-chip st-${r.status}">${r.status}</span>
+          <button class="delbtn" onclick="event.stopPropagation();rsDelete('${r.id}')" title="削除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty">加工研究の記録はまだありません。ToDoリストで「加工研究」ジャンルの項目を追加すると、ここに自動で連携されます。</div>`;
+  container.innerHTML=`<div class="filterbar">${bizChips}<span class="divider"></span>
+    <button class="btn sm ghost" onclick="researchFilterBiz.clear();render();">絞込解除</button>
+    <div class="spacer"></div><button class="btn sm" onclick="exportResearchCSV()">CSV出力</button>
+    <button class="btn primary sm" onclick="openNewResearchModal()">＋ 新規研究</button></div>
+    <div class="rowlist">${rows}</div>`;
+  document.querySelectorAll('.swiperow').forEach(row=>attachSwipe(row, ()=>{}));
+}
+
+/* ==========================================================================
+   耐用・測定記録ページ（工具の消耗を集約）
+   ========================================================================== */
+function collectDurabilityUsage(){
+  // 工具名ごとに { count, consumed, unitGuess } を集計
+  const map={};
+  state.research.forEach(r=>{
+    if(r.genre!=='耐用・測定テスト') return;
+    (r.specimens||[]).forEach(sp=>{
+      (sp.steps||[]).forEach(s=>{
+        if(!s.tool) return;
+        if(s.beforeWeight===''||s.beforeWeight==null||s.afterWeight===''||s.afterWeight==null) return;
+        const diff = Number(s.beforeWeight)-Number(s.afterWeight);
+        if(!map[s.tool]) map[s.tool]={count:0,consumed:0};
+        map[s.tool].count += 1;
+        map[s.tool].consumed += diff;
+      });
+    });
+  });
+  return map;
+}
+function renderDurabilityPage(container){
+  if(researchDetailId){ container.innerHTML=renderResearchDetail(researchDetailId); attachDetailPhotoDrop(); return; }
+  const usage = collectDurabilityUsage();
+  const toolNames = Object.keys(usage).sort();
+  const toolChips = toolNames.map(t=>`<span class="pill ${durabilityFilterTool===t?'active':''}" onclick="durabilityFilterTool=(durabilityFilterTool==='${esc(t).replace(/'/g,"&#39;")}'?'':'${esc(t).replace(/'/g,"&#39;")}');render();">${esc(t)}</span>`).join('');
+
+  const summaryRows = toolNames.length ? toolNames.map(t=>{
+    const u=usage[t];
+    const toolMaster = state.tools.find(x=>x.name===t);
+    const lifeGuess = toolMaster&&toolMaster.life ? toolMaster.life : '';
+    return `<div class="itemrow" style="cursor:default">
+      <div class="thumb empty-thumb">測</div>
+      <div class="main">
+        <div class="ttl">${esc(t)}</div>
+        <div class="meta"><span>使用回数：${u.count}回</span><span>累計消耗：${Math.round(u.consumed*1000)/1000} g</span>${lifeGuess?`<span class="mute">工具マスタの耐用回数（手入力）：${lifeGuess}回</span>`:''}</div>
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty">まだ使用前後の重量が記録された工程がありません。加工研究を「耐用・測定テスト」ジャンルで作成し、工程表で工具を選んで使用前後の重量を入力してください。</div>`;
+
+  let items=[...state.research].filter(r=>r.genre==='耐用・測定テスト').sort((a,b)=>b.createdAt-a.createdAt);
+  if(durabilityFilterTool){
+    items=items.filter(r=>(r.specimens||[]).some(sp=>(sp.steps||[]).some(s=>s.tool===durabilityFilterTool)));
+  }
+  const rows=items.length?items.map(r=>{
+    const firstSp=(r.specimens&&r.specimens[0])||{};
+    const thumb=r.photos&&r.photos[0]?`<img class="thumb" src="${r.photos[0]}">`:`<div class="thumb empty-thumb">測</div>`;
+    return `<div class="swiperow" data-rowid="${r.id}">
+      <div class="swipe-del"><button onclick="rsDelete('${r.id}')">削除</button></div>
+      <div class="itemrow st-border st-${r.status}">
+        <button class="editbtn" onclick="event.stopPropagation();openResearchDetail('${r.id}')" title="編集"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+        ${thumb}
+        <div class="main" onclick="openResearchDetail('${r.id}')">
+          <div class="ttl">No.${r.no}　${esc(r.title||'（無題）')}</div>
+          <div class="meta"><span class="tag biz-${r.biz}">${r.biz}</span><span>${r.createdDate||''}</span></div>
+        </div>
+        <div class="right"><span class="st-chip st-${r.status}">${r.status}</span>
+          <button class="delbtn" onclick="event.stopPropagation();rsDelete('${r.id}')" title="削除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty">耐用・測定テストの記録はまだありません。</div>`;
+
+  container.innerHTML=`
+    <div class="section-label">工具ごとの集計</div>
+    <div class="filterbar">${toolChips || '<span class="mute">記録が増えると、ここに工具ごとのフィルターが表示されます</span>'}${durabilityFilterTool?`<span class="divider"></span><button class="btn sm ghost" onclick="durabilityFilterTool='';render();">絞込解除</button>`:''}</div>
+    <div class="rowlist" style="margin-bottom:20px">${summaryRows}</div>
+
+    <div class="section-label">記録一覧</div>
+    <div class="filterbar"><div class="spacer"></div>
+      <button class="btn primary sm" onclick="openNewResearchModal('耐用・測定テスト')">＋ 新規記録</button></div>
+    <div class="rowlist">${rows}</div>`;
+  document.querySelectorAll('.swiperow').forEach(row=>attachSwipe(row, ()=>{}));
+}
+function newResearchDirect(title, biz, genre){
+  genre = genre || '加工研究';
+  const r=emptyResearch(biz||'研磨'); r.id=uid('rs_'); r.genre=genre; r.no=nextResearchNo(biz||'研磨', genre); r.title=title||'';
+  state.research.push(r);
+  const todoId=uid('td_');
+  state.todos.push({id:todoId,title:`No.${r.no}　${title||'（無題）'}`,biz:r.biz,genre:genre,priority:'中',status:r.status,start:r.startDate||'',due:r.endDate||'',note:'',order:state.todos.length,createdAt:Date.now(),linkedResearchId:r.id});
+  saveState(); openResearchDetail(r.id);
+  toast(genre+'を追加し、ToDoリストにも連携しました');
+}
+function openNewResearchModal(presetGenre){
+  document.getElementById('nr_title').value='';
+  document.getElementById('nr_biz').value='研磨';
+  document.getElementById('nr_genre').value=presetGenre||'加工研究';
+  openOv('ov-newresearch');
+}
+function submitNewResearch(){
+  const title=document.getElementById('nr_title').value.trim();
+  if(!title){ toast('タイトルを入力してください'); return; }
+  const biz=document.getElementById('nr_biz').value;
+  const genre=document.getElementById('nr_genre').value;
+  closeOv('ov-newresearch');
+  newResearchDirect(title, biz, genre);
+}
+function openResearchDetail(id){ researchDetailId=id; render(); }
+function openLinkedResearch(researchId){
+  const r = state.research.find(x=>x.id===researchId);
+  if(!r){ toast('リンク先の記録が見つかりません（削除された可能性があります）'); return; }
+  currentPage = (r.genre==='耐用・測定テスト') ? 'durability' : 'research';
+  researchDetailId = researchId;
+  render();
+}
+function closeResearchDetail(){ researchDetailId=null; render(); }
+function toolOptionsFor(biz){ return state.tools.filter(t=>t.biz===biz||t.biz==='全般').map(t=>`<option value="${esc(t.name)}">${esc(t.name)}${t.starter?' ★':''}</option>`).join(''); }
+function brandOptions(){ return BRAND_LIST.map(b=>`<option value="${esc(b)}">`).join(''); }
+function acFilter(input,id,si){
+  const box=document.getElementById(`ac-${id}-${si}`); if(!box) return;
+  const q=input.value.trim().toLowerCase();
+  const matches = q ? BRAND_LIST.filter(b=>b.toLowerCase().includes(q)) : BRAND_LIST;
+  if(!matches.length){ box.style.display='none'; box.innerHTML=''; return; }
+  box.innerHTML = matches.slice(0,12).map(b=>`<div class="ac-item" onmousedown="acPick(event,'${id}',${si},'${esc(b).replace(/'/g,"&#39;")}')">${esc(b)}</div>`).join('');
+  box.style.display='block';
+}
+function acPick(ev,id,si,brand){
+  ev.preventDefault();
+  const box=document.getElementById(`ac-${id}-${si}`);
+  const input=box.previousElementSibling;
+  input.value=brand;
+  rsObj(id,si,'maker',brand);
+  box.style.display='none';
+}
+function acClose(input){ const box=input.nextElementSibling; if(box) box.style.display='none'; }
+
+function diffCalc(before, after, unit){
+  const b=parseFloat(before), a=parseFloat(after);
+  if(isNaN(b)||isNaN(a)) return '—';
+  const d=Math.round((a-b)*1000)/1000;
+  return (d>=0?'+':'')+d+(unit||'');
+}
+
+function renderResearchDetail(id){
+  const r=state.research.find(x=>x.id===id); if(!r) return `<div class="empty">見つかりません</div>`;
+  const isChat=r.type==='チャット由来';
+
+  const isDurability = r.genre==='耐用・測定テスト';
+  const specimensHtml = (r.specimens||[]).map((sp,si)=>{
+    const stepsRows=sp.steps.map((s,i)=>{
+      const consumed = (s.beforeWeight!=='' && s.beforeWeight!=null && s.afterWeight!=='' && s.afterWeight!=null)
+        ? (Math.round((Number(s.beforeWeight)-Number(s.afterWeight))*1000)/1000) : '';
+      return `
+      <tr>
+        <td class="step-num">${i+1}</td>
+        <td><input value="${esc(s.processName)}" placeholder="例）洗浄／測定／研磨" oninput="rsStepInput('${id}',${si},${i},'processName',this.value)"></td>
+        <td><select onchange="rsStepToolChange('${id}',${si},${i},this.value)"><option value="">（選択）</option>${toolOptionsFor(r.biz)}</select>
+            ${s.tool&&!state.tools.some(t=>t.name===s.tool)?`<input value="${esc(s.tool)}" oninput="rsStepInput('${id}',${si},${i},'tool',this.value)" style="margin-top:4px">`:''}</td>
+        <td><input value="${esc(s.grit)}" placeholder="番手/粒径" oninput="rsStepInput('${id}',${si},${i},'grit',this.value)"></td>
+        <td><input value="${esc(s.time)}" type="number" placeholder="分" style="width:56px" oninput="rsStepInput('${id}',${si},${i},'time',this.value)"></td>
+        <td><input value="${esc(s.pressure)}" placeholder="押し圧" oninput="rsStepInput('${id}',${si},${i},'pressure',this.value)"></td>
+        ${isDurability ? `
+        <td><input value="${esc(s.beforeWeight)}" type="number" step="0.001" placeholder="使用前(g)" style="width:76px" oninput="rsStepInput('${id}',${si},${i},'beforeWeight',this.value)"></td>
+        <td><input value="${esc(s.afterWeight)}" type="number" step="0.001" placeholder="使用後(g)" style="width:76px" oninput="rsStepInput('${id}',${si},${i},'afterWeight',this.value)"></td>
+        <td class="mute" style="text-align:right">${consumed}</td>` : ''}
+        <td><input value="${esc(s.memo)}" placeholder="メモ" oninput="rsStepInput('${id}',${si},${i},'memo',this.value)"></td>
+        <td><button class="step-del" onclick="rsRemoveStep('${id}',${si},${i})">×</button></td>
+      </tr>`;
+    }).join('');
+
+    const photosHtml=(sp.photos||[]).map((p,i)=>`<div class="photo-thumb"><img src="${p}" onclick="openLightbox('${id}',${si},${i})"><button class="x" onclick="event.stopPropagation();rsRemoveSpecimenPhoto('${id}',${si},${i})">×</button></div>`).join('');
+
+    const totalMin = (Number(sp.cost.actualMin)||0) * (Number(sp.qty)||1);
+    const totalMaterial = (Number(sp.cost.material)||0) * (Number(sp.qty)||1);
+    const total = (Number(state.settings.hourly)||0)*(totalMin/60) + totalMaterial;
+
+    return `<div class="specimen-block">
+      <div class="specimen-head">
+        <input class="labelinput" value="${esc(sp.label)}" onchange="rsSpecimenField('${id}',${si},'label',this.value)">
+        ${(r.specimens.length>1)?`<button class="btn sm danger" onclick="rsRemoveSpecimen('${id}',${si})">この試料を削除</button>`:''}
+      </div>
+
+      <div class="field-row">
+        <div class="field ac-wrap"><label>メーカー</label><input class="ac-input" type="text" value="${esc(sp.obj.maker)}" oninput="acFilter(this,'${id}',${si})" onfocus="acFilter(this,'${id}',${si})" onblur="setTimeout(()=>acClose(this),150)" onchange="rsObj('${id}',${si},'maker',this.value)"><div class="ac-list" id="ac-${id}-${si}"></div></div>
+        <div class="field"><label>製品名</label><input value="${esc(sp.obj.product)}" onchange="rsObj('${id}',${si},'product',this.value)"></div>
+        <div class="field" style="max-width:100px"><label>QTY（本）</label><input type="number" value="${esc(sp.qty)}" onchange="rsSpecimenField('${id}',${si},'qty',this.value)"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>材質（W%・結合相）</label><input value="${esc(sp.obj.material)}" placeholder="例）W95・Ni-Fe" onchange="rsObj('${id}',${si},'material',this.value)"></div>
+        <div class="field"><label>産出国</label><input value="${esc(sp.obj.country)}" onchange="rsObj('${id}',${si},'country',this.value)"></div>
+        <div class="field"><label>磁性</label><select onchange="rsObj('${id}',${si},'magnetism',this.value)"><option value="" ${!sp.obj.magnetism?'selected':''}>未確認</option><option ${sp.obj.magnetism==='磁性あり'?'selected':''}>磁性あり</option><option ${sp.obj.magnetism==='非磁性'?'selected':''}>非磁性</option></select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>新品/中古</label><select onchange="rsObj('${id}',${si},'cond',this.value)"><option ${sp.obj.cond==='新品'?'selected':''}>新品</option><option ${sp.obj.cond==='中古'?'selected':''}>中古</option></select></div>
+        <div class="field"><label>使用前の事前研磨</label><select onchange="rsObj('${id}',${si},'preOverhaul',this.value)"><option ${sp.obj.preOverhaul==='なし'?'selected':''}>なし</option><option ${sp.obj.preOverhaul==='あり'?'selected':''}>あり</option><option ${sp.obj.preOverhaul==='不明'?'selected':''}>不明</option></select></div>
+        <div class="field"><label>規格</label><input value="${esc(sp.obj.spec)}" placeholder="例）2BA" onchange="rsObj('${id}',${si},'spec',this.value)"></div>
+      </div>
+
+      <div class="section-label">スペック（加工前 → 加工後 ／ 差分は自動計算）</div>
+      <div class="field-row">
+        <div class="field"><label>最大径（前）</label><input value="${esc(sp.specs.maxDia.b)}" oninput="rsSpecInput('${id}',${si},'maxDia','b',this.value)"></div>
+        <div class="field"><label>最大径（後）</label><input value="${esc(sp.specs.maxDia.a)}" oninput="rsSpecInput('${id}',${si},'maxDia','a',this.value)"></div>
+        <div class="field"><label>径変化（自動）</label><input value="${diffCalc(sp.specs.maxDia.b,sp.specs.maxDia.a,'mm')}" readonly></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>最小径（前）</label><input value="${esc(sp.specs.minDia.b)}" oninput="rsSpecInput('${id}',${si},'minDia','b',this.value)"></div>
+        <div class="field"><label>最小径（後）</label><input value="${esc(sp.specs.minDia.a)}" oninput="rsSpecInput('${id}',${si},'minDia','a',this.value)"></div>
+        <div class="field"><label>径変化（自動）</label><input value="${diffCalc(sp.specs.minDia.b,sp.specs.minDia.a,'mm')}" readonly></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>長さ（前）</label><input value="${esc(sp.specs.length.b)}" oninput="rsSpecInput('${id}',${si},'length','b',this.value)"></div>
+        <div class="field"><label>長さ（後）</label><input value="${esc(sp.specs.length.a)}" oninput="rsSpecInput('${id}',${si},'length','a',this.value)"></div>
+        <div class="field"><label>変化（自動）</label><input value="${diffCalc(sp.specs.length.b,sp.specs.length.a,'mm')}" readonly></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>重量（前）</label><input value="${esc(sp.specs.weight.b)}" oninput="rsSpecInput('${id}',${si},'weight','b',this.value)"></div>
+        <div class="field"><label>重量（後）</label><input value="${esc(sp.specs.weight.a)}" oninput="rsSpecInput('${id}',${si},'weight','a',this.value)"></div>
+        <div class="field"><label>重量変化（自動）</label><input value="${diffCalc(sp.specs.weight.b,sp.specs.weight.a,'g')}" readonly></div>
+      </div>
+
+      <div class="section-label">${isDurability?'加工工程表（工具の消耗を記録）':'加工工程表'}</div>
+      <table class="step-table">
+        <thead><tr><th style="width:22px">#</th><th style="width:14%">工程名称</th><th style="width:18%">工具</th><th style="width:9%">番手/粒径</th><th style="width:6%">時間</th><th style="width:9%">押し圧</th>${isDurability?'<th style="width:9%">使用前(g)</th><th style="width:9%">使用後(g)</th><th style="width:8%">消耗(g)</th>':''}<th>メモ</th><th style="width:18px"></th></tr></thead>
+        <tbody>${stepsRows}</tbody>
+      </table>
+      <button class="btn sm ghost" style="margin-top:8px" onclick="rsAddStep('${id}',${si})" ${sp.steps.length>=20?'disabled':''}>＋ 工程を追加（${sp.steps.length}/20）</button>
+
+      <div class="section-label">前処理・洗浄</div>
+      <div class="field-row">
+        <div class="field"><label>前処理</label><input value="${esc(sp.pre.pretreat)}" onchange="rsPre('${id}',${si},'pretreat',this.value)"></div>
+        <div class="field"><label>研削液</label><input value="${esc(sp.pre.coolant)}" onchange="rsPre('${id}',${si},'coolant',this.value)"></div>
+        <div class="field"><label>センタ押し</label><select onchange="rsPre('${id}',${si},'centerPress',this.value)"><option value="" ${!sp.pre.centerPress?'selected':''}>未指定</option><option ${sp.pre.centerPress==='あり'?'selected':''}>あり</option><option ${sp.pre.centerPress==='なし'?'selected':''}>なし</option></select></div>
+      </div>
+
+      <div class="section-label">時間・コスト（時給は左メニューの設定を参照：現在 ${state.settings.hourly}円/h）</div>
+      <div class="field-row">
+        <div class="field"><label>目標時間（分）</label><input type="number" value="${esc(sp.cost.targetMin)}" onchange="rsCost('${id}',${si},'targetMin',this.value)"></div>
+        <div class="field"><label>実時間（1本あたり・分）</label><input type="number" value="${esc(sp.cost.actualMin)}" onchange="rsCost('${id}',${si},'actualMin',this.value)"></div>
+        <div class="field"><label>合計時間（自動＝実時間×QTY）</label><input value="${Math.round(totalMin*10)/10} 分" readonly></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>材料費（1本あたり・円）</label><input type="number" value="${esc(sp.cost.material)}" onchange="rsCost('${id}',${si},'material',this.value)"></div>
+        <div class="field"><label>合計材料費（自動＝材料費×QTY）</label><input value="${Math.round(totalMaterial)} 円" readonly></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>梱包材費（1回・円）</label><input type="number" value="${esc(sp.cost.packaging)}" onchange="rsCost('${id}',${si},'packaging',this.value)"></div>
+        <div class="field"><label>送料（1回・円）</label><input type="number" value="${esc(sp.cost.shipping)}" onchange="rsCost('${id}',${si},'shipping',this.value)"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>合計原価（自動＝時給×合計時間＋合計材料費）</label><input value="${Math.round(total)} 円" readonly></div>
+        <div class="field"><label>想定売価（自動＝合計原価＋梱包＋送料）</label><input value="${Math.round(total + (Number(sp.cost.packaging)||0) + (Number(sp.cost.shipping)||0))} 円" readonly style="background:#e3f0ea;font-weight:600;"></div>
+      </div>
+
+      <div class="section-label">結果</div>
+      <div class="field"><label>仕上がり（10段階）</label><input type="number" min="1" max="10" value="${esc(sp.result.finish)}" style="max-width:80px" onchange="rsResult('${id}',${si},'finish',this.value)"></div>
+      <div class="field"><label>成功点</label><textarea onchange="rsResult('${id}',${si},'good',this.value)">${esc(sp.result.good)}</textarea></div>
+      <div class="field"><label>失敗点・課題</label><textarea onchange="rsResult('${id}',${si},'bad',this.value)">${esc(sp.result.bad)}</textarea></div>
+      <div class="field"><label>次への申し送り</label><textarea onchange="rsResult('${id}',${si},'next',this.value)">${esc(sp.result.next)}</textarea></div>
+
+      <div class="section-label">写真</div>
+      <div class="paste-target-row">
+        <button class="btn sm ${activePasteTarget&&activePasteTarget.id===id&&activePasteTarget.si===si?'primary':'ghost'}" onclick="setPasteTarget('${id}',${si})">
+          📋 この試料(${esc(sp.label)})に貼り付け${activePasteTarget&&activePasteTarget.id===id&&activePasteTarget.si===si?'（対象中）':''}
+        </button>
+      </div>
+      <div class="photo-strip">${photosHtml}
+        <div class="photo-add" data-specimenidx="${si}" data-researchid="${id}" onclick="document.getElementById('rs_photoInput_${id}_${si}').click()">＋<span>D&D／貼付可</span></div>
+        <input type="file" id="rs_photoInput_${id}_${si}" accept="image/*" multiple style="display:none" onchange="rsAddSpecimenPhotos('${id}',${si},event.target.files)">
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="detail-head">
+      <div><button class="btn ghost sm" onclick="closeResearchDetail()">← 一覧へ</button>
+        <h2 style="margin-top:8px">No.${r.no}　${esc(r.title)||'（無題の研究）'}</h2>
+        <span class="st-chip st-${r.status}">${r.status}</span></div>
+      <div class="detail-actions"><button class="btn sm" onclick="window.print()">印刷 / PDF</button>
+        <button class="btn danger sm" onclick="rsDelete('${id}')">削除</button></div>
+    </div>
+
+    <div class="field-row">
+      <div class="field"><label>種別</label><select onchange="rsField('${id}','type',this.value)"><option value="実験" ${!isChat?'selected':''}>実験（条件・工程を記録）</option><option value="チャット由来" ${isChat?'selected':''}>チャット由来メモ（結論のみ）</option></select></div>
+      <div class="field"><label>事業</label><select onchange="rsField('${id}','biz',this.value)">${BIZ_LIST.filter(b=>b!=='全般').map(b=>`<option ${r.biz===b?'selected':''}>${b}</option>`).join('')}</select></div>
+      <div class="field"><label>状態</label><select onchange="rsField('${id}','status',this.value)"><option ${r.status==='未着手'?'selected':''}>未着手</option><option ${r.status==='進行中'?'selected':''}>進行中</option><option ${r.status==='完了'?'selected':''}>完了</option><option ${r.status==='中止'?'selected':''}>中止</option></select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>記載日</label><input type="date" value="${r.createdDate}" onchange="rsField('${id}','createdDate',this.value)"></div>
+      <div class="field"><label>開始日</label><input type="date" value="${r.startDate}" onchange="rsField('${id}','startDate',this.value)"></div>
+      <div class="field"><label>終了日</label><input type="date" value="${r.endDate}" onchange="rsField('${id}','endDate',this.value)"></div>
+    </div>
+    <div class="field"><label>タイトル</label><input value="${esc(r.title)}" onchange="rsField('${id}','title',this.value)"></div>
+    <div class="field"><label>目的・きっかけ</label><textarea onchange="rsField('${id}','purpose',this.value)">${esc(r.purpose)}</textarea></div>
+
+    ${isChat ? `
+      <div class="section-label">結論（チャット由来）</div>
+      <div class="field"><textarea style="min-height:100px" onchange="rsField('${id}','conclusion',this.value)" placeholder="チャットの中でのやり取りから分かった結論・失敗点をそのまま記録">${esc(r.conclusion)}</textarea></div>
+    ` : `
+      <div class="section-label">比較条件</div>
+      <div class="field"><label>今回変えた要因</label><input value="${esc(r.compare.factor)}" onchange="rsCompare('${id}','factor',this.value)"></div>
+      <div class="field-row">
+        <div class="field"><label>固定した条件</label><input value="${esc(r.compare.fixed)}" onchange="rsCompare('${id}','fixed',this.value)"></div>
+        <div class="field"><label>対照とする研究No</label><select onchange="rsCompare('${id}','refNo',this.value)"><option value="">（選択してください）</option>${state.research.filter(x=>x.id!==id).map(x=>`<option value="${x.no}" ${x.no===r.compare.refNo?'selected':''}>${x.no ? 'No.'+x.no : '（未設定）'} — ${esc(x.title||'（無題）')}</option>`).join('')}</select></div>
+      </div>
+
+      <div class="section-label">試料（比較対象を複数登録できます）</div>
+      ${specimensHtml}
+      <button class="btn brass sm" style="background:var(--green);border-color:var(--green);color:#fff" onclick="rsAddSpecimen('${id}')">＋ 比較試料を追加（N${r.specimens.length+1}）</button>
+
+      <div class="section-label">結論</div>
+      <div class="field"><textarea style="min-height:70px" onchange="rsField('${id}','conclusion',this.value)">${esc(r.conclusion)}</textarea></div>
+    `}
+  `;
+}
+function syncTodoFromResearch(r, key, val){
+  const t = state.todos.find(x=>x.linkedResearchId===r.id); if(!t) return;
+  if(key==='title') t.title = `No.${r.no}　${val}`;
+  else if(key==='status') t.status = val;
+  else if(key==='biz') t.biz = val;
+  else if(key==='startDate') t.start = val;
+  else if(key==='endDate') t.due = val;
+}
+function rsField(id,key,val){
+  const r=state.research.find(x=>x.id===id); r[key]=val;
+  syncTodoFromResearch(r,key,val);
+  saveState(); if(key==='biz'||key==='type'||key==='status') render();
+}
+function rsObj(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].obj[key]=val; saveState(); }
+function rsSpecInput(id,si,key,ba,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].specs[key][ba]=val; saveState(); render(); }
+function rsCompare(id,key,val){ const r=state.research.find(x=>x.id===id); r.compare[key]=val; saveState(); }
+function rsPre(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].pre[key]=val; saveState(); }
+function rsCost(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].cost[key]=val; saveState(); render(); }
+function rsResult(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].result[key]=val; saveState(); }
+function rsSpecimenField(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si][key]=val; saveState(); render(); }
+function rsAddSpecimen(id){ const r=state.research.find(x=>x.id===id); r.specimens.push(emptySpecimen('N'+(r.specimens.length+1))); saveState(); render(); }
+function rsRemoveSpecimen(id,si){ const r=state.research.find(x=>x.id===id); if(!confirm('この試料を削除しますか？')) return; r.specimens.splice(si,1); saveState(); render(); }
+function rsAddStep(id,si){ const r=state.research.find(x=>x.id===id); const sp=r.specimens[si]; if(sp.steps.length>=20) return; sp.steps.push({processName:'',tool:'',grit:'',time:'',pressure:'',memo:'',beforeWeight:'',afterWeight:''}); saveState(); render(); }
+function rsRemoveStep(id,si,i){ const r=state.research.find(x=>x.id===id); r.specimens[si].steps.splice(i,1); saveState(); render(); }
+function rsStepInput(id,si,i,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].steps[i][key]=val; saveState(); }
+function rsStepToolChange(id,si,i,toolName){
+  const r=state.research.find(x=>x.id===id); const step=r.specimens[si].steps[i];
+  step.tool = toolName;
+  if(r.genre==='耐用・測定テスト' && toolName){
+    const lastAfter = findLastAfterWeight(toolName, id, si, i);
+    if(lastAfter!==null) step.beforeWeight = lastAfter;
+  }
+  saveState(); render();
+}
+function findLastAfterWeight(toolName, excludeResearchId, excludeSi, excludeStepIdx){
+  let best=null, bestTime=-Infinity;
+  state.research.forEach(r=>{
+    if(r.genre!=='耐用・測定テスト') return;
+    (r.specimens||[]).forEach((sp,si)=>{
+      (sp.steps||[]).forEach((s,i)=>{
+        if(s.tool!==toolName) return;
+        if(r.id===excludeResearchId && si===excludeSi && i===excludeStepIdx) return;
+        if(s.afterWeight===''||s.afterWeight==null) return;
+        const t=r.createdAt||0;
+        if(t>bestTime){ bestTime=t; best=s.afterWeight; }
+      });
+    });
+  });
+  return best;
+}
+function rsAddSpecimenPhotos(id,si,files){
+  const r=state.research.find(x=>x.id===id); const sp=r.specimens[si]; sp.photos=sp.photos||[];
+  Array.from(files).forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=()=>{ sp.photos.push(reader.result); saveState(); render(); };
+    reader.readAsDataURL(file);
+  });
+}
+function rsRemoveSpecimenPhoto(id,si,i){ const r=state.research.find(x=>x.id===id); r.specimens[si].photos.splice(i,1); saveState(); render(); }
+function rsDelete(id){
+  const r=state.research.find(x=>x.id===id); if(!r) return;
+  if(!confirm('この研究記録を削除しますか？（ゴミ箱に移動します）')) return;
+  state.research=state.research.filter(x=>x.id!==id);
+  state.todos.forEach(t=>{ if(t.linkedResearchId===id) t.linkedResearchId=null; });
+  moveToTrash('research',r);
+  saveState(); researchDetailId=null; render(); toast('ゴミ箱へ移動しました');
+}
+function exportResearchCSV(){
+  const rows=[];
+  state.research.forEach(r=>{
+    (r.specimens&&r.specimens.length?r.specimens:[emptySpecimen('-')]).forEach(sp=>{
+      rows.push({
+        No:r.no, 試料:sp.label, 種別:r.type, 事業:r.biz, タイトル:r.title, 状態:r.status,
+        記載日:r.createdDate, 開始日:r.startDate, 終了日:r.endDate,
+        メーカー:sp.obj.maker, 製品名:sp.obj.product, 材質:sp.obj.material, QTY:sp.qty,
+        最大径_前:sp.specs.maxDia.b, 最大径_後:sp.specs.maxDia.a, 径変化:diffCalc(sp.specs.maxDia.b,sp.specs.maxDia.a,'mm'),
+        重量_前:sp.specs.weight.b, 重量_後:sp.specs.weight.a, 重量変化:diffCalc(sp.specs.weight.b,sp.specs.weight.a,'g'),
+        目標時間:sp.cost.targetMin, 実時間:sp.cost.actualMin, 材料費:sp.cost.material,
+        仕上がり:sp.result.finish, 成功点:sp.result.good, 失敗点:sp.result.bad, 結論:r.conclusion,
+      });
+    });
+  });
+  exportCSV(rows, '加工研究一覧');
+}
+
+/* ---- 加工研究詳細内での画像D&D/貼り付け ---- */
+function attachDetailPhotoDrop(){
+  document.querySelectorAll('.photo-add[data-specimenidx]').forEach(el=>{
+    el.addEventListener('dragover',(ev)=>{ ev.preventDefault(); el.classList.add('dragover'); });
+    el.addEventListener('dragleave',()=>el.classList.remove('dragover'));
+    el.addEventListener('drop',(ev)=>{
+      ev.preventDefault(); el.classList.remove('dragover');
+      const files = Array.from(ev.dataTransfer.files).filter(f=>f.type.startsWith('image/'));
+      if(files.length) rsAddSpecimenPhotos(el.dataset.researchid, Number(el.dataset.specimenidx), files);
+    });
+  });
+}
+/* ---- 貼り付け対象（どの試料にCtrl+Vで貼るか） ---- */
+let activePasteTarget = null; // {id, si}
+function setPasteTarget(id, si){
+  activePasteTarget = {id, si};
+  render();
+  toast(`N${si+1} を貼り付け対象にしました。この状態で画像をコピーしてCtrl+Vしてください`);
+}
+
+document.addEventListener('paste',(ev)=>{
+  if(currentPage!=='research'||!researchDetailId) return;
+  const items = ev.clipboardData && ev.clipboardData.items; if(!items) return;
+  const target = (activePasteTarget && activePasteTarget.id===researchDetailId) ? activePasteTarget : {id:researchDetailId, si:0};
+  for(const it of items){
+    if(it.type.startsWith('image/')){
+      const file = it.getAsFile();
+      rsAddSpecimenPhotos(target.id, target.si, [file]);
+      toast(`クリップボードから画像を追加しました（N${target.si+1}）`);
+    }
+  }
+});
+
+/* ==========================================================================
+   工具マスタ
+   ========================================================================== */
+let toolFilterBiz=new Set();
+function renderToolsPage(container){
+  const bizChips=BIZ_LIST.map(b=>`<span class="pill biz-${b} ${toolFilterBiz.has(b)?'active':''}" onclick="toolFilterBiz.has('${b}')?toolFilterBiz.delete('${b}'):toolFilterBiz.add('${b}');render();">${b}</span>`).join('');
+  let items=[...state.tools].sort((a,b)=>(b.starter?1:0)-(a.starter?1:0)||b.createdAt-a.createdAt);
+  if(toolFilterBiz.size) items=items.filter(t=>toolFilterBiz.has(t.biz));
+  const rows=items.length?items.map(t=>{
+    const unit=(t.price&&t.life)?Math.round((Number(t.price)/Number(t.life))*10)/10:null;
+    const thumb=t.photos&&t.photos[0]?`<img class="thumb" src="${t.photos[0]}">`:`<div class="thumb empty-thumb">具</div>`;
+    return `<div class="swiperow" data-rowid="${t.id}">
+      <div class="swipe-del"><button onclick="toolDeleteDirect('${t.id}')">削除</button></div>
+      <div class="itemrow" style="border-color:var(--line)">
+        <button class="editbtn" onclick="event.stopPropagation();editTool('${t.id}')" title="編集"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+        ${thumb}
+        <div class="main" onclick="openToolDetail('${t.id}')">
+          <div class="ttl">${t.starter?'<span class="star">★</span> ':''}${esc(t.name)}</div>
+          <div class="meta"><span class="tag biz-${t.biz}">${t.biz}</span>${t.cat?`<span>${esc(t.cat)}</span>`:''}${t.spec?`<span>${esc(t.spec)}</span>`:''}${t.price?`<span>${Number(t.price).toLocaleString()}円</span>`:''}${unit!==null?`<span>原価/回 ${unit}円</span>`:''}
+          ${t.link?`<span><a href="${esc(t.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">購入先↗</a></span>`:''}</div>
+        </div>
+        <div class="right">
+          <button class="delbtn" onclick="event.stopPropagation();toolDeleteDirect('${t.id}')" title="削除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty">工具が登録されていません</div>`;
+  container.innerHTML=`<div class="filterbar">${bizChips}<span class="divider"></span>
+    <button class="btn sm ghost" onclick="toolFilterBiz.clear();render();">絞込解除</button>
+    <div class="spacer"></div><button class="btn sm" onclick="exportToolsCSV()">CSV出力</button>
+    <button class="btn primary sm" onclick="openToolModal()">＋ 工具を追加</button></div>
+    <div class="rowlist">${rows}</div>`;
+  document.querySelectorAll('.swiperow').forEach(row=>attachSwipe(row,()=>{}));
+}
+function openToolDetail(id){ editTool(id); } // シンプル化のため詳細=編集モーダルで表示
+function toolDeleteDirect(id){
+  const t=state.tools.find(x=>x.id===id); if(!t) return;
+  if(!confirm(`「${t.name}」を削除しますか？（ゴミ箱に移動します）`)) return;
+  state.tools=state.tools.filter(x=>x.id!==id); moveToTrash('tool',t); saveState(); render(); toast('ゴミ箱へ移動しました');
+}
+let editingToolId=null, toolPhotoBuffer=[];
+function renderToolPhotoStrip(){
+  const strip = document.getElementById('tl_photoStrip');
+  strip.innerHTML = toolPhotoBuffer.map((p,i)=>`<div class="photo-thumb"><img src="${p}" onclick="openLightboxImages(toolPhotoBuffer,${i})"><button class="x" onclick="event.stopPropagation();removeToolPhoto(${i})">×</button></div>`).join('')
+    + `<div class="photo-add" id="tl_dropzone">＋<span>D&D／貼付可</span></div>`;
+  const dz = document.getElementById('tl_dropzone');
+  dz.onclick = ()=>document.getElementById('tl_photoInput').click();
+  dz.addEventListener('dragover',(ev)=>{ ev.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+  dz.addEventListener('drop',(ev)=>{
+    ev.preventDefault(); dz.classList.remove('dragover');
+    const files=Array.from(ev.dataTransfer.files).filter(f=>f.type.startsWith('image/'));
+    files.forEach(readToolPhoto);
+  });
+}
+function readToolPhoto(file){
+  const reader=new FileReader();
+  reader.onload=()=>{ toolPhotoBuffer.push(reader.result); renderToolPhotoStrip(); };
+  reader.readAsDataURL(file);
+}
+function addToolPhoto(ev){ Array.from(ev.target.files).forEach(readToolPhoto); ev.target.value=''; }
+function removeToolPhoto(i){ toolPhotoBuffer.splice(i,1); renderToolPhotoStrip(); }
+document.addEventListener('paste',(ev)=>{
+  if(!document.getElementById('ov-tool').classList.contains('show')) return;
+  const items=ev.clipboardData&&ev.clipboardData.items; if(!items) return;
+  for(const it of items){ if(it.type.startsWith('image/')){ readToolPhoto(it.getAsFile()); toast('クリップボードから画像を追加しました'); } }
+});
+function calcUnitCost(){
+  const p=Number(document.getElementById('tl_price').value)||0;
+  const l=Number(document.getElementById('tl_life').value)||0;
+  document.getElementById('tl_unitcost').value = l ? (Math.round((p/l)*100)/100)+' 円' : '';
+}
+document.addEventListener('input',(e)=>{ if(e.target.id==='tl_price'||e.target.id==='tl_life') calcUnitCost(); });
+function openToolModal(){
+  editingToolId=null; toolPhotoBuffer=[];
+  document.getElementById('toolModalTitle').textContent='工具を追加';
+  ['tl_cat','tl_name','tl_spec','tl_price','tl_life','tl_link','tl_note'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('tl_biz').value='研磨';
+  document.getElementById('tl_starter').checked=false;
+  document.getElementById('tl_created').value=todayStr();
+  document.getElementById('tl_unitcost').value='';
+  document.getElementById('tl_autofillHint').textContent='';
+  document.getElementById('tl_delBtn').style.display='none';
+  renderToolPhotoStrip();
+  openOv('ov-tool');
+}
+function editTool(id){
+  const t=state.tools.find(x=>x.id===id); if(!t) return;
+  editingToolId=id; toolPhotoBuffer=(t.photos||[]).slice();
+  document.getElementById('toolModalTitle').textContent='工具を編集';
+  document.getElementById('tl_biz').value=t.biz;
+  document.getElementById('tl_cat').value=t.cat||'';
+  document.getElementById('tl_name').value=t.name;
+  document.getElementById('tl_spec').value=t.spec||'';
+  document.getElementById('tl_starter').checked=!!t.starter;
+  document.getElementById('tl_price').value=t.price||'';
+  document.getElementById('tl_life').value=t.life||'';
+  document.getElementById('tl_created').value=t.createdDate||todayStr();
+  document.getElementById('tl_link').value=t.link||'';
+  document.getElementById('tl_note').value=t.note||'';
+  document.getElementById('tl_autofillHint').textContent='';
+  calcUnitCost();
+  document.getElementById('tl_delBtn').style.display='inline-block';
+  renderToolPhotoStrip();
+  openOv('ov-tool');
+}
+function normalizeUrl(u){
+  u = (u||'').trim();
+  if(!u) return '';
+  if(!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  return u;
+}
+function submitTool(){
+  const name=document.getElementById('tl_name').value.trim();
+  if(!name){ toast('工具名を入力してください'); return; }
+  const data={biz:document.getElementById('tl_biz').value,cat:document.getElementById('tl_cat').value.trim(),name,spec:document.getElementById('tl_spec').value.trim(),starter:document.getElementById('tl_starter').checked,price:document.getElementById('tl_price').value,life:document.getElementById('tl_life').value,createdDate:document.getElementById('tl_created').value||todayStr(),link:normalizeUrl(document.getElementById('tl_link').value),note:document.getElementById('tl_note').value.trim(),photos:toolPhotoBuffer.slice()};
+  if(editingToolId){ Object.assign(state.tools.find(x=>x.id===editingToolId),data); }
+  else{ state.tools.push(Object.assign({id:uid('tl_'),createdAt:Date.now()},data)); }
+  saveState(); closeOv('ov-tool'); render(); toast('保存しました');
+}
+function deleteToolFromModal(){
+  if(!editingToolId) return;
+  const t=state.tools.find(x=>x.id===editingToolId);
+  state.tools=state.tools.filter(x=>x.id!==editingToolId);
+  moveToTrash('tool',t);
+  saveState(); closeOv('ov-tool'); render(); toast('ゴミ箱へ移動しました');
+}
+function exportToolsCSV(){
+  const rows=state.tools.map(t=>({事業:t.biz,カテゴリ:t.cat,工具名:t.name,仕様:t.spec,スタメン:t.starter?'○':'',価格:t.price,耐用回数:t.life,'原価/1回':(t.price&&t.life)?Math.round((t.price/t.life)*100)/100:'',記載日:t.createdDate,購入先:t.link,メモ:t.note}));
+  exportCSV(rows,'工具マスタ');
+}
+
+/* ==========================================================================
+   顧客管理
+   ========================================================================== */
+let custFilterBiz=new Set();
+function renderCustomersPage(container){
+  const bizChips=['研磨','動画編集','3Dプリンタ'].map(b=>`<span class="pill biz-${b} ${custFilterBiz.has(b)?'active':''}" onclick="custFilterBiz.has('${b}')?custFilterBiz.delete('${b}'):custFilterBiz.add('${b}');render();">${b}</span>`).join('');
+  let items=[...state.customers].sort((a,b)=>b.createdAt-a.createdAt);
+  if(custFilterBiz.size) items=items.filter(c=>(c.biz||[]).some(b=>custFilterBiz.has(b)));
+  const rows=items.length?items.map(c=>`
+    <div class="swiperow" data-rowid="${c.id}">
+      <div class="swipe-del"><button onclick="customerDeleteDirect('${c.id}')">削除</button></div>
+      <div class="itemrow st-border st-${c.status}">
+        <button class="editbtn" onclick="event.stopPropagation();editCustomer('${c.id}')" title="編集"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+        <div class="thumb empty-thumb">${esc((c.name||'？').slice(0,1))}</div>
+        <div class="main" onclick="editCustomer('${c.id}')">
+          <div class="ttl">${esc(c.name)}</div>
+          <div class="meta">${(c.biz||[]).map(b=>`<span class="tag biz-${b}">${b}</span>`).join('')}${c.tags?`<span>${esc(c.tags)}</span>`:''}</div>
+        </div>
+        <div class="right"><span class="st-chip st-${c.status}">${c.status}</span>
+          <button class="delbtn" onclick="event.stopPropagation();customerDeleteDirect('${c.id}')" title="削除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg></button>
+        </div>
+      </div>
+    </div>`).join('') : `<div class="empty">顧客が登録されていません</div>`;
+  container.innerHTML=`<div class="filterbar">${bizChips}<span class="divider"></span>
+    <button class="btn sm ghost" onclick="custFilterBiz.clear();render();">絞込解除</button>
+    <div class="spacer"></div><button class="btn sm" onclick="exportCustomersCSV()">CSV出力</button>
+    <button class="btn primary sm" onclick="openCustomerModal()">＋ 顧客を追加</button></div>
+    <div class="rowlist">${rows}</div>`;
+  document.querySelectorAll('.swiperow').forEach(row=>attachSwipe(row,()=>{}));
+}
+function customerDeleteDirect(id){
+  const c=state.customers.find(x=>x.id===id); if(!c) return;
+  if(!confirm(`「${c.name}」を削除しますか？（ゴミ箱に移動します）`)) return;
+  state.customers=state.customers.filter(x=>x.id!==id); moveToTrash('customer',c); saveState(); render(); toast('ゴミ箱へ移動しました');
+}
+let editingCustomerId=null;
+function openCustomerModal(){
+  editingCustomerId=null;
+  document.getElementById('custModalTitle').textContent='顧客を追加';
+  document.getElementById('cu_name').value='';
+  document.getElementById('cu_status').value='見込';
+  Array.from(document.getElementById('cu_biz').options).forEach(o=>o.selected=false);
+  document.getElementById('cu_contact').value='';
+  document.getElementById('cu_sns').value='';
+  document.getElementById('cu_created').value=todayStr();
+  document.getElementById('cu_tags').value='';
+  document.getElementById('cu_note').value='';
+  document.getElementById('cu_delBtn').style.display='none';
+  openOv('ov-customer');
+}
+function editCustomer(id){
+  const c=state.customers.find(x=>x.id===id); if(!c) return;
+  editingCustomerId=id;
+  document.getElementById('custModalTitle').textContent='顧客を編集';
+  document.getElementById('cu_name').value=c.name;
+  document.getElementById('cu_status').value=c.status;
+  Array.from(document.getElementById('cu_biz').options).forEach(o=>o.selected=(c.biz||[]).includes(o.value));
+  document.getElementById('cu_contact').value=c.contact||'';
+  document.getElementById('cu_sns').value=c.sns||'';
+  document.getElementById('cu_created').value=c.createdDate||todayStr();
+  document.getElementById('cu_tags').value=c.tags||'';
+  document.getElementById('cu_note').value=c.note||'';
+  document.getElementById('cu_delBtn').style.display='inline-block';
+  openOv('ov-customer');
+}
+function submitCustomer(){
+  const name=document.getElementById('cu_name').value.trim();
+  if(!name){ toast('お名前を入力してください'); return; }
+  const biz=Array.from(document.getElementById('cu_biz').selectedOptions).map(o=>o.value);
+  const data={name,status:document.getElementById('cu_status').value,biz,contact:document.getElementById('cu_contact').value.trim(),sns:document.getElementById('cu_sns').value.trim(),createdDate:document.getElementById('cu_created').value||todayStr(),tags:document.getElementById('cu_tags').value.trim(),note:document.getElementById('cu_note').value.trim()};
+  if(editingCustomerId){ Object.assign(state.customers.find(x=>x.id===editingCustomerId),data); }
+  else{ state.customers.push(Object.assign({id:uid('cu_'),createdAt:Date.now()},data)); }
+  saveState(); closeOv('ov-customer'); render(); toast('保存しました');
+}
+function deleteCustomerFromModal(){
+  if(!editingCustomerId) return;
+  const c=state.customers.find(x=>x.id===editingCustomerId);
+  state.customers=state.customers.filter(x=>x.id!==editingCustomerId);
+  moveToTrash('customer',c);
+  saveState(); closeOv('ov-customer'); render(); toast('ゴミ箱へ移動しました');
+}
+function exportCustomersCSV(){
+  const rows=state.customers.map(c=>({お名前:c.name,ステータス:c.status,事業:(c.biz||[]).join('/'),連絡先:c.contact,SNS:c.sns,記載日:c.createdDate,タグ:c.tags,備考:c.note}));
+  exportCSV(rows,'顧客管理');
+}
+
+/* ==========================================================================
+   ゴミ箱ページ
+   ========================================================================== */
+function renderTrash(){
+  if(!state.trash.length) return `<div class="empty">ゴミ箱は空です</div>`;
+  const typeLabel={todo:'ToDo',research:'加工研究',tool:'工具',customer:'顧客'};
+  const rows=[...state.trash].sort((a,b)=>b.deletedAt-a.deletedAt).map(t=>{
+    const name = t.type==='todo'?t.item.title : t.type==='research'?(t.item.title||'（無題）') : t.type==='tool'?t.item.name : t.item.name;
+    return `<div class="itemrow">
+      <div class="thumb empty-thumb">${typeLabel[t.type].slice(0,1)}</div>
+      <div class="main"><div class="ttl">${esc(name)}</div><div class="meta"><span>${typeLabel[t.type]}</span><span>削除日時：${new Date(t.deletedAt).toLocaleString('ja-JP')}</span></div></div>
+      <div class="right"><button class="btn sm" onclick="restoreFromTrash('${t.trashId}')">復元</button><button class="btn sm danger" onclick="purgeFromTrash('${t.trashId}')">完全削除</button></div>
+    </div>`;
+  }).join('');
+  return `<div class="trash-notice">ゴミ箱内のアイテムは自動削除されません。「完全に削除」を押すまで復元できます。</div>
+    <div class="filterbar"><div class="spacer"></div><button class="btn danger sm" onclick="purgeAllTrash()">すべて完全に削除</button></div>
+    <div class="rowlist">${rows}</div>`;
+}
+
+/* ==========================================================================
+   CSV 出力
+   ========================================================================== */
+function exportCSV(rows, baseName){
+  if(!rows.length){ toast('出力するデータがありません'); return; }
+  const headers = Object.keys(rows[0]);
+  const escCsv = (v)=>{
+    if(v==null) v='';
+    v = String(v).replace(/"/g,'""');
+    return /[",\n]/.test(v) ? `"${v}"` : v;
+  };
+  const lines = [headers.map(escCsv).join(',')];
+  rows.forEach(r=> lines.push(headers.map(h=>escCsv(r[h])).join(',')) );
+  const csv = '\uFEFF' + lines.join('\r\n'); // BOM付きでExcelの文字化けを防止
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`${baseName}_${todayStr()}.csv`; a.click();
+  toast('CSVを書き出しました');
+}
+
+/* ==========================================================================
+   起動
+   ========================================================================== */
+(async function init(){
+  const hasSupabase = initSupabase();
+  if(!hasSupabase){
+    // URL/キー未設定時はローカル動作（従来通り）
+    document.getElementById('loginScreen').style.display='none';
+    syncStatus='offline';
+    await loadState();
+    render();
+    return;
+  }
+  const {data} = await sb.auth.getSession();
+  if(data && data.session){
+    currentUser = data.session.user;
+    await afterLogin();
+  }else{
+    document.getElementById('loginScreen').style.display='flex';
+  }
+})();
+</script>
+</body>
+</html>
