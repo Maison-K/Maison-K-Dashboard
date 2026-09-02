@@ -527,6 +527,7 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
     <div class="modal-head"><h3>加工研究を追加</h3><button class="modal-close" onclick="closeOv('ov-newresearch')">×</button></div>
     <div class="modal-body">
       <div class="field"><label>タイトル</label><input id="nr_title" placeholder="例）センタドリル有無によるポリッシュの仕上がり確認、加工時間、作業性比較"></div>
+      <div class="field"><label>ジャンル</label><select id="nr_genre"><option value="加工研究">加工研究</option><option value="耐用・測定テスト">耐用・測定テスト</option></select></div>
       <div class="field"><label>事業</label><select id="nr_biz"><option>研磨</option><option>動画編集</option><option>3Dプリンタ</option></select></div>
     </div>
     <div class="modal-foot">
@@ -619,7 +620,7 @@ function autofillSpec(){
    データモデル
    ========================================================================== */
 const BIZ_LIST = ['研磨','動画編集','3Dプリンタ','全般'];
-const GENRE_LIST = ['定常業務','加工研究','デザイン','事務業務','禁止事項'];
+const GENRE_LIST = ['定常業務','加工研究','耐用・測定テスト','デザイン','事務業務','禁止事項'];
 const STATUS_LIST = ['未着手','進行中','完了'];
 
 let state = {
@@ -684,14 +685,14 @@ function emptySpecimen(label){
     specs:{maxDia:{b:'',a:''}, minDia:{b:'',a:''}, length:{b:'',a:''}, weight:{b:'',a:''}},
     steps:[],
     pre:{pretreat:'',coolant:'',wash:'',centerPress:''},
-    cost:{targetMin:'',actualMin:'', material:''},
+    cost:{targetMin:'',actualMin:'', material:'', packaging:'', shipping:''},
     result:{finish:'',good:'',bad:'',next:''},
     photos:[],
   };
 }
 function emptyResearch(biz){
   return {
-    id:null, no:null, biz:biz||'研磨', type:'実験',
+    id:null, no:null, biz:biz||'研磨', genre:'加工研究', type:'実験',
     title:'', purpose:'', createdDate:todayStr(), startDate:todayStr(), endDate:'',
     status:'進行中', conclusion:'',
     compare:{factor:'',fixed:'',refNo:''},
@@ -862,16 +863,18 @@ const ICONS = {
   cust:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.5 2.5-6 5.5-6s5.5 2.5 5.5 6"/><circle cx="18" cy="9" r="2.3"/><path d="M15.5 20c.2-2.8 1.9-4.8 4-4.8"/></svg>`,
   trash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg>`,
   timer:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>`,
+  durability:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v4M6 5l2.5 2.5M18 5l-2.5 2.5"/><circle cx="12" cy="14" r="7"/><path d="M12 14l3-3"/></svg>`,
 };
 let currentPage='dash';
-function setPage(p){ currentPage=p; render(); }
+function setPage(p){ currentPage=p; researchDetailId=null; render(); }
 function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('open'); }
 function renderNav(){
   const items=[
     {id:'dash',label:'ダッシュボード',icon:ICONS.dash},
     {id:'timer',label:'作業タイマー',icon:ICONS.timer},
     {id:'todo',label:'ToDoリスト',icon:ICONS.todo,count:state.todos.filter(t=>t.status!=='完了').length},
-    {id:'research',label:'加工研究',icon:ICONS.research,count:state.research.length},
+    {id:'research',label:'加工研究',icon:ICONS.research,count:state.research.filter(r=>r.genre!=='耐用・測定テスト').length},
+    {id:'durability',label:'耐用・測定記録',icon:ICONS.durability,count:state.research.filter(r=>r.genre==='耐用・測定テスト').length},
     {id:'tools',label:'工具マスタ',icon:ICONS.tools,count:state.tools.length},
     {id:'customers',label:'顧客管理',icon:ICONS.cust,count:state.customers.length},
   ];
@@ -919,15 +922,16 @@ function closeOv(id){ document.getElementById(id).classList.remove('show'); }
    ========================================================================== */
 function render(){
   renderNav();
-  const titleMap={dash:'ダッシュボード',timer:'作業タイマー',todo:'ToDoリスト',research:'加工研究',tools:'工具マスタ',customers:'顧客管理',trash:'ゴミ箱'};
+  const titleMap={dash:'ダッシュボード',timer:'作業タイマー',todo:'ToDoリスト',research:'加工研究',durability:'耐用・測定記録',tools:'工具マスタ',customers:'顧客管理',trash:'ゴミ箱'};
   document.getElementById('pageTitle').textContent=titleMap[currentPage]||'';
-  const subMap={dash:todayStr(),timer:'実作業時間を計測して工程表に反映',todo:'定常業務・加工研究・事務を横断管理',research:'比較検証の記録',tools:'保有工具・消耗品の台帳',customers:'見込み〜取引先の管理',trash:'削除済みアイテムの復元・完全削除'};
+  const subMap={dash:todayStr(),timer:'実作業時間を計測して工程表に反映',todo:'定常業務・加工研究・事務を横断管理',research:'比較検証の記録',durability:'工具・消耗品の使用量を工具ごとに集計',tools:'保有工具・消耗品の台帳',customers:'見込み〜取引先の管理',trash:'削除済みアイテムの復元・完全削除'};
   document.getElementById('pageSub').textContent=subMap[currentPage]||'';
   const c=document.getElementById('content');
   if(currentPage==='dash') c.innerHTML=renderDash();
   else if(currentPage==='timer') c.innerHTML=renderTimer();
   else if(currentPage==='todo') c.innerHTML=renderTodo();
   else if(currentPage==='research') renderResearchPage(c);
+  else if(currentPage==='durability') renderDurabilityPage(c);
   else if(currentPage==='tools') renderToolsPage(c);
   else if(currentPage==='customers') renderCustomersPage(c);
   else if(currentPage==='trash') c.innerHTML=renderTrash();
@@ -1360,16 +1364,16 @@ function submitTodo(){
   else{
     const id=uid('td_');
     state.todos.push(Object.assign({id,order:state.todos.length,createdAt:Date.now(),linkedResearchId:null},data));
-    if(genre==='加工研究'){
-      const r=emptyResearch(data.biz); r.id=uid('rs_'); r.no=nextResearchNo(); r.title=title; r.status=data.status;
+    if(genre==='加工研究' || genre==='耐用・測定テスト'){
+      const r=emptyResearch(data.biz); r.id=uid('rs_'); r.genre=genre; r.no=nextResearchNo(data.biz, genre); r.title=title; r.status=data.status;
       r.startDate = data.start || r.startDate; r.endDate = data.due || r.endDate;
       state.research.push(r);
       state.todos[state.todos.length-1].linkedResearchId=r.id;
-      toast('ToDoを追加し、加工研究レコードも作成しました');
+      toast('ToDoを追加し、'+genre+'レコードも作成しました');
     }
   }
   saveState(); closeOv('ov-todo'); render();
-  if(!editingTodoId && genre!=='加工研究') toast('ToDoを追加しました');
+  if(!editingTodoId && genre!=='加工研究' && genre!=='耐用・測定テスト') toast('ToDoを追加しました');
 }
 function deleteTodoFromModal(){
   if(!editingTodoId) return;
@@ -1378,7 +1382,10 @@ function deleteTodoFromModal(){
   moveToTrash('todo',t);
   saveState(); closeOv('ov-todo'); render(); toast('ゴミ箱へ移動しました');
 }
-function nextResearchNo(){ return state.research.reduce((m,r)=>Math.max(m,r.no||0),0)+1; }
+function nextResearchNo(biz, genre){ 
+  const filtered = state.research.filter(r => r.biz===biz && r.genre===genre);
+  return filtered.reduce((m,r)=>Math.max(m,r.no||0),0)+1;
+}
 
 /* ==========================================================================
    スワイプ削除の共通ハンドラ
@@ -1414,11 +1421,11 @@ function attachSwipe(rowEl, onDelete){
 /* ==========================================================================
    加工研究
    ========================================================================== */
-let researchFilterBiz=new Set(), researchDetailId=null;
+let researchFilterBiz=new Set(), researchDetailId=null, durabilityFilterTool='';
 function renderResearchPage(container){
   if(researchDetailId){ container.innerHTML=renderResearchDetail(researchDetailId); attachDetailPhotoDrop(); return; }
   const bizChips=BIZ_LIST.filter(b=>b!=='全般').map(b=>`<span class="pill biz-${b} ${researchFilterBiz.has(b)?'active':''}" onclick="researchFilterBiz.has('${b}')?researchFilterBiz.delete('${b}'):researchFilterBiz.add('${b}');render();">${b}</span>`).join('');
-  let items=[...state.research].sort((a,b)=>b.createdAt-a.createdAt);
+  let items=[...state.research].filter(r=>r.genre!=='耐用・測定テスト').sort((a,b)=>b.createdAt-a.createdAt);
   if(researchFilterBiz.size) items=items.filter(r=>researchFilterBiz.has(r.biz));
   const rows=items.length?items.map(r=>{
     const firstSp=(r.specimens&&r.specimens[0])||{};
@@ -1446,25 +1453,103 @@ function renderResearchPage(container){
     <div class="rowlist">${rows}</div>`;
   document.querySelectorAll('.swiperow').forEach(row=>attachSwipe(row, ()=>{}));
 }
-function newResearchDirect(title, biz){
-  const r=emptyResearch(biz||'研磨'); r.id=uid('rs_'); r.no=nextResearchNo(); r.title=title||'';
+
+/* ==========================================================================
+   耐用・測定記録ページ（工具の消耗を集約）
+   ========================================================================== */
+function collectDurabilityUsage(){
+  // 工具名ごとに { count, consumed, unitGuess } を集計
+  const map={};
+  state.research.forEach(r=>{
+    if(r.genre!=='耐用・測定テスト') return;
+    (r.specimens||[]).forEach(sp=>{
+      (sp.steps||[]).forEach(s=>{
+        if(!s.tool) return;
+        if(s.beforeWeight===''||s.beforeWeight==null||s.afterWeight===''||s.afterWeight==null) return;
+        const diff = Number(s.beforeWeight)-Number(s.afterWeight);
+        if(!map[s.tool]) map[s.tool]={count:0,consumed:0};
+        map[s.tool].count += 1;
+        map[s.tool].consumed += diff;
+      });
+    });
+  });
+  return map;
+}
+function renderDurabilityPage(container){
+  if(researchDetailId){ container.innerHTML=renderResearchDetail(researchDetailId); attachDetailPhotoDrop(); return; }
+  const usage = collectDurabilityUsage();
+  const toolNames = Object.keys(usage).sort();
+  const toolChips = toolNames.map(t=>`<span class="pill ${durabilityFilterTool===t?'active':''}" onclick="durabilityFilterTool=(durabilityFilterTool==='${esc(t).replace(/'/g,"&#39;")}'?'':'${esc(t).replace(/'/g,"&#39;")}');render();">${esc(t)}</span>`).join('');
+
+  const summaryRows = toolNames.length ? toolNames.map(t=>{
+    const u=usage[t];
+    const toolMaster = state.tools.find(x=>x.name===t);
+    const lifeGuess = toolMaster&&toolMaster.life ? toolMaster.life : '';
+    return `<div class="itemrow" style="cursor:default">
+      <div class="thumb empty-thumb">測</div>
+      <div class="main">
+        <div class="ttl">${esc(t)}</div>
+        <div class="meta"><span>使用回数：${u.count}回</span><span>累計消耗：${Math.round(u.consumed*1000)/1000} g</span>${lifeGuess?`<span class="mute">工具マスタの耐用回数（手入力）：${lifeGuess}回</span>`:''}</div>
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty">まだ使用前後の重量が記録された工程がありません。加工研究を「耐用・測定テスト」ジャンルで作成し、工程表で工具を選んで使用前後の重量を入力してください。</div>`;
+
+  let items=[...state.research].filter(r=>r.genre==='耐用・測定テスト').sort((a,b)=>b.createdAt-a.createdAt);
+  if(durabilityFilterTool){
+    items=items.filter(r=>(r.specimens||[]).some(sp=>(sp.steps||[]).some(s=>s.tool===durabilityFilterTool)));
+  }
+  const rows=items.length?items.map(r=>{
+    const firstSp=(r.specimens&&r.specimens[0])||{};
+    const thumb=r.photos&&r.photos[0]?`<img class="thumb" src="${r.photos[0]}">`:`<div class="thumb empty-thumb">測</div>`;
+    return `<div class="swiperow" data-rowid="${r.id}">
+      <div class="swipe-del"><button onclick="rsDelete('${r.id}')">削除</button></div>
+      <div class="itemrow st-border st-${r.status}">
+        <button class="editbtn" onclick="event.stopPropagation();openResearchDetail('${r.id}')" title="編集"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+        ${thumb}
+        <div class="main" onclick="openResearchDetail('${r.id}')">
+          <div class="ttl">No.${r.no}　${esc(r.title||'（無題）')}</div>
+          <div class="meta"><span class="tag biz-${r.biz}">${r.biz}</span><span>${r.createdDate||''}</span></div>
+        </div>
+        <div class="right"><span class="st-chip st-${r.status}">${r.status}</span>
+          <button class="delbtn" onclick="event.stopPropagation();rsDelete('${r.id}')" title="削除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty">耐用・測定テストの記録はまだありません。</div>`;
+
+  container.innerHTML=`
+    <div class="section-label">工具ごとの集計</div>
+    <div class="filterbar">${toolChips || '<span class="mute">記録が増えると、ここに工具ごとのフィルターが表示されます</span>'}${durabilityFilterTool?`<span class="divider"></span><button class="btn sm ghost" onclick="durabilityFilterTool='';render();">絞込解除</button>`:''}</div>
+    <div class="rowlist" style="margin-bottom:20px">${summaryRows}</div>
+
+    <div class="section-label">記録一覧</div>
+    <div class="filterbar"><div class="spacer"></div>
+      <button class="btn primary sm" onclick="openNewResearchModal('耐用・測定テスト')">＋ 新規記録</button></div>
+    <div class="rowlist">${rows}</div>`;
+  document.querySelectorAll('.swiperow').forEach(row=>attachSwipe(row, ()=>{}));
+}
+function newResearchDirect(title, biz, genre){
+  genre = genre || '加工研究';
+  const r=emptyResearch(biz||'研磨'); r.id=uid('rs_'); r.genre=genre; r.no=nextResearchNo(biz||'研磨', genre); r.title=title||'';
   state.research.push(r);
   const todoId=uid('td_');
-  state.todos.push({id:todoId,title:`No.${r.no}　${title||'（無題の加工研究）'}`,biz:r.biz,genre:'加工研究',priority:'中',status:r.status,start:r.startDate||'',due:r.endDate||'',note:'',order:state.todos.length,createdAt:Date.now(),linkedResearchId:r.id});
+  state.todos.push({id:todoId,title:`No.${r.no}　${title||'（無題）'}`,biz:r.biz,genre:genre,priority:'中',status:r.status,start:r.startDate||'',due:r.endDate||'',note:'',order:state.todos.length,createdAt:Date.now(),linkedResearchId:r.id});
   saveState(); openResearchDetail(r.id);
-  toast('加工研究を追加し、ToDoリストにも連携しました');
+  toast(genre+'を追加し、ToDoリストにも連携しました');
 }
-function openNewResearchModal(){
+function openNewResearchModal(presetGenre){
   document.getElementById('nr_title').value='';
   document.getElementById('nr_biz').value='研磨';
+  document.getElementById('nr_genre').value=presetGenre||'加工研究';
   openOv('ov-newresearch');
 }
 function submitNewResearch(){
   const title=document.getElementById('nr_title').value.trim();
   if(!title){ toast('タイトルを入力してください'); return; }
   const biz=document.getElementById('nr_biz').value;
+  const genre=document.getElementById('nr_genre').value;
   closeOv('ov-newresearch');
-  newResearchDirect(title, biz);
+  newResearchDirect(title, biz, genre);
 }
 function openResearchDetail(id){ researchDetailId=id; render(); }
 function closeResearchDetail(){ researchDetailId=null; render(); }
@@ -1499,19 +1584,28 @@ function renderResearchDetail(id){
   const r=state.research.find(x=>x.id===id); if(!r) return `<div class="empty">見つかりません</div>`;
   const isChat=r.type==='チャット由来';
 
+  const isDurability = r.genre==='耐用・測定テスト';
   const specimensHtml = (r.specimens||[]).map((sp,si)=>{
-    const stepsRows=sp.steps.map((s,i)=>`
+    const stepsRows=sp.steps.map((s,i)=>{
+      const consumed = (s.beforeWeight!=='' && s.beforeWeight!=null && s.afterWeight!=='' && s.afterWeight!=null)
+        ? (Math.round((Number(s.beforeWeight)-Number(s.afterWeight))*1000)/1000) : '';
+      return `
       <tr>
         <td class="step-num">${i+1}</td>
         <td><input value="${esc(s.processName)}" placeholder="例）洗浄／測定／研磨" oninput="rsStepInput('${id}',${si},${i},'processName',this.value)"></td>
-        <td><select onchange="rsStepInput('${id}',${si},${i},'tool',this.value)"><option value="">（選択）</option>${toolOptionsFor(r.biz)}</select>
+        <td><select onchange="rsStepToolChange('${id}',${si},${i},this.value)"><option value="">（選択）</option>${toolOptionsFor(r.biz)}</select>
             ${s.tool&&!state.tools.some(t=>t.name===s.tool)?`<input value="${esc(s.tool)}" oninput="rsStepInput('${id}',${si},${i},'tool',this.value)" style="margin-top:4px">`:''}</td>
         <td><input value="${esc(s.grit)}" placeholder="番手/粒径" oninput="rsStepInput('${id}',${si},${i},'grit',this.value)"></td>
         <td><input value="${esc(s.time)}" type="number" placeholder="分" style="width:56px" oninput="rsStepInput('${id}',${si},${i},'time',this.value)"></td>
         <td><input value="${esc(s.pressure)}" placeholder="押し圧" oninput="rsStepInput('${id}',${si},${i},'pressure',this.value)"></td>
+        ${isDurability ? `
+        <td><input value="${esc(s.beforeWeight)}" type="number" step="0.001" placeholder="使用前(g)" style="width:76px" oninput="rsStepInput('${id}',${si},${i},'beforeWeight',this.value)"></td>
+        <td><input value="${esc(s.afterWeight)}" type="number" step="0.001" placeholder="使用後(g)" style="width:76px" oninput="rsStepInput('${id}',${si},${i},'afterWeight',this.value)"></td>
+        <td class="mute" style="text-align:right">${consumed}</td>` : ''}
         <td><input value="${esc(s.memo)}" placeholder="メモ" oninput="rsStepInput('${id}',${si},${i},'memo',this.value)"></td>
         <td><button class="step-del" onclick="rsRemoveStep('${id}',${si},${i})">×</button></td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
 
     const photosHtml=(sp.photos||[]).map((p,i)=>`<div class="photo-thumb"><img src="${p}" onclick="openLightbox('${id}',${si},${i})"><button class="x" onclick="event.stopPropagation();rsRemoveSpecimenPhoto('${id}',${si},${i})">×</button></div>`).join('');
 
@@ -1563,9 +1657,9 @@ function renderResearchDetail(id){
         <div class="field"><label>重量変化（自動）</label><input value="${diffCalc(sp.specs.weight.b,sp.specs.weight.a,'g')}" readonly></div>
       </div>
 
-      <div class="section-label">加工工程表</div>
+      <div class="section-label">${isDurability?'加工工程表（工具の消耗を記録）':'加工工程表'}</div>
       <table class="step-table">
-        <thead><tr><th style="width:22px">#</th><th style="width:14%">工程名称</th><th style="width:20%">工具</th><th style="width:11%">番手/粒径</th><th style="width:7%">時間</th><th style="width:12%">押し圧</th><th>メモ</th><th style="width:18px"></th></tr></thead>
+        <thead><tr><th style="width:22px">#</th><th style="width:14%">工程名称</th><th style="width:18%">工具</th><th style="width:9%">番手/粒径</th><th style="width:6%">時間</th><th style="width:9%">押し圧</th>${isDurability?'<th style="width:9%">使用前(g)</th><th style="width:9%">使用後(g)</th><th style="width:8%">消耗(g)</th>':''}<th>メモ</th><th style="width:18px"></th></tr></thead>
         <tbody>${stepsRows}</tbody>
       </table>
       <button class="btn sm ghost" style="margin-top:8px" onclick="rsAddStep('${id}',${si})" ${sp.steps.length>=20?'disabled':''}>＋ 工程を追加（${sp.steps.length}/20）</button>
@@ -1581,12 +1675,18 @@ function renderResearchDetail(id){
       <div class="field-row">
         <div class="field"><label>目標時間（分）</label><input type="number" value="${esc(sp.cost.targetMin)}" onchange="rsCost('${id}',${si},'targetMin',this.value)"></div>
         <div class="field"><label>実時間（1本あたり・分）</label><input type="number" value="${esc(sp.cost.actualMin)}" onchange="rsCost('${id}',${si},'actualMin',this.value)"></div>
-        <div class="field"><label>合計時間（自動＝実時間×QTY）</label><input value="${totalMin} 分" readonly></div>
+        <div class="field"><label>合計時間（自動＝実時間×QTY）</label><input value="${Math.round(totalMin*10)/10} 分" readonly></div>
       </div>
       <div class="field-row">
         <div class="field"><label>材料費（1本あたり・円）</label><input type="number" value="${esc(sp.cost.material)}" onchange="rsCost('${id}',${si},'material',this.value)"></div>
         <div class="field"><label>合計材料費（自動＝材料費×QTY）</label><input value="${Math.round(totalMaterial)} 円" readonly></div>
+      <div class="field-row">
+        <div class="field"><label>梱包材費（1本あたり・円）</label><input type="number" value="${esc(sp.cost.packaging)}" onchange="rsCost('${id}',${si},'packaging',this.value)"></div>
+        <div class="field"><label>送料（1本あたり・円）</label><input type="number" value="${esc(sp.cost.shipping)}" onchange="rsCost('${id}',${si},'shipping',this.value)"></div>
+      </div>
+      <div class="field-row">
         <div class="field"><label>合計原価（自動＝時給×合計時間＋合計材料費）</label><input value="${Math.round(total)} 円" readonly></div>
+        <div class="field"><label>想定売価（自動＝合計原価＋梱包＋送料）</label><input value="${Math.round(total + (Number(sp.cost.packaging)||0) * (Number(sp.qty)||1) + (Number(sp.cost.shipping)||0) * (Number(sp.qty)||1))} 円" readonly style="background:#e3f0ea;font-weight:600;"></div>
       </div>
 
       <div class="section-label">結果</div>
@@ -1638,7 +1738,7 @@ function renderResearchDetail(id){
       <div class="field"><label>今回変えた要因</label><input value="${esc(r.compare.factor)}" onchange="rsCompare('${id}','factor',this.value)"></div>
       <div class="field-row">
         <div class="field"><label>固定した条件</label><input value="${esc(r.compare.fixed)}" onchange="rsCompare('${id}','fixed',this.value)"></div>
-        <div class="field"><label>対照とする研究No</label><input value="${esc(r.compare.refNo)}" placeholder="例）No.3" onchange="rsCompare('${id}','refNo',this.value)"></div>
+        <div class="field"><label>対照とする研究No</label><select onchange="rsCompare('${id}','refNo',this.value)"><option value="">（選択してください）</option>${state.research.filter(x=>x.id!==id).map(x=>`<option value="${x.no}" ${x.no===r.compare.refNo?'selected':''}>${x.no ? 'No.'+x.no : '（未設定）'} — ${esc(x.title||'（無題）')}</option>`).join('')}</select></div>
       </div>
 
       <div class="section-label">試料（比較対象を複数登録できます）</div>
@@ -1672,9 +1772,34 @@ function rsResult(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.s
 function rsSpecimenField(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si][key]=val; saveState(); render(); }
 function rsAddSpecimen(id){ const r=state.research.find(x=>x.id===id); r.specimens.push(emptySpecimen('N'+(r.specimens.length+1))); saveState(); render(); }
 function rsRemoveSpecimen(id,si){ const r=state.research.find(x=>x.id===id); if(!confirm('この試料を削除しますか？')) return; r.specimens.splice(si,1); saveState(); render(); }
-function rsAddStep(id,si){ const r=state.research.find(x=>x.id===id); const sp=r.specimens[si]; if(sp.steps.length>=20) return; sp.steps.push({processName:'',tool:'',grit:'',time:'',pressure:'',memo:''}); saveState(); render(); }
+function rsAddStep(id,si){ const r=state.research.find(x=>x.id===id); const sp=r.specimens[si]; if(sp.steps.length>=20) return; sp.steps.push({processName:'',tool:'',grit:'',time:'',pressure:'',memo:'',beforeWeight:'',afterWeight:''}); saveState(); render(); }
 function rsRemoveStep(id,si,i){ const r=state.research.find(x=>x.id===id); r.specimens[si].steps.splice(i,1); saveState(); render(); }
 function rsStepInput(id,si,i,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].steps[i][key]=val; saveState(); }
+function rsStepToolChange(id,si,i,toolName){
+  const r=state.research.find(x=>x.id===id); const step=r.specimens[si].steps[i];
+  step.tool = toolName;
+  if(r.genre==='耐用・測定テスト' && toolName){
+    const lastAfter = findLastAfterWeight(toolName, id, si, i);
+    if(lastAfter!==null) step.beforeWeight = lastAfter;
+  }
+  saveState(); render();
+}
+function findLastAfterWeight(toolName, excludeResearchId, excludeSi, excludeStepIdx){
+  let best=null, bestTime=-Infinity;
+  state.research.forEach(r=>{
+    if(r.genre!=='耐用・測定テスト') return;
+    (r.specimens||[]).forEach((sp,si)=>{
+      (sp.steps||[]).forEach((s,i)=>{
+        if(s.tool!==toolName) return;
+        if(r.id===excludeResearchId && si===excludeSi && i===excludeStepIdx) return;
+        if(s.afterWeight===''||s.afterWeight==null) return;
+        const t=r.createdAt||0;
+        if(t>bestTime){ bestTime=t; best=s.afterWeight; }
+      });
+    });
+  });
+  return best;
+}
 function rsAddSpecimenPhotos(id,si,files){
   const r=state.research.find(x=>x.id===id); const sp=r.specimens[si]; sp.photos=sp.photos||[];
   Array.from(files).forEach(file=>{
