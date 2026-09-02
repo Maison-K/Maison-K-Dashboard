@@ -494,7 +494,10 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
   <div class="modal">
     <div class="modal-head"><h3 id="custModalTitle">顧客を追加</h3><button class="modal-close" onclick="closeOv('ov-customer')">×</button></div>
     <div class="modal-body">
-      <div class="field"><label>お名前 / OG名</label><input id="cu_name"></div>
+      <div class="field-row">
+        <div class="field" style="max-width:100px"><label>顧客番号</label><input id="cu_custNo" placeholder="自動"></div>
+        <div class="field"><label>お名前 / OG名</label><input id="cu_name"></div>
+      </div>
       <div class="field-row">
         <div class="field"><label>ステータス</label><select id="cu_status"><option>見込</option><option>取引中</option><option>休眠</option></select></div>
         <div class="field"><label>取引のある事業</label><select id="cu_biz" multiple size="3"><option>研磨</option><option>動画編集</option><option>3Dプリンタ</option></select></div>
@@ -508,6 +511,7 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
         <div class="field"><label>タグ</label><input id="cu_tags" placeholder="OG、常連 など、カンマ区切り"></div>
       </div>
       <div class="field"><label>備考・依頼履歴メモ</label><textarea id="cu_note" style="min-height:90px"></textarea></div>
+      <div id="cu_ordersSection"></div>
     </div>
     <div class="modal-foot">
       <button class="btn danger" id="cu_delBtn" style="display:none" onclick="deleteCustomerFromModal()">削除</button>
@@ -667,6 +671,9 @@ function autofillSpec(){
    ========================================================================== */
 const BIZ_LIST = ['研磨','動画編集','3Dプリンタ','全般'];
 const GENRE_LIST = ['定常業務','製造','加工研究','耐用・測定テスト','デザイン','事務業務','禁止事項'];
+const SERVICE_CODE_LIST = ['3D','BK','CS','DO','PO'];
+const SERVICE_CODE_LABELS = {'3D':'3Dプリンタ','BK':'量産品（Bulk）','CS':'一般顧客モデル（Customer）','DO':'製作図面依頼（DWG Order）','PO':'研磨（Polish）'};
+const DART_TYPE_LIST = ['2BA','Steel'];
 const WEIGHT_UNIT_LIST = ['g','mg','mm','μm','ml','回'];
 const STATUS_LIST = ['未着手','進行中','完了'];
 
@@ -725,6 +732,7 @@ function migrateResearchRecord(raw){
   const base = emptyResearch(raw.biz||'研磨');
   base.id = raw.id || base.id;
   base.no = (raw.no!=null) ? raw.no : base.no;
+  base.genre = raw.genre || base.genre;
   base.type = raw.type || base.type;
   base.title = raw.title || base.title;
   base.purpose = raw.purpose || base.purpose;
@@ -734,6 +742,7 @@ function migrateResearchRecord(raw){
   base.status = ['未着手','進行中','完了','中止'].includes(raw.status) ? raw.status : base.status;
   base.conclusion = raw.conclusion || base.conclusion;
   base.compare = Object.assign({}, base.compare, raw.compare||{});
+  base.order = Object.assign({}, base.order, raw.order||{});
   base.photos = raw.photos || base.photos;
   base.createdAt = raw.createdAt || base.createdAt;
   base.updatedAt = raw.updatedAt || raw.createdAt || base.updatedAt;
@@ -750,6 +759,13 @@ function migrateRoughnessRecord(raw){ return Object.assign(emptyRoughness(), raw
 function migrateTodoRecord(raw){
   if(raw.updatedAt==null) raw.updatedAt = raw.createdAt || Date.now();
   return raw;
+}
+function backfillCustomerNos(st){
+  let max = st.customers.reduce((m,c)=>{ const n=parseInt(c.custNo,10); return isNaN(n)?m:Math.max(m,n); },0);
+  [...st.customers].sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)).forEach(c=>{
+    if(!c.custNo){ max+=1; c.custNo=String(max).padStart(3,'0'); }
+  });
+  return st;
 }
 function seedDefaultTools(st){
   const already = st.tools.some(t=>t.biz==='3Dプリンタ' && t.name==='PLA-Basic');
@@ -775,7 +791,7 @@ function migrateState(raw){
     trash: Array.isArray(raw.trash)?raw.trash:[],
     settings: Object.assign({hourly:1800,packMaterial:70,shipping:870,packMin:30,printerHourly:1700,cadMonthlyUsd:4,usdJpyRate:159}, raw.settings||{}),
   };
-  return seedDefaultTools(st);
+  return seedDefaultTools(backfillCustomerNos(st));
 }
 
 function emptySpecimen(label){
@@ -784,7 +800,7 @@ function emptySpecimen(label){
     obj:{maker:'',product:'',material:'',country:'',magnetism:'',cond:'新品',preOverhaul:'なし',spec:''},
     specs:{maxDia:{b:'',a:''}, minDia:{b:'',a:''}, length:{b:'',a:''}, weight:{b:'',a:''}},
     steps:[], weightUnit:'g',
-    print3d:{filamentTool:'', gramsUsed:3, hCounsel:'', hModel:'', hPrint:'', hPack:''},
+    print3d:{filamentTool:'', gramsUsed:3, mCounsel:'', mModel:'', mPrint:'', mPack:''},
     pre:{pretreat:'',coolant:'',wash:'',centerPress:''},
     cost:{targetMin:'',actualMin:'', material:'', packaging:state.settings.packMaterial, shipping:state.settings.shipping},
     result:{finish:'',good:'',bad:'',next:''},
@@ -798,11 +814,12 @@ function emptyResearch(biz){
     status:'進行中', conclusion:'',
     compare:{factor:'',fixed:'',refNo:''},
     specimens:[emptySpecimen('N1')],
+    order:{customerId:'', serviceCode:'', version:null, dartType:'', invoiceNo:'', invoicePdfUrl:'', groupTag:''},
     photos:[], createdAt:Date.now(), updatedAt:Date.now(),
   };
 }
 function emptyTool(){ return {id:null,biz:'研磨',cat:'',name:'',spec:'',starter:false,price:'',life:'',weightG:'',link:'',note:'',createdDate:todayStr(),photos:[],createdAt:Date.now(),updatedAt:Date.now()}; }
-function emptyCustomer(){ return {id:null,name:'',status:'見込',biz:[],contact:'',sns:'',tags:'',note:'',createdDate:todayStr(),createdAt:Date.now(),updatedAt:Date.now()}; }
+function emptyCustomer(){ return {id:null,custNo:'',name:'',status:'見込',biz:[],contact:'',sns:'',tags:'',note:'',createdDate:todayStr(),createdAt:Date.now(),updatedAt:Date.now()}; }
 function emptyRoughness(){
   return {
     id:null, no:null, checked:false, personName:'',
@@ -1658,7 +1675,7 @@ function renderResearchPage(container){
         ${thumb}
         <div class="main" onclick="openResearchDetail('${r.id}')">
           <div class="ttl">No.${r.no}　${esc(r.title||'（無題）')} ${r.type==='チャット由来'?'<span class="mute" style="font-size:10px">［チャット由来メモ］</span>':''}</div>
-          <div class="meta"><span class="tag" style="background:var(--paper-deep);color:var(--ink-soft)">${r.genre}</span><span class="tag biz-${r.biz}">${r.biz}</span>${firstSp.obj&&firstSp.obj.material?`<span>${esc(firstSp.obj.material)}</span>`:''}${spCount>1?`<span>試料${spCount}件</span>`:''}</div>
+          <div class="meta"><span class="tag" style="background:var(--paper-deep);color:var(--ink-soft)">${r.genre}</span><span class="tag biz-${r.biz}">${r.biz}</span>${firstSp.obj&&firstSp.obj.material?`<span>${esc(firstSp.obj.material)}</span>`:''}${spCount>1?`<span>試料${spCount}件</span>`:''}${orderCodeFor(r)?`<span class="mute" style="font-family:var(--mono)">${orderCodeFor(r)}</span>`:''}</div>
           <div class="datestamp">作成 ${fmtDT(r.createdAt)}　更新 ${fmtDT(r.updatedAt)}</div>
         </div>
         <div class="right"><span class="st-chip st-${r.status}">${r.status}</span>
@@ -1816,6 +1833,10 @@ function renderDurabilityPage(container){
    面粗度比較
    ========================================================================== */
 function nextRoughnessNo(){ return state.roughness.reduce((m,x)=>Math.max(m,x.no||0),0)+1; }
+function nextCustomerNo(){
+  const max = state.customers.reduce((m,c)=>{ const n=parseInt(c.custNo,10); return isNaN(n)?m:Math.max(m,n); },0);
+  return String(max+1).padStart(3,'0');
+}
 function roughField(id,key,val){
   const row=state.roughness.find(x=>x.id===id); if(!row) return;
   row[key]=val; touch(row); saveState();
@@ -1947,14 +1968,14 @@ function render3DSection(id,si,sp,calc){
   return `
       <div class="section-label">3Dプリンター工程</div>
       <div class="field-row">
-        <div class="field"><label>カウンセリング（時間）</label><input type="number" step="0.1" value="${esc(p3.hCounsel)}" onchange="rs3D('${id}',${si},'hCounsel',this.value)"></div>
-        <div class="field"><label>3Dモデル作成（時間）</label><input type="number" step="0.1" value="${esc(p3.hModel)}" onchange="rs3D('${id}',${si},'hModel',this.value)"></div>
+        <div class="field"><label>カウンセリング（分）</label><input type="number" step="1" value="${esc(p3.mCounsel)}" onchange="rs3D('${id}',${si},'mCounsel',this.value)"></div>
+        <div class="field"><label>3Dモデル作成（分）</label><input type="number" step="1" value="${esc(p3.mModel)}" onchange="rs3D('${id}',${si},'mModel',this.value)"></div>
       </div>
       <div class="field-row">
-        <div class="field"><label>造形作業（時間）</label><input type="number" step="0.1" value="${esc(p3.hPrint)}" onchange="rs3D('${id}',${si},'hPrint',this.value)"></div>
-        <div class="field"><label>梱包発送（時間）</label><input type="number" step="0.1" value="${esc(p3.hPack)}" onchange="rs3D('${id}',${si},'hPack',this.value)"></div>
+        <div class="field"><label>造形作業（分）</label><input type="number" step="1" value="${esc(p3.mPrint)}" onchange="rs3D('${id}',${si},'mPrint',this.value)"></div>
+        <div class="field"><label>梱包発送（分）</label><input type="number" step="1" value="${esc(p3.mPack)}" onchange="rs3D('${id}',${si},'mPack',this.value)"></div>
       </div>
-      <div class="field"><label>合計作業時間（自動）</label><input value="${Math.round(calc.totalHours3D*100)/100} 時間" readonly></div>
+      <div class="field"><label>合計作業時間（自動）</label><input value="${calc.totalMinutes3D} 分（${Math.round(calc.totalHours3D*100)/100} 時間）" readonly></div>
 
       <div class="section-label">材料費（フィラメント・工具マスターから選択）</div>
       <div class="field-row">
@@ -1983,6 +2004,27 @@ function render3DSection(id,si,sp,calc){
       </div>
       <div class="mute" style="font-size:10.5px;margin:-6px 0 4px">※製造原価＝材料費＋梱包費＋送料＋人件費（÷0.75上乗せ後）＋ソフト原価。販売価格は別途検討します。</div>
 `;
+}
+function orderCodeFor(r){
+  if(!r || !r.order || !r.order.customerId || !r.order.serviceCode) return '';
+  const c = state.customers.find(x=>x.id===r.order.customerId);
+  if(!c) return '';
+  const v = r.order.version!=null ? ('V'+r.order.version) : '';
+  const dart = r.order.dartType ? ('-'+r.order.dartType) : '';
+  return `MK${r.order.serviceCode}${c.custNo||'???'}${v}${dart}`;
+}
+function rsOrder(id,key,val){
+  const r=state.research.find(x=>x.id===id); if(!r) return;
+  r.order[key]=val;
+  if(key==='customerId'||key==='serviceCode'){
+    if(r.order.customerId && r.order.serviceCode){
+      const count = state.research.filter(x=>x.id!==r.id && x.order && x.order.customerId===r.order.customerId && x.order.serviceCode===r.order.serviceCode).length;
+      r.order.version = count+1;
+    } else {
+      r.order.version = null;
+    }
+  }
+  touch(r); saveState(); render();
 }
 function renderResearchDetail(id){
   const r=state.research.find(x=>x.id===id); if(!r) return `<div class="empty">見つかりません</div>`;
@@ -2026,8 +2068,9 @@ function renderResearchDetail(id){
     const filamentTool = state.tools.find(t=>t.name===p3.filamentTool);
     const filamentUnitCostG = (filamentTool && Number(filamentTool.price) && Number(filamentTool.weightG)) ? Number(filamentTool.price)/Number(filamentTool.weightG) : 0;
     const filamentMaterialCost = filamentUnitCostG * (Number(p3.gramsUsed)||0);
-    const hCounsel=Number(p3.hCounsel)||0, hModel=Number(p3.hModel)||0, hPrint=Number(p3.hPrint)||0, hPack=Number(p3.hPack)||0;
-    const totalHours3D = hCounsel+hModel+hPrint+hPack;
+    const mCounsel=Number(p3.mCounsel)||0, mModel=Number(p3.mModel)||0, mPrint=Number(p3.mPrint)||0, mPack=Number(p3.mPack)||0;
+    const totalMinutes3D = mCounsel+mModel+mPrint+mPack;
+    const totalHours3D = totalMinutes3D/60;
     const laborBase3D = (Number(state.settings.printerHourly)||0) * totalHours3D;
     const laborWithMarkup3D = laborBase3D / 0.75; // 取り分75%から逆算（25%分を上乗せ）
     const cadCost3D = (Number(state.settings.cadMonthlyUsd)||0) * (Number(state.settings.usdJpyRate)||0); // 1件に1ヶ月分をそのまま計上
@@ -2077,7 +2120,7 @@ function renderResearchDetail(id){
         <div class="field"><label>重量変化（自動）</label><input id="diff-${id}-${si}-weight" value="${diffCalc(sp.specs.weight.b,sp.specs.weight.a,'g')}" readonly></div>
       </div>
 
-      ${is3D ? render3DSection(id,si,sp,{filamentMaterialCost,hCounsel,hModel,hPrint,hPack,totalHours3D,laborBase3D,laborWithMarkup3D,cadCost3D,packagingCost,shippingCost,total3D}) : `
+      ${is3D ? render3DSection(id,si,sp,{filamentMaterialCost,mCounsel,mModel,mPrint,mPack,totalMinutes3D,totalHours3D,laborBase3D,laborWithMarkup3D,cadCost3D,packagingCost,shippingCost,total3D}) : `
       <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
         <span>${isDurability?'加工工程表（工具の消耗を記録）':'加工工程表'}</span>
         ${isDurability?`<span style="display:flex;align-items:center;gap:6px;font-weight:400"><label style="font-size:11px;color:var(--ink-soft)">消耗量の単位</label><select style="width:auto" onchange="rsSpecimenField('${id}',${si},'weightUnit',this.value)">${WEIGHT_UNIT_LIST.map(u=>`<option ${sp.weightUnit===u?'selected':''}>${u}</option>`).join('')}</select></span>`:''}
@@ -2157,6 +2200,25 @@ function renderResearchDetail(id){
     </div>
     <div class="field"><label>タイトル</label><input value="${esc(r.title)}" onchange="rsField('${id}','title',this.value)"></div>
     <div class="field"><label>目的・きっかけ</label><textarea onchange="rsField('${id}','purpose',this.value)">${esc(r.purpose)}</textarea></div>
+
+    <div class="section-label">受注情報（顧客が絡む注文の場合のみ）</div>
+    <div class="field-row">
+      <div class="field"><label>顧客</label><select onchange="rsOrder('${id}','customerId',this.value)"><option value="">（未設定）</option>${state.customers.map(c=>`<option value="${c.id}" ${r.order.customerId===c.id?'selected':''}>${c.custNo?`[${esc(c.custNo)}] `:''}${esc(c.name)}</option>`).join('')}</select></div>
+      <div class="field"><label>サービスコード</label><input value="${esc(r.order.serviceCode)}" list="serviceCodeList" placeholder="例）PO" onchange="rsOrder('${id}','serviceCode',this.value.trim().toUpperCase())">
+        <datalist id="serviceCodeList">${SERVICE_CODE_LIST.map(c=>`<option value="${c}">${SERVICE_CODE_LABELS[c]||''}</option>`).join('')}</datalist>
+      </div>
+      <div class="field"><label>ダーツ分類</label><select onchange="rsOrder('${id}','dartType',this.value)"><option value="" ${!r.order.dartType?'selected':''}>未指定</option>${DART_TYPE_LIST.map(d=>`<option ${r.order.dartType===d?'selected':''}>${d}</option>`).join('')}</select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>注文コード（自動）</label><input value="${orderCodeFor(r)}" readonly style="font-family:var(--mono)"></div>
+      <div class="field"><label>同一注文グループタグ（複数商品を1注文としてまとめる時に同じ文字列を入力）</label><input value="${esc(r.order.groupTag)}" onchange="rsOrder('${id}','groupTag',this.value.trim())"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>請求書番号（Misoca発行後に入力）</label><input value="${esc(r.order.invoiceNo)}" onchange="rsOrder('${id}','invoiceNo',this.value.trim())"></div>
+      <div class="field"><label>請求書PDFリンク</label><input value="${esc(r.order.invoicePdfUrl)}" placeholder="https://..." onchange="rsOrder('${id}','invoicePdfUrl',this.value.trim())">
+        ${r.order.invoicePdfUrl?`<div class="hint"><a href="${esc(normalizeUrl(r.order.invoicePdfUrl))}" target="_blank" rel="noopener">請求書PDFを開く↗</a></div>`:''}
+      </div>
+    </div>
 
     ${isChat ? `
       <div class="section-label">結論（チャット由来）</div>
@@ -2542,7 +2604,7 @@ function renderCustomersPage(container){
         <button class="editbtn" onclick="event.stopPropagation();editCustomer('${c.id}')" title="編集"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
         <div class="thumb empty-thumb">${esc((c.name||'？').slice(0,1))}</div>
         <div class="main" onclick="editCustomer('${c.id}')">
-          <div class="ttl">${esc(c.name)}</div>
+          <div class="ttl">${c.custNo?`<span class="mute" style="font-family:var(--mono);margin-right:6px">[${esc(c.custNo)}]</span>`:''}${esc(c.name)}</div>
           <div class="meta">${(c.biz||[]).map(b=>`<span class="tag biz-${b}">${b}</span>`).join('')}${c.tags?`<span>${esc(c.tags)}</span>`:''}</div>
           <div class="datestamp">作成 ${fmtDT(c.createdAt)}　更新 ${fmtDT(c.updatedAt)}</div>
         </div>
@@ -2568,6 +2630,7 @@ let editingCustomerId=null;
 function openCustomerModal(){
   editingCustomerId=null;
   document.getElementById('custModalTitle').textContent='顧客を追加';
+  document.getElementById('cu_custNo').value=nextCustomerNo();
   document.getElementById('cu_name').value='';
   document.getElementById('cu_status').value='見込';
   Array.from(document.getElementById('cu_biz').options).forEach(o=>o.selected=false);
@@ -2577,12 +2640,14 @@ function openCustomerModal(){
   document.getElementById('cu_tags').value='';
   document.getElementById('cu_note').value='';
   document.getElementById('cu_delBtn').style.display='none';
+  document.getElementById('cu_ordersSection').innerHTML='';
   openOv('ov-customer');
 }
 function editCustomer(id){
   const c=state.customers.find(x=>x.id===id); if(!c) return;
   editingCustomerId=id;
   document.getElementById('custModalTitle').textContent='顧客を編集';
+  document.getElementById('cu_custNo').value=c.custNo||'';
   document.getElementById('cu_name').value=c.name;
   document.getElementById('cu_status').value=c.status;
   Array.from(document.getElementById('cu_biz').options).forEach(o=>o.selected=(c.biz||[]).includes(o.value));
@@ -2592,13 +2657,37 @@ function editCustomer(id){
   document.getElementById('cu_tags').value=c.tags||'';
   document.getElementById('cu_note').value=c.note||'';
   document.getElementById('cu_delBtn').style.display='inline-block';
+  document.getElementById('cu_ordersSection').innerHTML=renderCustomerOrders(id);
   openOv('ov-customer');
+}
+function renderCustomerOrders(customerId){
+  const items=state.research.filter(r=>r.order && r.order.customerId===customerId).sort((a,b)=>b.createdAt-a.createdAt);
+  if(!items.length) return '';
+  // 同一注文グループタグでまとめる（タグ無しは1件ずつ）
+  const groups={};
+  items.forEach(r=>{
+    const key=r.order.groupTag ? ('g:'+r.order.groupTag) : ('r:'+r.id);
+    if(!groups[key]) groups[key]=[];
+    groups[key].push(r);
+  });
+  const rows=Object.values(groups).map(list=>{
+    const first=list[0];
+    const codes=list.map(r=>orderCodeFor(r)).filter(Boolean).join('　/　');
+    return `<div class="itemrow" style="cursor:pointer" onclick="closeOv('ov-customer');openResearchDetail('${first.id}')">
+      <div class="thumb empty-thumb">注</div>
+      <div class="main">
+        <div class="ttl">${codes||'（注文コード未設定）'}</div>
+        <div class="meta">${list.map(r=>`<span>No.${r.no} ${esc(r.title||'（無題）')}</span>`).join('')}${first.order.invoiceNo?`<span class="mute">請求書:${esc(first.order.invoiceNo)}</span>`:''}</div>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div class="section-label" style="margin-top:16px">この顧客の注文一覧</div><div class="rowlist">${rows}</div>`;
 }
 function submitCustomer(){
   const name=document.getElementById('cu_name').value.trim();
   if(!name){ toast('お名前を入力してください'); return; }
   const biz=Array.from(document.getElementById('cu_biz').selectedOptions).map(o=>o.value);
-  const data={name,status:document.getElementById('cu_status').value,biz,contact:document.getElementById('cu_contact').value.trim(),sns:document.getElementById('cu_sns').value.trim(),createdDate:document.getElementById('cu_created').value||todayStr(),tags:document.getElementById('cu_tags').value.trim(),note:document.getElementById('cu_note').value.trim()};
+  const data={custNo:document.getElementById('cu_custNo').value.trim(),name,status:document.getElementById('cu_status').value,biz,contact:document.getElementById('cu_contact').value.trim(),sns:document.getElementById('cu_sns').value.trim(),createdDate:document.getElementById('cu_created').value||todayStr(),tags:document.getElementById('cu_tags').value.trim(),note:document.getElementById('cu_note').value.trim()};
   if(editingCustomerId){ const c=state.customers.find(x=>x.id===editingCustomerId); Object.assign(c,data); touch(c); }
   else{ state.customers.push(Object.assign({id:uid('cu_'),createdAt:Date.now(),updatedAt:Date.now()},data)); }
   saveState(); closeOv('ov-customer'); render(); toast('保存しました');
