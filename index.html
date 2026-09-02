@@ -686,7 +686,7 @@ function emptySpecimen(label){
     specs:{maxDia:{b:'',a:''}, minDia:{b:'',a:''}, length:{b:'',a:''}, weight:{b:'',a:''}},
     steps:[],
     pre:{pretreat:'',coolant:'',wash:'',centerPress:''},
-    cost:{targetMin:'',actualMin:'', material:'', packaging:'', shipping:''},
+    cost:{targetMin:'',actualMin:'', material:'', packaging:state.settings.packMaterial, shipping:state.settings.shipping},
     result:{finish:'',good:'',bad:'',next:''},
     photos:[],
   };
@@ -1718,7 +1718,8 @@ function renderResearchDetail(id){
 
     const photosHtml=(sp.photos||[]).map((p,i)=>`<div class="photo-thumb"><img src="${p}" onclick="openLightbox('${id}',${si},${i})"><button class="x" onclick="event.stopPropagation();rsRemoveSpecimenPhoto('${id}',${si},${i})">×</button></div>`).join('');
 
-    const totalMin = (Number(sp.cost.actualMin)||0) * (Number(sp.qty)||1);
+    const packMin = Number(state.settings.packMin)||0;
+    const totalMin = (Number(sp.cost.actualMin)||0) * (Number(sp.qty)||1) + packMin;
     const totalMaterial = (Number(sp.cost.material)||0) * (Number(sp.qty)||1);
     const total = (Number(state.settings.hourly)||0)*(totalMin/60) + totalMaterial;
 
@@ -1780,19 +1781,19 @@ function renderResearchDetail(id){
         <div class="field"><label>センタ押し</label><select onchange="rsPre('${id}',${si},'centerPress',this.value)"><option value="" ${!sp.pre.centerPress?'selected':''}>未指定</option><option ${sp.pre.centerPress==='あり'?'selected':''}>あり</option><option ${sp.pre.centerPress==='なし'?'selected':''}>なし</option></select></div>
       </div>
 
-      <div class="section-label">時間・コスト（時給は左メニューの設定を参照：現在 ${state.settings.hourly}円/h）</div>
+      <div class="section-label">時間・コスト（時給・梱包資材費・送料・梱包発送時間は左メニューの設定を参照：現在 ${state.settings.hourly}円/h・梱包${state.settings.packMaterial}円・送料${state.settings.shipping}円・${state.settings.packMin}分）</div>
       <div class="field-row">
         <div class="field"><label>目標時間（分）</label><input type="number" value="${esc(sp.cost.targetMin)}" onchange="rsCost('${id}',${si},'targetMin',this.value)"></div>
         <div class="field"><label>実時間（1本あたり・分）</label><input type="number" value="${esc(sp.cost.actualMin)}" onchange="rsCost('${id}',${si},'actualMin',this.value)"></div>
-        <div class="field"><label>合計時間（自動＝実時間×QTY）</label><input value="${Math.round(totalMin*10)/10} 分" readonly></div>
+        <div class="field"><label>合計時間（自動＝実時間×QTY＋梱包発送${packMin}分）</label><input value="${Math.round(totalMin*10)/10} 分" readonly></div>
       </div>
       <div class="field-row">
         <div class="field"><label>材料費（1本あたり・円）</label><input type="number" value="${esc(sp.cost.material)}" onchange="rsCost('${id}',${si},'material',this.value)"></div>
         <div class="field"><label>合計材料費（自動＝材料費×QTY）</label><input value="${Math.round(totalMaterial)} 円" readonly></div>
       </div>
       <div class="field-row">
-        <div class="field"><label>梱包材費（1回・円）</label><input type="number" value="${esc(sp.cost.packaging)}" onchange="rsCost('${id}',${si},'packaging',this.value)"></div>
-        <div class="field"><label>送料（1回・円）</label><input type="number" value="${esc(sp.cost.shipping)}" onchange="rsCost('${id}',${si},'shipping',this.value)"></div>
+        <div class="field"><label>梱包材費（1回・円／設定初期値・上書き可）</label><input type="number" value="${esc(sp.cost.packaging)}" onchange="rsCost('${id}',${si},'packaging',this.value)"></div>
+        <div class="field"><label>送料（1回・円／設定初期値・上書き可）</label><input type="number" value="${esc(sp.cost.shipping)}" onchange="rsCost('${id}',${si},'shipping',this.value)"></div>
       </div>
       <div class="field-row">
         <div class="field"><label>合計原価（自動＝時給×合計時間＋合計材料費）</label><input value="${Math.round(total)} 円" readonly></div>
