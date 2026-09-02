@@ -465,8 +465,10 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
       <div class="field-row">
         <div class="field"><label>価格（円・税込）</label><input id="tl_price" type="number"></div>
         <div class="field"><label>耐用回数（回）</label><input id="tl_life" type="number"></div>
+        <div class="field"><label>内容量（g・重量消耗品用）</label><input id="tl_weightG" type="number" placeholder="例）フィラメント1kgなら1000"></div>
         <div class="field"><label>原価/1回</label><input id="tl_unitcost" readonly></div>
       </div>
+      <div class="hint">「耐用回数」は回数で減る消耗品（ダイヤラッパー等）、「内容量(g)」は重さで減る消耗品（フィラメント等）に使います。両方埋める必要はありません。</div>
       <div class="field-row">
         <div class="field"><label>記載日</label><input id="tl_created" type="date"></div>
         <div class="field"><label>購入先リンク</label><input id="tl_link" placeholder="https://..."></div>
@@ -521,7 +523,7 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
   <div class="modal">
     <div class="modal-head"><h3>設定</h3><button class="modal-close" onclick="closeOv('ov-settings')">×</button></div>
     <div class="modal-body">
-      <div class="section-label">原価計算のデフォルト値</div>
+      <div class="section-label">原価計算のデフォルト値（研磨事業）</div>
       <div class="field-row">
         <div class="field"><label>時給単価（円）</label><input id="st_hourly" type="number"></div>
         <div class="field"><label>梱包資材費（円/件）</label><input id="st_packMaterial" type="number"></div>
@@ -531,6 +533,16 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
         <div class="field"><label>梱包発送 標準時間（分）</label><input id="st_packMin" type="number"></div>
       </div>
       <div class="hint">ここで設定した値は、新規に作成する加工研究の初期値として使われます（作成済みのものには影響しません）。</div>
+
+      <div class="section-label" style="margin-top:16px">原価計算のデフォルト値（3Dプリンター事業）</div>
+      <div class="field-row">
+        <div class="field"><label>時給単価（円）</label><input id="st_printerHourly" type="number"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>CAD月額利用料（USD）</label><input id="st_cadMonthlyUsd" type="number" step="0.01"></div>
+        <div class="field"><label>為替レート（USD→JPY）</label><input id="st_usdJpyRate" type="number" step="0.1"></div>
+      </div>
+      <div class="hint">為替は変動するため、必要に応じてここで手動更新してください（目安：本日1ドル=約159円）。</div>
     </div>
     <div class="modal-foot">
       <div style="flex:1"></div>
@@ -660,7 +672,7 @@ const STATUS_LIST = ['未着手','進行中','完了'];
 
 let state = {
   todos: [], research: [], tools: [], customers: [], trash: [], roughness: [],
-  settings: {hourly:1800, packMaterial:70, shipping:870, packMin:30},
+  settings: {hourly:1800, packMaterial:70, shipping:870, packMin:30, printerHourly:1700, cadMonthlyUsd:4, usdJpyRate:159},
 };
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function fmtDT(ts){
@@ -739,17 +751,31 @@ function migrateTodoRecord(raw){
   if(raw.updatedAt==null) raw.updatedAt = raw.createdAt || Date.now();
   return raw;
 }
+function seedDefaultTools(st){
+  const already = st.tools.some(t=>t.biz==='3Dプリンタ' && t.name==='PLA-Basic');
+  if(!already){
+    st.tools.push({
+      id:uid('tl_'), biz:'3Dプリンタ', cat:'フィラメント', name:'PLA-Basic',
+      spec:'Bambu Lab / PLA-Basic / 1kgスプール', starter:true,
+      price:3000, life:'', weightG:1000,
+      link:'', note:'メーカー：Bambu Lab／製品名：PLA-Basic／重さ：1kg／価格：3,000円（税込）。単価は約3円/g。1本あたりの想定使用量は3g（材料費 約9円/本）。',
+      createdDate:todayStr(), photos:[], createdAt:Date.now(), updatedAt:Date.now(),
+    });
+  }
+  return st;
+}
 function migrateState(raw){
   raw = raw||{};
-  return {
+  const st = {
     todos: Array.isArray(raw.todos)?raw.todos.map(migrateTodoRecord):[],
     research: Array.isArray(raw.research)?raw.research.map(migrateResearchRecord):[],
     tools: Array.isArray(raw.tools)?raw.tools.map(migrateToolRecord):[],
     customers: Array.isArray(raw.customers)?raw.customers.map(migrateCustomerRecord):[],
     roughness: Array.isArray(raw.roughness)?raw.roughness.map(migrateRoughnessRecord):[],
     trash: Array.isArray(raw.trash)?raw.trash:[],
-    settings: Object.assign({hourly:1800,packMaterial:70,shipping:870,packMin:30}, raw.settings||{}),
+    settings: Object.assign({hourly:1800,packMaterial:70,shipping:870,packMin:30,printerHourly:1700,cadMonthlyUsd:4,usdJpyRate:159}, raw.settings||{}),
   };
+  return seedDefaultTools(st);
 }
 
 function emptySpecimen(label){
@@ -758,6 +784,7 @@ function emptySpecimen(label){
     obj:{maker:'',product:'',material:'',country:'',magnetism:'',cond:'新品',preOverhaul:'なし',spec:''},
     specs:{maxDia:{b:'',a:''}, minDia:{b:'',a:''}, length:{b:'',a:''}, weight:{b:'',a:''}},
     steps:[], weightUnit:'g',
+    print3d:{filamentTool:'', gramsUsed:3, hCounsel:'', hModel:'', hPrint:'', hPack:''},
     pre:{pretreat:'',coolant:'',wash:'',centerPress:''},
     cost:{targetMin:'',actualMin:'', material:'', packaging:state.settings.packMaterial, shipping:state.settings.shipping},
     result:{finish:'',good:'',bad:'',next:''},
@@ -774,7 +801,7 @@ function emptyResearch(biz){
     photos:[], createdAt:Date.now(), updatedAt:Date.now(),
   };
 }
-function emptyTool(){ return {id:null,biz:'研磨',cat:'',name:'',spec:'',starter:false,price:'',life:'',link:'',note:'',createdDate:todayStr(),photos:[],createdAt:Date.now(),updatedAt:Date.now()}; }
+function emptyTool(){ return {id:null,biz:'研磨',cat:'',name:'',spec:'',starter:false,price:'',life:'',weightG:'',link:'',note:'',createdDate:todayStr(),photos:[],createdAt:Date.now(),updatedAt:Date.now()}; }
 function emptyCustomer(){ return {id:null,name:'',status:'見込',biz:[],contact:'',sns:'',tags:'',note:'',createdDate:todayStr(),createdAt:Date.now(),updatedAt:Date.now()}; }
 function emptyRoughness(){
   return {
@@ -897,6 +924,9 @@ function openSettingsModal(){
   document.getElementById('st_packMaterial').value=state.settings.packMaterial;
   document.getElementById('st_shipping').value=state.settings.shipping;
   document.getElementById('st_packMin').value=state.settings.packMin;
+  document.getElementById('st_printerHourly').value=state.settings.printerHourly;
+  document.getElementById('st_cadMonthlyUsd').value=state.settings.cadMonthlyUsd;
+  document.getElementById('st_usdJpyRate').value=state.settings.usdJpyRate;
   openOv('ov-settings');
 }
 function saveSettings(){
@@ -905,6 +935,9 @@ function saveSettings(){
     packMaterial:Number(document.getElementById('st_packMaterial').value)||0,
     shipping:Number(document.getElementById('st_shipping').value)||0,
     packMin:Number(document.getElementById('st_packMin').value)||0,
+    printerHourly:Number(document.getElementById('st_printerHourly').value)||1700,
+    cadMonthlyUsd:Number(document.getElementById('st_cadMonthlyUsd').value)||0,
+    usdJpyRate:Number(document.getElementById('st_usdJpyRate').value)||0,
   };
   saveState(); closeOv('ov-settings'); toast('設定を保存しました');
 }
@@ -1882,7 +1915,7 @@ function openLinkedResearch(researchId){
   render();
 }
 function closeResearchDetail(){ researchDetailId=null; render(); }
-function toolOptionsFor(biz){ return state.tools.filter(t=>t.biz===biz||t.biz==='全般').map(t=>`<option value="${esc(t.name)}">${esc(t.name)}${t.starter?' ★':''}</option>`).join(''); }
+function toolOptionsFor(biz,selected){ return state.tools.filter(t=>t.biz===biz||t.biz==='全般').map(t=>`<option value="${esc(t.name)}" ${selected===t.name?'selected':''}>${esc(t.name)}${t.starter?' ★':''}</option>`).join(''); }
 function brandOptions(){ return BRAND_LIST.map(b=>`<option value="${esc(b)}">`).join(''); }
 function acFilter(input,id,si){
   const box=document.getElementById(`ac-${id}-${si}`); if(!box) return;
@@ -1909,11 +1942,54 @@ function diffCalc(before, after, unit){
   return (d>=0?'+':'')+d+(unit||'');
 }
 
+function render3DSection(id,si,sp,calc){
+  const p3 = sp.print3d || {};
+  return `
+      <div class="section-label">3Dプリンター工程</div>
+      <div class="field-row">
+        <div class="field"><label>カウンセリング（時間）</label><input type="number" step="0.1" value="${esc(p3.hCounsel)}" onchange="rs3D('${id}',${si},'hCounsel',this.value)"></div>
+        <div class="field"><label>3Dモデル作成（時間）</label><input type="number" step="0.1" value="${esc(p3.hModel)}" onchange="rs3D('${id}',${si},'hModel',this.value)"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>造形作業（時間）</label><input type="number" step="0.1" value="${esc(p3.hPrint)}" onchange="rs3D('${id}',${si},'hPrint',this.value)"></div>
+        <div class="field"><label>梱包発送（時間）</label><input type="number" step="0.1" value="${esc(p3.hPack)}" onchange="rs3D('${id}',${si},'hPack',this.value)"></div>
+      </div>
+      <div class="field"><label>合計作業時間（自動）</label><input value="${Math.round(calc.totalHours3D*100)/100} 時間" readonly></div>
+
+      <div class="section-label">材料費（フィラメント・工具マスターから選択）</div>
+      <div class="field-row">
+        <div class="field"><label>フィラメント（工具マスター）</label><select onchange="rs3D('${id}',${si},'filamentTool',this.value)"><option value="">（選択）</option>${toolOptionsFor('3Dプリンタ',p3.filamentTool)}</select>
+          ${p3.filamentTool&&!state.tools.some(t=>t.name===p3.filamentTool)?`<div class="mute" style="font-size:10.5px;margin-top:4px">※工具マスターに見つかりません：${esc(p3.filamentTool)}</div>`:''}
+        </div>
+        <div class="field"><label>使用量（g）</label><input type="number" step="0.1" value="${esc(p3.gramsUsed)}" onchange="rs3D('${id}',${si},'gramsUsed',this.value)"></div>
+        <div class="field"><label>材料費（自動＝単価/g×g）</label><input value="${Math.round(calc.filamentMaterialCost*10)/10} 円" readonly></div>
+      </div>
+      <div class="hint">工具マスターに未登録の場合は、先に工具マスターで「事業=3Dプリンタ」「価格」「内容量(g)」を登録してください。</div>
+
+      <div class="section-label">梱包・送料（この記録専用の値・研磨事業の設定とは別に編集可）</div>
+      <div class="field-row">
+        <div class="field"><label>梱包費（円）</label><input type="number" value="${esc(sp.cost.packaging)}" onchange="rsCost('${id}',${si},'packaging',this.value)"></div>
+        <div class="field"><label>送料（円）</label><input type="number" value="${esc(sp.cost.shipping)}" onchange="rsCost('${id}',${si},'shipping',this.value)"></div>
+      </div>
+
+      <div class="section-label">製造原価（自動計算）</div>
+      <div class="field-row">
+        <div class="field"><label>人件費（時給${state.settings.printerHourly}円×作業時間）</label><input value="${Math.round(calc.laborBase3D)} 円" readonly></div>
+        <div class="field"><label>人件費（取り分75%考慮後・÷0.75）</label><input value="${Math.round(calc.laborWithMarkup3D)} 円" readonly></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>ソフト原価（DWGFastView月額${state.settings.cadMonthlyUsd}ドル×${state.settings.usdJpyRate}円、1件に1ヶ月分をそのまま計上）</label><input value="${Math.round(calc.cadCost3D)} 円" readonly></div>
+        <div class="field"><label>製造原価 合計（自動）</label><input value="${Math.round(calc.total3D)} 円" readonly style="background:#e3f0ea;font-weight:600;"></div>
+      </div>
+      <div class="mute" style="font-size:10.5px;margin:-6px 0 4px">※製造原価＝材料費＋梱包費＋送料＋人件費（÷0.75上乗せ後）＋ソフト原価。販売価格は別途検討します。</div>
+`;
+}
 function renderResearchDetail(id){
   const r=state.research.find(x=>x.id===id); if(!r) return `<div class="empty">見つかりません</div>`;
   const isChat=r.type==='チャット由来';
 
   const isDurability = r.genre==='耐用・測定テスト';
+  const is3D = r.biz==='3Dプリンタ';
   const specimensHtml = (r.specimens||[]).map((sp,si)=>{
     const stepsRows=sp.steps.map((s,i)=>{
       const consumed = (s.beforeWeight!=='' && s.beforeWeight!=null && s.afterWeight!=='' && s.afterWeight!=null)
@@ -1922,7 +1998,7 @@ function renderResearchDetail(id){
       <tr>
         <td class="step-num">${i+1}</td>
         <td><div class="cellwrap"><input value="${esc(s.processName)}" placeholder="例）洗浄／測定／研磨" oninput="rsStepInput('${id}',${si},${i},'processName',this.value)"><button type="button" class="cellexp" onclick="openCellEditor('${id}',${si},${i},'processName')" title="拡大して編集">⤢</button></div></td>
-        <td><select onchange="rsStepToolChange('${id}',${si},${i},this.value)"><option value="">（選択）</option>${toolOptionsFor(r.biz)}</select>
+        <td><select onchange="rsStepToolChange('${id}',${si},${i},this.value)"><option value="">（選択）</option>${toolOptionsFor(r.biz,s.tool)}</select>
             ${s.tool&&!state.tools.some(t=>t.name===s.tool)?`<div class="cellwrap" style="margin-top:4px"><input value="${esc(s.tool)}" oninput="rsStepInput('${id}',${si},${i},'tool',this.value)"><button type="button" class="cellexp" onclick="openCellEditor('${id}',${si},${i},'tool')" title="拡大して編集">⤢</button></div>`:''}</td>
         <td><div class="cellwrap"><input value="${esc(s.grit)}" placeholder="番手/粒径" oninput="rsStepInput('${id}',${si},${i},'grit',this.value)"><button type="button" class="cellexp" onclick="openCellEditor('${id}',${si},${i},'grit')" title="拡大して編集">⤢</button></div></td>
         <td><input value="${esc(s.time)}" type="number" placeholder="分" style="width:56px" oninput="rsStepInput('${id}',${si},${i},'time',this.value)"></td>
@@ -1942,6 +2018,20 @@ function renderResearchDetail(id){
     const totalMin = (Number(sp.cost.actualMin)||0) * (Number(sp.qty)||1) + packMin;
     const totalMaterial = (Number(sp.cost.material)||0) * (Number(sp.qty)||1);
     const total = (Number(state.settings.hourly)||0)*(totalMin/60) + totalMaterial;
+    const packagingCost = Number(sp.cost.packaging)||0;
+    const shippingCost = Number(sp.cost.shipping)||0;
+
+    // 3Dプリンター事業専用の原価計算
+    const p3 = sp.print3d || {};
+    const filamentTool = state.tools.find(t=>t.name===p3.filamentTool);
+    const filamentUnitCostG = (filamentTool && Number(filamentTool.price) && Number(filamentTool.weightG)) ? Number(filamentTool.price)/Number(filamentTool.weightG) : 0;
+    const filamentMaterialCost = filamentUnitCostG * (Number(p3.gramsUsed)||0);
+    const hCounsel=Number(p3.hCounsel)||0, hModel=Number(p3.hModel)||0, hPrint=Number(p3.hPrint)||0, hPack=Number(p3.hPack)||0;
+    const totalHours3D = hCounsel+hModel+hPrint+hPack;
+    const laborBase3D = (Number(state.settings.printerHourly)||0) * totalHours3D;
+    const laborWithMarkup3D = laborBase3D / 0.75; // 取り分75%から逆算（25%分を上乗せ）
+    const cadCost3D = (Number(state.settings.cadMonthlyUsd)||0) * (Number(state.settings.usdJpyRate)||0); // 1件に1ヶ月分をそのまま計上
+    const total3D = filamentMaterialCost + packagingCost + shippingCost + laborWithMarkup3D + cadCost3D;
 
     return `<div class="specimen-block">
       <div class="specimen-head">
@@ -1987,6 +2077,7 @@ function renderResearchDetail(id){
         <div class="field"><label>重量変化（自動）</label><input id="diff-${id}-${si}-weight" value="${diffCalc(sp.specs.weight.b,sp.specs.weight.a,'g')}" readonly></div>
       </div>
 
+      ${is3D ? render3DSection(id,si,sp,{filamentMaterialCost,hCounsel,hModel,hPrint,hPack,totalHours3D,laborBase3D,laborWithMarkup3D,cadCost3D,packagingCost,shippingCost,total3D}) : `
       <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
         <span>${isDurability?'加工工程表（工具の消耗を記録）':'加工工程表'}</span>
         ${isDurability?`<span style="display:flex;align-items:center;gap:6px;font-weight:400"><label style="font-size:11px;color:var(--ink-soft)">消耗量の単位</label><select style="width:auto" onchange="rsSpecimenField('${id}',${si},'weightUnit',this.value)">${WEIGHT_UNIT_LIST.map(u=>`<option ${sp.weightUnit===u?'selected':''}>${u}</option>`).join('')}</select></span>`:''}
@@ -2004,7 +2095,7 @@ function renderResearchDetail(id){
         <div class="field"><label>センタ押し</label><select onchange="rsPre('${id}',${si},'centerPress',this.value)"><option value="" ${!sp.pre.centerPress?'selected':''}>未指定</option><option ${sp.pre.centerPress==='あり'?'selected':''}>あり</option><option ${sp.pre.centerPress==='なし'?'selected':''}>なし</option></select></div>
       </div>
 
-      <div class="section-label">時間・コスト（時給・梱包資材費・送料・梱包発送時間は左メニューの設定を参照：現在 ${state.settings.hourly}円/h・梱包${state.settings.packMaterial}円・送料${state.settings.shipping}円・${state.settings.packMin}分）</div>
+      <div class="section-label">時間・コスト（時給・梱包発送時間は左メニューの設定を参照：現在 ${state.settings.hourly}円/h・${state.settings.packMin}分／梱包費・送料はこの記録専用の値です）</div>
       <div class="field-row">
         <div class="field"><label>目標時間（分）</label><input type="number" value="${esc(sp.cost.targetMin)}" onchange="rsCost('${id}',${si},'targetMin',this.value)"></div>
         <div class="field"><label>実時間（1本あたり・分）</label><input type="number" value="${esc(sp.cost.actualMin)}" onchange="rsCost('${id}',${si},'actualMin',this.value)"></div>
@@ -2015,11 +2106,16 @@ function renderResearchDetail(id){
         <div class="field"><label>合計材料費（自動＝材料費×QTY）</label><input value="${Math.round(totalMaterial)} 円" readonly></div>
       </div>
       <div class="field-row">
+        <div class="field"><label>梱包費（円・この記録専用）</label><input type="number" value="${esc(sp.cost.packaging)}" onchange="rsCost('${id}',${si},'packaging',this.value)"></div>
+        <div class="field"><label>送料（円・この記録専用）</label><input type="number" value="${esc(sp.cost.shipping)}" onchange="rsCost('${id}',${si},'shipping',this.value)"></div>
+      </div>
+      <div class="field-row">
         <div class="field"><label>合計原価（自動＝時給×合計時間＋合計材料費）</label><input value="${Math.round(total)} 円" readonly></div>
-        <div class="field"><label>想定売価（自動＝合計原価＋梱包＋送料）</label><input value="${Math.round(total + (Number(state.settings.packMaterial)||0) + (Number(state.settings.shipping)||0))} 円" readonly style="background:#e3f0ea;font-weight:600;"></div>
+        <div class="field"><label>想定売価（自動＝合計原価＋梱包＋送料）</label><input value="${Math.round(total + packagingCost + shippingCost)} 円" readonly style="background:#e3f0ea;font-weight:600;"></div>
       </div>
-      <div class="mute" style="font-size:10.5px;margin:-6px 0 4px">※梱包材費${state.settings.packMaterial}円・送料${state.settings.shipping}円（左メニューの設定値をそのまま使用）</div>
+      <div class="mute" style="font-size:10.5px;margin:-6px 0 4px">※梱包費・送料は新規作成時に左メニューの設定値（梱包${state.settings.packMaterial}円・送料${state.settings.shipping}円）で初期化されますが、この記録ごとに個別編集できます。</div>
       </div>
+      `}
 
       <div class="section-label">結果</div>
       <div class="field"><label>仕上がり（10段階）</label><input type="number" min="1" max="10" value="${esc(sp.result.finish)}" style="max-width:80px" onchange="rsResult('${id}',${si},'finish',this.value)"></div>
@@ -2121,6 +2217,7 @@ function updateDiffDisplays(id,si){
 function rsCompare(id,key,val){ const r=state.research.find(x=>x.id===id); r.compare[key]=val; touch(r); saveState(); }
 function rsPre(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].pre[key]=val; touch(r); saveState(); }
 function rsCost(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].cost[key]=val; touch(r); saveState(); render(); }
+function rs3D(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].print3d[key]=val; touch(r); saveState(); render(); }
 function rsResult(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].result[key]=val; touch(r); saveState(); }
 function rsSpecimenField(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si][key]=val; touch(r); saveState(); render(); }
 function rsAddSpecimen(id){ const r=state.research.find(x=>x.id===id); r.specimens.push(emptySpecimen('N'+(r.specimens.length+1))); touch(r); saveState(); render(); }
@@ -2297,6 +2394,7 @@ function renderToolsPage(container){
   items.sort((a,b)=>(b.starter?1:0)-(a.starter?1:0)); // スタメンは並び替え設定を保ったまま常に先頭に固定（安定ソート）
   const rows=items.length?items.map(t=>{
     const unit=(t.price&&t.life)?Math.round((Number(t.price)/Number(t.life))*10)/10:null;
+    const unitG=(t.price&&t.weightG)?Math.round((Number(t.price)/Number(t.weightG))*100)/100:null;
     const thumb=t.photos&&t.photos[0]?`<img class="thumb" src="${t.photos[0]}">`:`<div class="thumb empty-thumb">具</div>`;
     return `<div class="swiperow" data-rowid="${t.id}">
       <div class="swipe-del"><button onclick="toolDeleteDirect('${t.id}')">削除</button></div>
@@ -2306,7 +2404,7 @@ function renderToolsPage(container){
         ${thumb}
         <div class="main" onclick="openToolDetail('${t.id}')">
           <div class="ttl">${esc(t.name)}</div>
-          <div class="meta"><span class="tag biz-${t.biz}">${t.biz}</span>${t.cat?`<span>${esc(t.cat)}</span>`:''}${t.spec?`<span>${esc(t.spec)}</span>`:''}${t.price?`<span>${Number(t.price).toLocaleString()}円</span>`:''}${unit!==null?`<span>原価/回 ${unit}円</span>`:''}
+          <div class="meta"><span class="tag biz-${t.biz}">${t.biz}</span>${t.cat?`<span>${esc(t.cat)}</span>`:''}${t.spec?`<span>${esc(t.spec)}</span>`:''}${t.price?`<span>${Number(t.price).toLocaleString()}円</span>`:''}${unit!==null?`<span>原価/回 ${unit}円</span>`:''}${unitG!==null?`<span>単価 ${unitG}円/g</span>`:''}
           ${t.link?`<span><a href="${esc(t.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">購入先↗</a></span>`:''}</div>
           <div class="datestamp">作成 ${fmtDT(t.createdAt)}　更新 ${fmtDT(t.updatedAt)}</div>
         </div>
@@ -2371,7 +2469,7 @@ document.addEventListener('input',(e)=>{ if(e.target.id==='tl_price'||e.target.i
 function openToolModal(){
   editingToolId=null; toolPhotoBuffer=[];
   document.getElementById('toolModalTitle').textContent='工具を追加';
-  ['tl_cat','tl_name','tl_spec','tl_price','tl_life','tl_link','tl_note'].forEach(id=>document.getElementById(id).value='');
+  ['tl_cat','tl_name','tl_spec','tl_price','tl_life','tl_weightG','tl_link','tl_note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('tl_biz').value='研磨';
   document.getElementById('tl_starter').checked=false;
   document.getElementById('tl_created').value=todayStr();
@@ -2392,6 +2490,7 @@ function editTool(id){
   document.getElementById('tl_starter').checked=!!t.starter;
   document.getElementById('tl_price').value=t.price||'';
   document.getElementById('tl_life').value=t.life||'';
+  document.getElementById('tl_weightG').value=t.weightG||'';
   document.getElementById('tl_created').value=t.createdDate||todayStr();
   document.getElementById('tl_link').value=t.link||'';
   document.getElementById('tl_note').value=t.note||'';
@@ -2410,7 +2509,7 @@ function normalizeUrl(u){
 function submitTool(){
   const name=document.getElementById('tl_name').value.trim();
   if(!name){ toast('工具名を入力してください'); return; }
-  const data={biz:document.getElementById('tl_biz').value,cat:document.getElementById('tl_cat').value.trim(),name,spec:document.getElementById('tl_spec').value.trim(),starter:document.getElementById('tl_starter').checked,price:document.getElementById('tl_price').value,life:document.getElementById('tl_life').value,createdDate:document.getElementById('tl_created').value||todayStr(),link:normalizeUrl(document.getElementById('tl_link').value),note:document.getElementById('tl_note').value.trim(),photos:toolPhotoBuffer.slice()};
+  const data={biz:document.getElementById('tl_biz').value,cat:document.getElementById('tl_cat').value.trim(),name,spec:document.getElementById('tl_spec').value.trim(),starter:document.getElementById('tl_starter').checked,price:document.getElementById('tl_price').value,life:document.getElementById('tl_life').value,weightG:document.getElementById('tl_weightG').value,createdDate:document.getElementById('tl_created').value||todayStr(),link:normalizeUrl(document.getElementById('tl_link').value),note:document.getElementById('tl_note').value.trim(),photos:toolPhotoBuffer.slice()};
   if(editingToolId){ const t=state.tools.find(x=>x.id===editingToolId); Object.assign(t,data); touch(t); }
   else{ state.tools.push(Object.assign({id:uid('tl_'),createdAt:Date.now(),updatedAt:Date.now()},data)); }
   saveState(); closeOv('ov-tool'); render(); toast('保存しました');
@@ -2423,7 +2522,7 @@ function deleteToolFromModal(){
   saveState(); closeOv('ov-tool'); render(); toast('ゴミ箱へ移動しました');
 }
 function exportToolsCSV(){
-  const rows=state.tools.map(t=>({事業:t.biz,カテゴリ:t.cat,工具名:t.name,仕様:t.spec,スタメン:t.starter?'○':'',価格:t.price,耐用回数:t.life,'原価/1回':(t.price&&t.life)?Math.round((t.price/t.life)*100)/100:'',記載日:t.createdDate,購入先:t.link,メモ:t.note}));
+  const rows=state.tools.map(t=>({事業:t.biz,カテゴリ:t.cat,工具名:t.name,仕様:t.spec,スタメン:t.starter?'○':'',価格:t.price,耐用回数:t.life,内容量g:t.weightG,'原価/1回':(t.price&&t.life)?Math.round((t.price/t.life)*100)/100:'','単価/g':(t.price&&t.weightG)?Math.round((t.price/t.weightG)*100)/100:'',記載日:t.createdDate,購入先:t.link,メモ:t.note}));
   exportCSV(rows,'工具マスタ');
 }
 
