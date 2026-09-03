@@ -678,7 +678,13 @@ function autofillSpec(){
    ========================================================================== */
 const BIZ_LIST = ['研磨','3Dプリンタ','製作図面依頼','量産品','一般顧客モデル','全般'];
 const GENRE_LIST = ['定常業務','製造','加工研究','耐用・測定テスト','デザイン','事務業務','禁止事項'];
-const BIZ_SERVICE_CODE = {'研磨':'PO','3Dプリンタ':'3D','製作図面依頼':'DO','量産品':'BK','一般顧客モデル':'CS'};
+const SERVICE_CODE_LIST = ['PO','3D','DO','BK','CS'];
+const SERVICE_CODE_LABELS = {'PO':'研磨（Polish）','3D':'3Dプリンタ','DO':'製作図面依頼（DWG Order）','BK':'量産品（Bulk）','CS':'一般顧客モデル（Customer）'};
+const WORKFLOW_STEPS = {
+  '量産品': ['オーダーシート受取','カウンセリング','3Dモデリング（修正あり）','2D図面作成','請求書作成','送付','入金確認','製作発注','到着','検品・梱包','受け渡し（発送）'],
+  '一般顧客モデル': ['オーダーシート受取','カウンセリング','3Dモデリング（修正あり）','2D図面作成','請求書作成','送付','入金確認','製作発注','到着','検品・梱包','受け渡し（発送）'],
+  '製作図面依頼': ['オーダーシート受取','カウンセリング','3Dモデリング（修正あり）','2D図面作成','納品','請求書作成','送付','入金確認'],
+};
 const DART_TYPE_LIST = ['2BA','Steel'];
 const WEIGHT_UNIT_LIST = ['g','mg','mm','μm','ml','回'];
 const STATUS_LIST = ['未着手','進行中','完了'];
@@ -807,6 +813,7 @@ function emptySpecimen(label){
     specs:{maxDia:{b:'',a:''}, minDia:{b:'',a:''}, length:{b:'',a:''}, weight:{b:'',a:''}},
     steps:[], weightUnit:'g',
     print3d:{filamentTool:'', gramsUsed:3, mCounsel:'', mModel:'', mPrint:'', mPack:''},
+    workflow:{minutes:{}},
     pre:{pretreat:'',coolant:'',wash:'',centerPress:''},
     cost:{targetMin:'',actualMin:'', material:'', packaging:state.settings.packMaterial, shipping:state.settings.shipping},
     result:{finish:'',good:'',bad:'',next:''},
@@ -820,7 +827,7 @@ function emptyResearch(biz){
     status:'進行中', conclusion:'',
     compare:{factor:'',fixed:'',refNo:''},
     specimens:[emptySpecimen('N1')],
-    order:{customerId:'', dartType:'', invoiceNo:'', invoicePdfUrl:'', groupTag:''},
+    order:{customerId:'', serviceCode:'', version:null, dartType:'', invoiceNo:'', invoicePdfUrl:'', groupTag:'', codeMode:'auto', manualCode:''},
     photos:[], createdAt:Date.now(), updatedAt:Date.now(),
   };
 }
@@ -2011,20 +2018,59 @@ function render3DSection(id,si,sp,calc){
       <div class="mute" style="font-size:10.5px;margin:-6px 0 4px">※製造原価＝材料費＋梱包費＋送料＋人件費（÷0.75上乗せ後）＋ソフト原価。販売価格は別途検討します。</div>
 `;
 }
+function rsWorkflowMinute(id,si,step,val){
+  const r=state.research.find(x=>x.id===id); if(!r) return;
+  const sp=r.specimens[si];
+  if(!sp.workflow) sp.workflow={minutes:{}};
+  if(!sp.workflow.minutes) sp.workflow.minutes={};
+  sp.workflow.minutes[step]=val;
+  touch(r); saveState(); render();
+}
+function renderWorkflowSection(id,si,sp,r,calc){
+  const wf = sp.workflow || {minutes:{}};
+  const isDO = r.biz==='製作図面依頼';
+  return `
+      <div class="section-label">${esc(r.biz)}の業務フロー（各工程の所要時間を分で入力）</div>
+      ${calc.wfSteps.map(step=>`
+      <div class="field-row">
+        <div class="field"><label>${esc(step)}（分）</label><input type="number" step="1" value="${esc((wf.minutes||{})[step])}" onchange="rsWorkflowMinute('${id}',${si},'${step.replace(/'/g,"\\'")}',this.value)"></div>
+      </div>`).join('')}
+      <div class="field"><label>合計作業時間（自動）</label><input value="${calc.totalMinutesWF} 分（${Math.round(calc.totalHoursWF*100)/100} 時間）" readonly></div>
+
+      ${isDO ? '' : `
+      <div class="section-label">外注製作費・梱包・送料</div>
+      <div class="field-row">
+        <div class="field"><label>外注製作費（円・製作発注先への支払額）</label><input type="number" value="${esc(sp.cost.material)}" onchange="rsCost('${id}',${si},'material',this.value)"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>梱包費（円）</label><input type="number" value="${esc(sp.cost.packaging)}" onchange="rsCost('${id}',${si},'packaging',this.value)"></div>
+        <div class="field"><label>送料（円）</label><input type="number" value="${esc(sp.cost.shipping)}" onchange="rsCost('${id}',${si},'shipping',this.value)"></div>
+      </div>`}
+
+      <div class="section-label">製造原価（自動計算）</div>
+      <div class="field-row">
+        <div class="field"><label>人件費（時給${state.settings.printerHourly}円×作業時間）</label><input value="${Math.round(calc.laborBaseWF)} 円" readonly></div>
+        <div class="field"><label>人件費（取り分75%考慮後・÷0.75）</label><input value="${Math.round(calc.laborWithMarkupWF)} 円" readonly></div>
+      </div>
+      <div class="field"><label>製造原価 合計（自動）</label><input value="${Math.round(calc.totalWF)} 円" readonly style="background:#e3f0ea;font-weight:600;"></div>
+      <div class="mute" style="font-size:10.5px;margin:-6px 0 4px">※人件費は時給${state.settings.printerHourly}円で仮固定（3Dプリンター事業と同じ設定を使用）。${isDO?'製作図面依頼は外注製作・梱包・送料が発生しないため人件費のみを原価としています。':'製造原価＝人件費（÷0.75上乗せ後）＋外注製作費＋梱包費＋送料。'}</div>
+`;
+}
 function orderVersionFor(r){
-  if(!r.order || !r.order.customerId || !r.biz || !BIZ_SERVICE_CODE[r.biz]) return null;
-  const list = state.research.filter(x=>x.order && x.order.customerId===r.order.customerId && x.biz===r.biz).sort((a,b)=>a.createdAt-b.createdAt);
+  if(!r.order || !r.order.customerId || !r.order.serviceCode) return null;
+  const list = state.research.filter(x=>x.order && x.order.customerId===r.order.customerId && x.order.serviceCode===r.order.serviceCode).sort((a,b)=>a.createdAt-b.createdAt);
   const idx = list.findIndex(x=>x.id===r.id);
   return idx>=0 ? idx+1 : list.length+1;
 }
 function orderCodeFor(r){
-  if(!r || !r.order || !r.order.customerId) return '';
+  if(!r || !r.order) return '';
+  if(r.order.codeMode==='manual') return r.order.manualCode||'';
+  if(!r.order.customerId || !r.order.serviceCode) return '';
   const c = state.customers.find(x=>x.id===r.order.customerId);
-  const serviceCode = BIZ_SERVICE_CODE[r.biz];
-  if(!c || !serviceCode) return '';
+  if(!c) return '';
   const v = orderVersionFor(r);
   const dart = r.order.dartType ? ('-'+r.order.dartType) : '';
-  return `MK${serviceCode}${c.custNo||'???'}${v?('V'+v):''}${dart}`;
+  return `MK${r.order.serviceCode}${c.custNo||'???'}${v?('V'+v):''}${dart}`;
 }
 function rsOrder(id,key,val){
   const r=state.research.find(x=>x.id===id); if(!r) return;
@@ -2037,6 +2083,7 @@ function renderResearchDetail(id){
 
   const isDurability = r.genre==='耐用・測定テスト';
   const is3D = r.biz==='3Dプリンタ';
+  const isWorkflow = !!WORKFLOW_STEPS[r.biz];
   const specimensHtml = (r.specimens||[]).map((sp,si)=>{
     const stepsRows=sp.steps.map((s,i)=>{
       const consumed = (s.beforeWeight!=='' && s.beforeWeight!=null && s.afterWeight!=='' && s.afterWeight!=null)
@@ -2080,6 +2127,17 @@ function renderResearchDetail(id){
     const laborWithMarkup3D = laborBase3D / 0.75; // 取り分75%から逆算（25%分を上乗せ）
     const cadCost3D = (Number(state.settings.cadMonthlyUsd)||0) * (Number(state.settings.usdJpyRate)||0); // 1件に1ヶ月分をそのまま計上
     const total3D = filamentMaterialCost + packagingCost + shippingCost + laborWithMarkup3D + cadCost3D;
+
+    // 量産品・一般顧客モデル・製作図面依頼 事業専用の原価計算（受注〜納品の業務フロー）
+    const wfSteps = WORKFLOW_STEPS[r.biz] || [];
+    const wf = sp.workflow || {minutes:{}};
+    const wfMinutes = wfSteps.map(s=>Number((wf.minutes||{})[s])||0);
+    const totalMinutesWF = wfMinutes.reduce((a,b)=>a+b,0);
+    const totalHoursWF = totalMinutesWF/60;
+    const laborBaseWF = (Number(state.settings.printerHourly)||0) * totalHoursWF;
+    const laborWithMarkupWF = laborBaseWF / 0.75; // 取り分75%から逆算（25%分を上乗せ）
+    const outsourceCostWF = Number(sp.cost.material)||0; // 「材料費」欄を外注製作費として流用
+    const totalWF = laborWithMarkupWF + outsourceCostWF + packagingCost + shippingCost;
 
     return `<div class="specimen-block">
       <div class="specimen-head">
@@ -2125,7 +2183,7 @@ function renderResearchDetail(id){
         <div class="field"><label>重量変化（自動）</label><input id="diff-${id}-${si}-weight" value="${diffCalc(sp.specs.weight.b,sp.specs.weight.a,'g')}" readonly></div>
       </div>
 
-      ${is3D ? render3DSection(id,si,sp,{filamentMaterialCost,mCounsel,mModel,mPrint,mPack,totalMinutes3D,totalHours3D,laborBase3D,laborWithMarkup3D,cadCost3D,packagingCost,shippingCost,total3D}) : `
+      ${is3D ? render3DSection(id,si,sp,{filamentMaterialCost,mCounsel,mModel,mPrint,mPack,totalMinutes3D,totalHours3D,laborBase3D,laborWithMarkup3D,cadCost3D,packagingCost,shippingCost,total3D}) : isWorkflow ? renderWorkflowSection(id,si,sp,r,{wfSteps,totalMinutesWF,totalHoursWF,laborBaseWF,laborWithMarkupWF,outsourceCostWF,packagingCost,shippingCost,totalWF}) : `
       <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
         <span>${isDurability?'加工工程表（工具の消耗を記録）':'加工工程表'}</span>
         ${isDurability?`<span style="display:flex;align-items:center;gap:6px;font-weight:400"><label style="font-size:11px;color:var(--ink-soft)">消耗量の単位</label><select style="width:auto" onchange="rsSpecimenField('${id}',${si},'weightUnit',this.value)">${WEIGHT_UNIT_LIST.map(u=>`<option ${sp.weightUnit===u?'selected':''}>${u}</option>`).join('')}</select></span>`:''}
@@ -2209,11 +2267,16 @@ function renderResearchDetail(id){
     <div class="section-label">受注情報（顧客が絡む注文の場合のみ）</div>
     <div class="field-row">
       <div class="field"><label>顧客</label><select onchange="rsOrder('${id}','customerId',this.value)"><option value="">（未設定）</option>${state.customers.map(c=>`<option value="${c.id}" ${r.order.customerId===c.id?'selected':''}>${c.custNo?`[${esc(c.custNo)}] `:''}${esc(c.name)}</option>`).join('')}</select></div>
-      <div class="field"><label>サービスコード（事業から自動）</label><input value="${BIZ_SERVICE_CODE[r.biz]?`${BIZ_SERVICE_CODE[r.biz]}（${esc(r.biz)}）`:'（この事業には未割当）'}" readonly></div>
+      <div class="field"><label>サービスコード</label><input value="${esc(r.order.serviceCode)}" list="serviceCodeList" placeholder="例）PO" onchange="rsOrder('${id}','serviceCode',this.value.trim().toUpperCase())">
+        <datalist id="serviceCodeList">${SERVICE_CODE_LIST.map(c=>`<option value="${c}">${SERVICE_CODE_LABELS[c]||''}</option>`).join('')}</datalist>
+      </div>
       <div class="field"><label>ダーツ分類</label><select onchange="rsOrder('${id}','dartType',this.value)"><option value="" ${!r.order.dartType?'selected':''}>未指定</option>${DART_TYPE_LIST.map(d=>`<option ${r.order.dartType===d?'selected':''}>${d}</option>`).join('')}</select></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>注文コード（自動）</label><input value="${orderCodeFor(r)}" readonly style="font-family:var(--mono)"></div>
+      <div class="field" style="max-width:160px"><label>注文コードの入力方式</label><select onchange="rsOrder('${id}','codeMode',this.value)"><option value="auto" ${r.order.codeMode!=='manual'?'selected':''}>自動計算</option><option value="manual" ${r.order.codeMode==='manual'?'selected':''}>手動入力</option></select></div>
+      ${r.order.codeMode==='manual'
+        ? `<div class="field"><label>注文コード（手動）</label><input value="${esc(r.order.manualCode)}" placeholder="例）MKDO001V1-2BA" style="font-family:var(--mono)" onchange="rsOrder('${id}','manualCode',this.value.trim())"></div>`
+        : `<div class="field"><label>注文コード（自動）</label><input value="${orderCodeFor(r)}" readonly style="font-family:var(--mono)"></div>`}
       <div class="field"><label>同一注文グループタグ（複数商品を1注文としてまとめる時に同じ文字列を入力）</label><input value="${esc(r.order.groupTag)}" onchange="rsOrder('${id}','groupTag',this.value.trim())"></div>
     </div>
     <div class="field-row">
