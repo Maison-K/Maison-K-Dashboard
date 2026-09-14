@@ -155,6 +155,7 @@ button{font-family:inherit;}
 .st-chip.st-取引中{background:var(--green-tint);color:var(--green);}
 .st-chip.st-見込{background:var(--orange-tint);color:var(--orange);}
 .st-chip.st-休眠{background:var(--paper-deep);color:var(--ink-faint);}
+.st-chip.st-保留{background:var(--orange-tint);color:var(--orange);}
 
 /* ---- dashboard ---- */
 .dash-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
@@ -246,6 +247,35 @@ button{font-family:inherit;}
 .sortbar{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
 .sortbar select{padding:5px 6px;font-size:11px;border:1px solid var(--line-strong);border-radius:var(--radius);background:var(--white);color:var(--ink);}
 .datestamp{font-size:10px;color:var(--ink-faint);margin-top:2px;}
+
+/* ---- プロジェクト（KGI/KPIツリー） ---- */
+.proj-tree{display:flex;flex-direction:column;gap:10px;}
+.proj-node{margin-bottom:4px;}
+.proj-card{background:var(--white);border:1px solid var(--line-strong);border-radius:var(--radius);padding:12px 14px;}
+.proj-card-head{display:flex;align-items:center;gap:8px;}
+.proj-toggle{background:none;border:none;cursor:pointer;font-size:14px;color:var(--ink-soft);width:18px;flex:0 0 auto;padding:0;}
+.proj-title{font-weight:700;font-size:14px;flex:1;cursor:pointer;min-width:0;}
+.proj-kgi{font-size:12px;color:var(--ink-soft);margin-top:6px;}
+.proj-progress{margin-top:8px;}
+.proj-progress-label{font-size:11px;color:var(--ink-soft);margin-bottom:3px;}
+.proj-bar{height:7px;border-radius:4px;background:var(--paper-deep);overflow:hidden;}
+.proj-bar-fill{height:100%;border-radius:4px;background:var(--green);}
+.proj-bar-fill.kpi{background:#8a6a4a;}
+.proj-bar-fill.todo{background:var(--green);}
+.proj-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.proj-todolist{margin:6px 0 6px 26px;display:flex;flex-direction:column;gap:6px;}
+.proj-todo-item{display:flex;align-items:center;gap:8px;font-size:12px;padding:6px 10px;background:var(--paper);border-radius:var(--radius);cursor:pointer;border-left:3px solid var(--line-strong);}
+.proj-todo-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.proj-map-wrap{position:relative;border:1px solid var(--line-strong);border-radius:var(--radius);overflow:hidden;background:#fafaf7;}
+.proj-map-controls{position:absolute;top:8px;right:8px;z-index:2;display:flex;gap:6px;}
+.proj-map-viewport{width:100%;height:70vh;overflow:hidden;touch-action:none;cursor:grab;}
+.proj-map-viewport:active{cursor:grabbing;}
+.proj-dash-row{padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer;}
+.proj-dash-row:last-child{border-bottom:none;}
+.proj-dash-title{font-size:12.5px;font-weight:600;margin-bottom:4px;}
+.proj-dash-label{font-size:11px;color:var(--ink-soft);margin-top:3px;}
+.ba-item{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line);font-size:12.5px;cursor:pointer;}
+.ba-title{flex:1;min-width:0;}
 .itemrow .right .detail-link{font-size:12px;font-weight:600;color:var(--green);text-decoration:underline;cursor:pointer;white-space:nowrap;padding:6px 2px;}
 .itemrow .right .detail-link:hover{color:var(--green-deep);}
 .star{color:var(--green);}
@@ -440,6 +470,7 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
         <div class="field"><label>期限（終了日）</label><input id="td_due" type="date"></div>
       </div>
       <div class="field"><label>メモ</label><textarea id="td_note"></textarea></div>
+      <div class="field"><label>紐づくプロジェクト（複数選択可）</label><select id="td_projects" multiple size="4"></select></div>
     </div>
     <div class="modal-foot">
       <button class="btn danger" id="td_delBtn" style="display:none" onclick="deleteTodoFromModal()">削除</button>
@@ -525,6 +556,46 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
       <div style="flex:1"></div>
       <button class="btn" onclick="closeOv('ov-customer')">キャンセル</button>
       <button class="btn primary" onclick="submitCustomer()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ov-project">
+  <div class="modal">
+    <div class="modal-head"><h3 id="projModalTitle">プロジェクトを追加</h3><button class="modal-close" onclick="closeOv('ov-project')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="pj_parentId">
+      <div class="field"><label>プロジェクト名</label><input id="pj_title" placeholder="例）ダーツバレル研磨事業の売上拡大"></div>
+      <div class="field"><label>KGI/KPI（目標の説明）</label><textarea id="pj_kgiText" placeholder="例）月商50万円を達成する" style="min-height:60px"></textarea></div>
+      <div class="field-row">
+        <div class="field"><label>目標値</label><input id="pj_targetValue" type="number" placeholder="例）500000"></div>
+        <div class="field"><label>現在値</label><input id="pj_currentValue" type="number" placeholder="例）230000"></div>
+        <div class="field"><label>単位</label><input id="pj_unit" placeholder="例）円、件、%"></div>
+      </div>
+      <div class="hint">目標値・現在値の両方を入れると、進捗バーが数値ベースで表示されます。空欄なら配下ToDoの完了率で自動表示します。</div>
+      <div class="field"><label>ステータス</label><select id="pj_status"><option>進行中</option><option>完了</option><option>保留</option><option>中止</option></select></div>
+      <div class="field"><label>メモ</label><textarea id="pj_note" style="min-height:60px"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="pj_delBtn" style="display:none" onclick="deleteProject()">削除</button>
+      <div style="flex:1"></div>
+      <button class="btn" onclick="closeOv('ov-project')">キャンセル</button>
+      <button class="btn primary" onclick="submitProject()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ov-bulkassign">
+  <div class="modal">
+    <div class="modal-head"><h3>ToDoをプロジェクトに割当：<span id="ba_projectName"></span></h3><button class="modal-close" onclick="closeOv('ov-bulkassign')">×</button></div>
+    <div class="modal-body">
+      <div class="hint">チェックしたToDoを、このプロジェクトに追加で割り当てます（既に割当済みのものは表示されません）。</div>
+      <div id="ba_list"></div>
+    </div>
+    <div class="modal-foot">
+      <div style="flex:1"></div>
+      <button class="btn" onclick="closeOv('ov-bulkassign')">キャンセル</button>
+      <button class="btn primary" onclick="submitBulkAssign()">割り当てる</button>
     </div>
   </div>
 </div>
@@ -686,11 +757,12 @@ const WORKFLOW_STEPS = {
   '製作図面依頼': ['オーダーシート受取','カウンセリング','3Dモデリング（修正あり）','2D図面作成','納品','請求書作成','送付','入金確認'],
 };
 const DART_TYPE_LIST = ['2BA','Steel'];
+const PROJECT_STATUS_LIST = ['進行中','完了','保留','中止'];
 const WEIGHT_UNIT_LIST = ['g','mg','mm','μm','ml','回'];
 const STATUS_LIST = ['未着手','進行中','完了'];
 
 let state = {
-  todos: [], research: [], tools: [], customers: [], trash: [], roughness: [],
+  todos: [], research: [], tools: [], customers: [], trash: [], roughness: [], projects: [],
   settings: {hourly:1800, packMaterial:70, shipping:870, packMin:30, printerHourly:1700, cadMonthlyUsd:4, usdJpyRate:159},
 };
 function todayStr(){ return new Date().toISOString().slice(0,10); }
@@ -770,8 +842,10 @@ function migrateCustomerRecord(raw){ return Object.assign(emptyCustomer(), raw, 
 function migrateRoughnessRecord(raw){ return Object.assign(emptyRoughness(), raw, {updatedAt: raw.updatedAt||raw.createdAt||Date.now()}); }
 function migrateTodoRecord(raw){
   if(raw.updatedAt==null) raw.updatedAt = raw.createdAt || Date.now();
+  if(!Array.isArray(raw.projectIds)) raw.projectIds = [];
   return raw;
 }
+function migrateProjectRecord(raw){ return Object.assign(emptyProject(raw.parentId), raw, {updatedAt: raw.updatedAt||raw.createdAt||Date.now()}); }
 function backfillCustomerNos(st){
   let max = st.customers.reduce((m,c)=>{ const n=parseInt(c.custNo,10); return isNaN(n)?m:Math.max(m,n); },0);
   [...st.customers].sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)).forEach(c=>{
@@ -800,6 +874,7 @@ function migrateState(raw){
     tools: Array.isArray(raw.tools)?raw.tools.map(migrateToolRecord):[],
     customers: Array.isArray(raw.customers)?raw.customers.map(migrateCustomerRecord):[],
     roughness: Array.isArray(raw.roughness)?raw.roughness.map(migrateRoughnessRecord):[],
+    projects: Array.isArray(raw.projects)?raw.projects.map(migrateProjectRecord):[],
     trash: Array.isArray(raw.trash)?raw.trash:[],
     settings: Object.assign({hourly:1800,packMaterial:70,shipping:870,packMin:30,printerHourly:1700,cadMonthlyUsd:4,usdJpyRate:159}, raw.settings||{}),
   };
@@ -840,6 +915,13 @@ function emptyRoughness(){
     condition:'', preOverhaul:'', cmp:'',
     method:'', priority:'中', ohFee:'', measureFee:'',
     ra:'', note:'', createdAt:Date.now(), updatedAt:Date.now(),
+  };
+}
+function emptyProject(parentId){
+  return {
+    id:null, parentId:parentId||null, title:'', kgiText:'',
+    targetValue:'', currentValue:'', unit:'', status:'進行中',
+    order:0, note:'', createdAt:Date.now(), updatedAt:Date.now(),
   };
 }
 
@@ -1045,6 +1127,7 @@ const ICONS = {
   timer:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>`,
   durability:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v4M6 5l2.5 2.5M18 5l-2.5 2.5"/><circle cx="12" cy="14" r="7"/><path d="M12 14l3-3"/></svg>`,
   roughness:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 17c2-4 4-6 6-2s4 6 6 2 4-6 6-2"/><path d="M3 21h18"/></svg>`,
+  project:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M6.8 7.6L11 16M17.2 7.6L13 16M7 6h10"/></svg>`,
 };
 let currentPage='dash';
 function setPage(p){ currentPage=p; researchDetailId=null; render(); }
@@ -1054,6 +1137,7 @@ function renderNav(){
     {id:'dash',label:'ダッシュボード',icon:ICONS.dash},
     {id:'timer',label:'作業タイマー',icon:ICONS.timer},
     {id:'todo',label:'ToDoリスト',icon:ICONS.todo,count:state.todos.filter(t=>t.status!=='完了').length},
+    {id:'projects',label:'プロジェクト',icon:ICONS.project,count:state.projects.filter(p=>p.status==='進行中').length},
     {id:'research',label:'工程表',icon:ICONS.research,count:state.research.filter(r=>r.genre!=='耐用・測定テスト').length},
     {id:'durability',label:'耐用・測定記録',icon:ICONS.durability,count:state.research.filter(r=>r.genre==='耐用・測定テスト').length},
     {id:'roughness',label:'面粗度比較',icon:ICONS.roughness,count:state.roughness.length},
@@ -1104,14 +1188,15 @@ function closeOv(id){ document.getElementById(id).classList.remove('show'); }
    ========================================================================== */
 function render(){
   renderNav();
-  const titleMap={dash:'ダッシュボード',timer:'作業タイマー',todo:'ToDoリスト',research:'工程表',durability:'耐用・測定記録',roughness:'面粗度比較',tools:'工具マスタ',customers:'顧客管理',trash:'ゴミ箱'};
+  const titleMap={dash:'ダッシュボード',timer:'作業タイマー',todo:'ToDoリスト',projects:'プロジェクト',research:'工程表',durability:'耐用・測定記録',roughness:'面粗度比較',tools:'工具マスタ',customers:'顧客管理',trash:'ゴミ箱'};
   document.getElementById('pageTitle').textContent=titleMap[currentPage]||'';
-  const subMap={dash:todayStr(),timer:'実作業時間を計測して工程表に反映',todo:'定常業務・加工研究・事務を横断管理',research:'比較検証の記録',durability:'工具・消耗品の使用量を工具ごとに集計',roughness:'条件別の面粗度(Ra)測定計画・結果',tools:'保有工具・消耗品の台帳',customers:'見込み〜取引先の管理',trash:'削除済みアイテムの復元・完全削除'};
+  const subMap={dash:todayStr(),timer:'実作業時間を計測して工程表に反映',todo:'定常業務・加工研究・事務を横断管理',projects:'KGI/KPIとToDoをツリーで構造化',research:'比較検証の記録',durability:'工具・消耗品の使用量を工具ごとに集計',roughness:'条件別の面粗度(Ra)測定計画・結果',tools:'保有工具・消耗品の台帳',customers:'見込み〜取引先の管理',trash:'削除済みアイテムの復元・完全削除'};
   document.getElementById('pageSub').textContent=subMap[currentPage]||'';
   const c=document.getElementById('content');
   if(currentPage==='dash') c.innerHTML=renderDash();
   else if(currentPage==='timer') c.innerHTML=renderTimer();
   else if(currentPage==='todo') c.innerHTML=renderTodo();
+  else if(currentPage==='projects') renderProjectsPage(c);
   else if(currentPage==='research') renderResearchPage(c);
   else if(currentPage==='durability') renderDurabilityPage(c);
   else if(currentPage==='roughness') renderRoughnessPage(c);
@@ -1147,6 +1232,7 @@ function renderDash(){
 
   return `
     <div class="dash-grid">${bizStats}</div>
+    ${renderProjectDashSummary()}
     <div class="section-label">スケジュール（WBS）</div>
     ${gantt}
     <div class="section-label">成功点ダイジェスト</div>
@@ -1154,6 +1240,21 @@ function renderDash(){
     <div class="section-label">失敗点ダイジェスト</div>
     <div class="card">${badHtml}</div>
   `;
+}
+function renderProjectDashSummary(){
+  const active = state.projects.filter(p=>p.status==='進行中' && p.parentId===null);
+  if(!active.length) return '';
+  const rows = active.map(p=>{
+    const prog = computeProjectProgress(p);
+    const pct = prog.kpiPct!=null ? prog.kpiPct : (prog.todoPct!=null ? prog.todoPct : 0);
+    const label = prog.kpiPct!=null ? prog.kpiLabel : (prog.todoTotal ? `ToDo ${prog.todoDone}/${prog.todoTotal}完了` : '進捗データなし');
+    return `<div class="proj-dash-row" onclick="setPage('projects')">
+      <div class="proj-dash-title">${esc(p.title)}</div>
+      <div class="proj-bar"><div class="proj-bar-fill ${prog.kpiPct!=null?'kpi':'todo'}" style="width:${Math.min(100,Math.max(0,pct))}%"></div></div>
+      <div class="proj-dash-label">${esc(label)}（${Math.round(pct)}%）</div>
+    </div>`;
+  }).join('');
+  return `<div class="section-label">進行中プロジェクトの進捗サマリー</div><div class="card">${rows}</div>`;
 }
 
 /* ---- ガントチャート ---- */
@@ -1442,6 +1543,305 @@ async function timerFinish(){
    ToDoリスト
    ========================================================================== */
 let todoFilterBiz=new Set(), todoFilterGenre=new Set();
+/* ==========================================================================
+   プロジェクト（KGI/KPI ツリー管理）
+   ========================================================================== */
+function projectChildren(id){ return state.projects.filter(p=>p.parentId===id).sort((a,b)=>(a.order||0)-(b.order||0)||a.createdAt-b.createdAt); }
+function projectDescendantIds(id){
+  const out=[id];
+  projectChildren(id).forEach(c=>{ out.push(...projectDescendantIds(c.id)); });
+  return out;
+}
+function projectSubtreeTodos(id){
+  const ids = new Set(projectDescendantIds(id));
+  return state.todos.filter(t=>(t.projectIds||[]).some(pid=>ids.has(pid)));
+}
+function computeProjectProgress(p){
+  const todos = projectSubtreeTodos(p.id);
+  const total = todos.length;
+  const done = todos.filter(t=>t.status==='完了').length;
+  const todoPct = total ? Math.round(done/total*100) : null;
+  let kpiPct = null, kpiLabel = '';
+  const target = Number(p.targetValue), current = Number(p.currentValue);
+  if(p.targetValue!=='' && p.targetValue!=null && target>0){
+    kpiPct = Math.round((current/target)*1000)/10;
+    kpiLabel = `${p.currentValue||0}${esc(p.unit)} / ${p.targetValue}${esc(p.unit)}`;
+  }
+  return {todoDone:done, todoTotal:total, todoPct, kpiPct, kpiLabel};
+}
+function openProjectModal(parentId){
+  editingProjectId=null;
+  document.getElementById('projModalTitle').textContent = parentId ? '子プロジェクト（中目標）を追加' : 'プロジェクトを追加';
+  document.getElementById('pj_parentId').value = parentId||'';
+  document.getElementById('pj_title').value='';
+  document.getElementById('pj_kgiText').value='';
+  document.getElementById('pj_targetValue').value='';
+  document.getElementById('pj_currentValue').value='';
+  document.getElementById('pj_unit').value='';
+  document.getElementById('pj_status').value='進行中';
+  document.getElementById('pj_note').value='';
+  document.getElementById('pj_delBtn').style.display='none';
+  openOv('ov-project');
+}
+function editProject(id){
+  const p = state.projects.find(x=>x.id===id); if(!p) return;
+  editingProjectId=id;
+  document.getElementById('projModalTitle').textContent='プロジェクトを編集';
+  document.getElementById('pj_parentId').value = p.parentId||'';
+  document.getElementById('pj_title').value=p.title;
+  document.getElementById('pj_kgiText').value=p.kgiText||'';
+  document.getElementById('pj_targetValue').value=p.targetValue;
+  document.getElementById('pj_currentValue').value=p.currentValue;
+  document.getElementById('pj_unit').value=p.unit||'';
+  document.getElementById('pj_status').value=p.status;
+  document.getElementById('pj_note').value=p.note||'';
+  document.getElementById('pj_delBtn').style.display='inline-block';
+  openOv('ov-project');
+}
+function submitProject(){
+  const title=document.getElementById('pj_title').value.trim();
+  if(!title){ toast('プロジェクト名を入力してください'); return; }
+  const data={
+    parentId:document.getElementById('pj_parentId').value||null,
+    title, kgiText:document.getElementById('pj_kgiText').value.trim(),
+    targetValue:document.getElementById('pj_targetValue').value,
+    currentValue:document.getElementById('pj_currentValue').value,
+    unit:document.getElementById('pj_unit').value.trim(),
+    status:document.getElementById('pj_status').value,
+    note:document.getElementById('pj_note').value.trim(),
+  };
+  if(editingProjectId){ const p=state.projects.find(x=>x.id===editingProjectId); Object.assign(p,data); touch(p); }
+  else{ state.projects.push(Object.assign({id:uid('pj_'),order:state.projects.length,createdAt:Date.now(),updatedAt:Date.now()},data)); }
+  saveState(); closeOv('ov-project'); render(); toast('保存しました');
+}
+function deleteProject(){
+  if(!editingProjectId) return;
+  const hasChildren = projectChildren(editingProjectId).length>0;
+  if(hasChildren){ toast('子プロジェクトが残っているため削除できません（先に子を削除してください）'); return; }
+  if(!confirm('このプロジェクトを削除しますか？（紐づくToDoの割り当ては解除されます）')) return;
+  state.projects = state.projects.filter(p=>p.id!==editingProjectId);
+  state.todos.forEach(t=>{ if((t.projectIds||[]).includes(editingProjectId)) t.projectIds = t.projectIds.filter(pid=>pid!==editingProjectId); });
+  saveState(); closeOv('ov-project'); render(); toast('削除しました');
+}
+let projectExpanded = new Set();
+function toggleProjectExpand(id){ if(projectExpanded.has(id)) projectExpanded.delete(id); else projectExpanded.add(id); render(); }
+let projectViewMode = 'list';
+function setProjectViewMode(m){ projectViewMode=m; render(); }
+function renderProjectNode(id, depth){
+  const p = state.projects.find(x=>x.id===id); if(!p) return '';
+  const children = projectChildren(id);
+  const directTodos = state.todos.filter(t=>(t.projectIds||[]).includes(id));
+  const prog = computeProjectProgress(p);
+  const isOpen = projectExpanded.has(id);
+  const hasContent = children.length>0 || directTodos.length>0;
+  return `
+    <div class="proj-node" style="margin-left:${depth*18}px">
+      <div class="proj-card">
+        <div class="proj-card-head">
+          ${hasContent?`<button class="proj-toggle" onclick="toggleProjectExpand('${id}')">${isOpen?'▾':'▸'}</button>`:'<span class="proj-toggle" style="visibility:hidden">▸</span>'}
+          <div class="proj-title" onclick="editProject('${id}')">${esc(p.title)}</div>
+          <span class="st-chip st-${p.status}">${p.status}</span>
+        </div>
+        ${p.kgiText?`<div class="proj-kgi">🎯 ${esc(p.kgiText)}</div>`:''}
+        ${prog.kpiPct!=null?`
+        <div class="proj-progress">
+          <div class="proj-progress-label">${prog.kpiLabel}（${prog.kpiPct}%）</div>
+          <div class="proj-bar"><div class="proj-bar-fill kpi" style="width:${Math.min(100,Math.max(0,prog.kpiPct))}%"></div></div>
+        </div>`:''}
+        ${prog.todoTotal>0?`
+        <div class="proj-progress">
+          <div class="proj-progress-label">ToDo進捗：${prog.todoDone}/${prog.todoTotal} 完了（${prog.todoPct}%）</div>
+          <div class="proj-bar"><div class="proj-bar-fill todo" style="width:${prog.todoPct}%"></div></div>
+        </div>`:''}
+        <div class="proj-actions">
+          <button class="btn sm ghost" onclick="openProjectModal('${id}')">＋ 子プロジェクト</button>
+          <button class="btn sm ghost" onclick="openBulkAssignModal('${id}')">＋ ToDoを割当</button>
+        </div>
+      </div>
+      ${isOpen ? `
+        ${directTodos.length?`<div class="proj-todolist">${directTodos.map(t=>`
+          <div class="proj-todo-item st-border st-${t.status}" onclick="editTodo('${t.id}')">
+            <span class="tag biz-${t.biz}">${t.biz}</span>
+            <span class="proj-todo-title">${esc(t.title)}</span>
+            <span class="st-chip st-${t.status}">${t.status}</span>
+          </div>`).join('')}</div>`:''}
+        ${children.map(c=>renderProjectNode(c.id, depth+1)).join('')}
+      ` : ''}
+    </div>`;
+}
+function renderProjectsPage(container){
+  const roots = projectChildren(null);
+  const treeHtml = roots.length ? roots.map(p=>renderProjectNode(p.id,0)).join('') : `<div class="empty">プロジェクトがまだありません。「＋ プロジェクトを追加」から作成してください。</div>`;
+  container.innerHTML = `
+    <div class="filterbar">
+      <button class="btn sm ${projectViewMode==='list'?'primary':'ghost'}" onclick="setProjectViewMode('list')">📋 ツリー表示</button>
+      <button class="btn sm ${projectViewMode==='map'?'primary':'ghost'}" onclick="setProjectViewMode('map')">🗺️ マップ表示</button>
+      <div class="spacer"></div>
+      <button class="btn primary sm" onclick="openProjectModal(null)">＋ プロジェクトを追加</button>
+    </div>
+    ${projectViewMode==='list' ? `<div class="proj-tree">${treeHtml}</div>` : renderProjectMapShell()}
+  `;
+  if(projectViewMode==='map') requestAnimationFrame(initProjectMap);
+}
+function truncate(s,n){ s=String(s||''); return s.length>n ? s.slice(0,n)+'…' : s; }
+function computeProjectLayout(){
+  const positions={};
+  let leafCounter=0;
+  const nodeW=180, xGap=220, yGap=90;
+  function layout(id, depth){
+    const children = projectChildren(id);
+    let y;
+    if(!children.length){
+      y = leafCounter*yGap;
+      leafCounter++;
+    } else {
+      const childYs = children.map(c=>layout(c.id, depth+1));
+      y = (Math.min(...childYs)+Math.max(...childYs))/2;
+    }
+    positions[id] = {x:depth*xGap, y};
+    return y;
+  }
+  projectChildren(null).forEach(r=>layout(r.id,0));
+  return positions;
+}
+let projMapTransform = {x:30,y:30,scale:1};
+function applyProjectMapTransform(){
+  const g = document.getElementById('projMapG');
+  if(g) g.setAttribute('transform', `translate(${projMapTransform.x},${projMapTransform.y}) scale(${projMapTransform.scale})`);
+}
+function projectMapZoom(factor){
+  projMapTransform.scale = Math.min(3, Math.max(0.3, projMapTransform.scale*factor));
+  applyProjectMapTransform();
+}
+function projectMapReset(){ projMapTransform={x:30,y:30,scale:1}; applyProjectMapTransform(); }
+function renderProjectMapShell(){
+  return `<div class="proj-map-wrap">
+    <div class="proj-map-controls">
+      <button class="btn sm ghost" onclick="projectMapZoom(1.2)">＋</button>
+      <button class="btn sm ghost" onclick="projectMapZoom(0.8)">－</button>
+      <button class="btn sm ghost" onclick="projectMapReset()">リセット</button>
+    </div>
+    <div class="proj-map-viewport" id="projMapViewport">
+      <svg id="projMapSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+  </div>`;
+}
+function initProjectMap(){
+  const svg = document.getElementById('projMapSvg');
+  if(!svg) return;
+  const positions = computeProjectLayout();
+  const ids = Object.keys(positions);
+  const nodeW=180, nodeH=64;
+  if(!ids.length){
+    svg.setAttribute('width',400); svg.setAttribute('height',120);
+    svg.innerHTML = `<text x="20" y="50" font-size="13" fill="#888">プロジェクトがまだありません</text>`;
+    return;
+  }
+  let maxX=0, maxY=0;
+  ids.forEach(id=>{ maxX=Math.max(maxX,positions[id].x); maxY=Math.max(maxY,positions[id].y); });
+  svg.setAttribute('width', maxX+nodeW+80);
+  svg.setAttribute('height', maxY+nodeH+80);
+  let lines='', nodes='';
+  ids.forEach(id=>{
+    const p = state.projects.find(x=>x.id===id); if(!p) return;
+    const pos = positions[id];
+    if(p.parentId && positions[p.parentId]){
+      const pp = positions[p.parentId];
+      const x1=pp.x+nodeW, y1=pp.y+nodeH/2, x2=pos.x, y2=pos.y+nodeH/2, mx=(x1+x2)/2;
+      lines += `<path d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}" fill="none" stroke="#b7c9bd" stroke-width="2"/>`;
+    }
+    const prog = computeProjectProgress(p);
+    const pct = prog.kpiPct!=null ? prog.kpiPct : (prog.todoPct!=null ? prog.todoPct : 0);
+    const color = p.status==='完了' ? '#3f8a5c' : p.status==='中止' ? '#b0392f' : p.status==='保留' ? '#b08a2f' : '#2f6b4a';
+    nodes += `<g transform="translate(${pos.x},${pos.y})" style="cursor:pointer" onclick="editProject('${id}')">
+      <rect width="${nodeW}" height="${nodeH}" rx="10" fill="#ffffff" stroke="${color}" stroke-width="2"/>
+      <text x="10" y="22" font-size="13" font-weight="600" fill="#222">${esc(truncate(p.title,16))}</text>
+      <text x="10" y="40" font-size="10.5" fill="#777">${esc(p.status)}${prog.todoTotal?` ／ ToDo ${prog.todoDone}/${prog.todoTotal}`:''}</text>
+      <rect x="10" y="48" width="${nodeW-20}" height="6" rx="3" fill="#eee"/>
+      <rect x="10" y="48" width="${Math.max(0,Math.min(100,pct))/100*(nodeW-20)}" height="6" rx="3" fill="${color}"/>
+    </g>`;
+  });
+  svg.innerHTML = `<g id="projMapG">${lines}${nodes}</g>`;
+  applyProjectMapTransform();
+  attachProjectMapEvents();
+}
+function attachProjectMapEvents(){
+  const vp = document.getElementById('projMapViewport');
+  if(!vp) return;
+  let dragging=false, lastX=0, lastY=0;
+  const pointers = new Map();
+  let pinchStartDist=null, pinchStartScale=1;
+  vp.onpointerdown = (e)=>{
+    vp.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, {x:e.clientX,y:e.clientY});
+    if(pointers.size===1){ dragging=true; lastX=e.clientX; lastY=e.clientY; }
+    if(pointers.size===2){
+      const pts=[...pointers.values()];
+      pinchStartDist = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
+      pinchStartScale = projMapTransform.scale;
+      dragging=false;
+    }
+  };
+  vp.onpointermove = (e)=>{
+    if(!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, {x:e.clientX,y:e.clientY});
+    if(pointers.size===2 && pinchStartDist){
+      const pts=[...pointers.values()];
+      const dist = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
+      projMapTransform.scale = Math.min(3, Math.max(0.3, pinchStartScale*(dist/pinchStartDist)));
+      applyProjectMapTransform();
+    } else if(dragging && pointers.size===1){
+      const dx=e.clientX-lastX, dy=e.clientY-lastY;
+      lastX=e.clientX; lastY=e.clientY;
+      projMapTransform.x += dx; projMapTransform.y += dy;
+      applyProjectMapTransform();
+    }
+  };
+  const endPointer=(e)=>{
+    pointers.delete(e.pointerId);
+    if(pointers.size<2) pinchStartDist=null;
+    if(pointers.size===0) dragging=false;
+  };
+  vp.onpointerup = endPointer;
+  vp.onpointercancel = endPointer;
+  vp.onpointerleave = endPointer;
+  vp.onwheel = (e)=>{
+    e.preventDefault();
+    projectMapZoom(e.deltaY<0 ? 1.1 : 0.9);
+  };
+}
+/* ---- ToDo一括プロジェクト割当 ---- */
+let bulkAssignProjectTargetId=null, bulkAssignSelected=new Set();
+function openBulkAssignModal(projectId){
+  bulkAssignProjectTargetId = projectId;
+  bulkAssignSelected = new Set();
+  document.getElementById('ba_projectName').textContent = state.projects.find(p=>p.id===projectId)?.title || '';
+  renderBulkAssignList();
+  openOv('ov-bulkassign');
+}
+function renderBulkAssignList(){
+  const items = [...state.todos].filter(t=>!(t.projectIds||[]).includes(bulkAssignProjectTargetId)).sort((a,b)=>b.createdAt-a.createdAt);
+  const html = items.length ? items.map(t=>`
+    <label class="ba-item">
+      <input type="checkbox" ${bulkAssignSelected.has(t.id)?'checked':''} onchange="toggleBulkAssignSelect('${t.id}',this.checked)">
+      <span class="tag biz-${t.biz}">${t.biz}</span>
+      <span class="ba-title">${esc(t.title)}</span>
+      <span class="st-chip st-${t.status}">${t.status}</span>
+    </label>`).join('') : `<div class="empty">割り当て候補のToDoがありません（すでにすべて割当済みです）</div>`;
+  document.getElementById('ba_list').innerHTML = html;
+}
+function toggleBulkAssignSelect(id,checked){
+  if(checked) bulkAssignSelected.add(id); else bulkAssignSelected.delete(id);
+}
+function submitBulkAssign(){
+  if(!bulkAssignSelected.size){ toast('ToDoを選択してください'); return; }
+  bulkAssignSelected.forEach(tid=>{
+    const t = state.todos.find(x=>x.id===tid); if(!t) return;
+    if(!Array.isArray(t.projectIds)) t.projectIds=[];
+    if(!t.projectIds.includes(bulkAssignProjectTargetId)){ t.projectIds.push(bulkAssignProjectTargetId); t.updatedAt=Date.now(); }
+  });
+  saveState(); closeOv('ov-bulkassign'); render(); toast(`${bulkAssignSelected.size}件を割り当てました`);
+}
 function renderTodo(){
   const bizChips=BIZ_LIST.map(b=>`<span class="pill biz-${b} ${todoFilterBiz.has(b)?'active':''}" onclick="toggleTodoFilter('biz','${b}')">${b}</span>`).join('');
   const genreChips=GENRE_LIST.map(g=>`<span class="pill ${todoFilterGenre.has(g)?'active':''}" onclick="toggleTodoFilter('genre','${g}')">${g}</span>`).join('');
@@ -1501,6 +1901,22 @@ function syncResearchFromTodo(todo){
   touch(r);
 }
 let editingTodoId=null;
+function flattenProjectsForSelect(){
+  const out=[];
+  function walk(id,depth){
+    projectChildren(id).forEach(p=>{
+      out.push({id:p.id, label:'　'.repeat(depth)+(depth?'└ ':'')+p.title});
+      walk(p.id, depth+1);
+    });
+  }
+  walk(null,0);
+  return out;
+}
+function populateProjectSelect(selectedIds){
+  const el = document.getElementById('td_projects');
+  const list = flattenProjectsForSelect();
+  el.innerHTML = list.map(p=>`<option value="${p.id}" ${(selectedIds||[]).includes(p.id)?'selected':''}>${esc(p.label)}</option>`).join('');
+}
 function openTodoModal(){
   editingTodoId=null;
   document.getElementById('todoModalTitle').textContent='ToDoを追加';
@@ -1513,6 +1929,7 @@ function openTodoModal(){
   document.getElementById('td_start').value='';
   document.getElementById('td_due').value='';
   document.getElementById('td_note').value='';
+  populateProjectSelect([]);
   document.getElementById('td_delBtn').style.display='none';
   openOv('ov-todo');
 }
@@ -1529,6 +1946,7 @@ function editTodo(id){
   document.getElementById('td_start').value=t.start||'';
   document.getElementById('td_due').value=t.due||'';
   document.getElementById('td_note').value=t.note||'';
+  populateProjectSelect(t.projectIds||[]);
   document.getElementById('td_delBtn').style.display='inline-block';
   openOv('ov-todo');
 }
@@ -1536,7 +1954,7 @@ function submitTodo(){
   const title=document.getElementById('td_title').value.trim();
   if(!title){ toast('タイトルを入力してください'); return; }
   const genre=document.getElementById('td_genre').value;
-  const data={title,biz:document.getElementById('td_biz').value,genre,priority:document.getElementById('td_priority').value,status:document.getElementById('td_status').value,start:document.getElementById('td_start').value,due:document.getElementById('td_due').value,note:document.getElementById('td_note').value.trim()};
+  const data={title,biz:document.getElementById('td_biz').value,genre,priority:document.getElementById('td_priority').value,status:document.getElementById('td_status').value,start:document.getElementById('td_start').value,due:document.getElementById('td_due').value,note:document.getElementById('td_note').value.trim(),projectIds:Array.from(document.getElementById('td_projects').selectedOptions).map(o=>o.value)};
   const isResearchGenre = RESEARCH_GENRES.includes(data.genre);
 
   if(editingTodoId){
@@ -2562,6 +2980,7 @@ function toolToggleStarter(id){
   toast(t.starter?`「${t.name}」をスタメンにしました`:`「${t.name}」をスタメンから外しました`);
 }
 let editingToolId=null, toolPhotoBuffer=[];
+let editingProjectId=null;
 function renderToolPhotoStrip(){
   const strip = document.getElementById('tl_photoStrip');
   strip.innerHTML = toolPhotoBuffer.map((p,i)=>`<div class="photo-thumb"><img src="${p}" onclick="openLightboxImages(toolPhotoBuffer,${i})"><button class="x" onclick="event.stopPropagation();removeToolPhoto(${i})">×</button></div>`).join('')
