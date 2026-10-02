@@ -1171,6 +1171,85 @@ async function afterLogin(){
 }
 
 /* ---- 永続化（クラウド優先・ローカルは予備） ---- */
+/* ==========================================================================
+   写真チャンク分離（Firestoreの1ドキュメント1MB制限対策）
+   state内のBase64写真を "__photoRef:チャンク番号:チャンク内インデックス" という
+   短い参照文字列に差し替え、実データは app_state/{uid}/photo_chunks/{n} に
+   複数ドキュメントへ分割して保存する。render・編集系のコードは一切変更不要。
+   ========================================================================== */
+const PHOTO_CHUNK_MAX_BYTES = 700000; // 1チャンクあたりの目安上限（Firestoreの1MB制限に余裕を持たせる）
+function collectPhotoSlots(st){
+  // state内の「写真配列を持つ場所」をすべて洗い出す（toolsの写真、研究の各試料の写真）
+  const slots = [];
+  (st.tools||[]).forEach(t=>{ if(Array.isArray(t.photos)) slots.push(t.photos); });
+  (st.research||[]).forEach(r=>{
+    (r.specimens||[]).forEach(sp=>{ if(Array.isArray(sp.photos)) slots.push(sp.photos); });
+  });
+  return slots;
+}
+function extractPhotosForUpload(st){
+  // stateをディープコピーしてから写真を参照文字列に差し替える（元のstateオブジェクトは書き換えない）
+  const stCopy = JSON.parse(JSON.stringify(st));
+  const slots = collectPhotoSlots(stCopy);
+  const chunks = [[]]; // chunks[chunkIndex] = [base64, base64, ...]
+  let curChunk = 0, curSize = 0;
+  slots.forEach(photoArr=>{
+    for(let i=0;i<photoArr.length;i++){
+      const val = photoArr[i];
+      if(typeof val==='string' && val.startsWith('__photoRef:')) continue; // 既に参照化済みなら何もしない（通常は起きない）
+      const size = typeof val==='string' ? val.length : 0;
+      if(curSize + size > PHOTO_CHUNK_MAX_BYTES && chunks[curChunk].length>0){
+        curChunk++; chunks[curChunk]=[]; curSize=0;
+      }
+      const idxInChunk = chunks[curChunk].length;
+      chunks[curChunk].push(val);
+      curSize += size;
+      photoArr[i] = `__photoRef:${curChunk}:${idxInChunk}`;
+    }
+  });
+  return {stateWithRefs: stCopy, chunks};
+}
+function resolvePhotoRefs(st, chunksByIndex){
+  // 読み込んだstate内の参照文字列を、チャンクから取得した実データへ戻す
+  const slots = collectPhotoSlots(st);
+  slots.forEach(photoArr=>{
+    for(let i=0;i<photoArr.length;i++){
+      const val = photoArr[i];
+      if(typeof val==='string' && val.startsWith('__photoRef:')){
+        const parts = val.split(':');
+        const chunkIdx = Number(parts[1]), inChunkIdx = Number(parts[2]);
+        const chunkArr = chunksByIndex[chunkIdx];
+        photoArr[i] = (chunkArr && chunkArr[inChunkIdx]!=null) ? chunkArr[inChunkIdx] : '';
+      }
+    }
+  });
+  return st;
+}
+async function loadPhotoChunks(uid){
+  const chunksByIndex = [];
+  try{
+    const snap = await fbDb.collection('app_state').doc(uid).collection('photo_chunks').get();
+    snap.forEach(doc=>{
+      const n = Number(doc.id);
+      chunksByIndex[n] = doc.data().items || [];
+    });
+  }catch(e){ console.error('写真チャンクの読込に失敗:', e); }
+  return chunksByIndex;
+}
+async function savePhotoChunks(uid, chunks){
+  // 既存チャンクを先に全削除してから、新しいチャンクを書き込む（チャンク数が増減しても整合を保つ）
+  const col = fbDb.collection('app_state').doc(uid).collection('photo_chunks');
+  const existing = await col.get();
+  const batchDel = fbDb.batch();
+  existing.forEach(doc=>batchDel.delete(doc.ref));
+  if(!existing.empty) await batchDel.commit();
+
+  for(let i=0;i<chunks.length;i++){
+    if(!chunks[i].length) continue; // 空チャンクは書き込まない
+    await col.doc(String(i)).set({items: chunks[i]});
+  }
+}
+
 async function loadState(){
   const local = await idbGet('state');
   const localState = local ? migrateState(local) : null;
@@ -1178,7 +1257,12 @@ async function loadState(){
   if(fbDb && currentUser){
     try{
       const docSnap = await fbDb.collection('app_state').doc(currentUser.uid).get();
-      if(docSnap.exists && docSnap.data() && docSnap.data().state) cloud = migrateState(docSnap.data().state);
+      if(docSnap.exists && docSnap.data() && docSnap.data().state){
+        const rawCloudState = docSnap.data().state;
+        const chunksByIndex = await loadPhotoChunks(currentUser.uid);
+        resolvePhotoRefs(rawCloudState, chunksByIndex);
+        cloud = migrateState(rawCloudState);
+      }
     }catch(e){ console.error('クラウド読込に失敗:',e); syncStatus='error'; lastSyncError=(e&&e.message)||String(e); cloudFetchFailed=true; }
   }
   if(cloudFetchFailed){
@@ -1210,10 +1294,12 @@ function saveState(){
   state.__meta = Object.assign({}, state.__meta, {updatedAt: Date.now()});
   syncStatus='saving'; updateStorageNote();
   saveTimer=setTimeout(async()=>{
-    await idbSet('state',state);           // まずローカルに退避
+    await idbSet('state',state);           // まずローカルに退避（写真込みの完全な形でローカルには残す）
     if(fbDb && currentUser){
       try{
-        await fbDb.collection('app_state').doc(currentUser.uid).set({state: state}, {merge:true});
+        const {stateWithRefs, chunks} = extractPhotosForUpload(state);
+        await savePhotoChunks(currentUser.uid, chunks);
+        await fbDb.collection('app_state').doc(currentUser.uid).set({state: stateWithRefs}, {merge:false});
         syncStatus='idle'; lastSyncError='';
       }catch(e){ console.error('クラウド保存に失敗:',e); syncStatus='error'; lastSyncError=(e&&e.message)||String(e); }
     }else{ syncStatus='offline'; }
