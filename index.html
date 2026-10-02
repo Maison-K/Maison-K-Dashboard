@@ -675,6 +675,11 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
         <div class="field"><label>為替レート（USD→JPY）</label><input id="st_usdJpyRate" type="number" step="0.1"></div>
       </div>
       <div class="hint">為替は変動するため、必要に応じてここで手動更新してください（目安：本日1ドル=約159円）。</div>
+
+      <div class="section-label" style="margin-top:16px">写真データのクリーンアップ</div>
+      <div class="hint">以前登録した写真は圧縮前の大きなデータのままです。クラウド保存でエラーが出る場合は、ここで一括圧縮してください（この端末にある写真を1枚ずつ縮小・再圧縮し、保存し直します。数秒〜数十秒かかることがあります）。</div>
+      <button class="btn sm" style="margin-top:8px" onclick="recompressAllPhotos()" id="st_recompressBtn">既存の写真を一括圧縮する</button>
+      <div class="hint" id="st_recompressStatus" style="margin-top:6px"></div>
     </div>
     <div class="modal-foot">
       <div style="flex:1"></div>
@@ -763,6 +768,76 @@ function compressImageFile(file, maxDim, quality){
     reader.onerror = ()=>{ resolve(null); };
     reader.readAsDataURL(file);
   });
+}
+
+/* ---- 既存のBase64画像文字列を、圧縮済みのDataURLに変換する ---- */
+function recompressDataUrl(dataUrl, maxDim, quality){
+  maxDim = maxDim || 1200;
+  quality = quality || 0.72;
+  return new Promise((resolve)=>{
+    if(!dataUrl || typeof dataUrl!=='string' || !dataUrl.startsWith('data:image')){ resolve(dataUrl); return; }
+    const img = new Image();
+    img.onload = ()=>{
+      let w = img.width, h = img.height;
+      if(w > maxDim || h > maxDim){
+        if(w >= h){ h = Math.round(h * (maxDim / w)); w = maxDim; }
+        else{ w = Math.round(w * (maxDim / h)); h = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      try{
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      }catch(e){
+        console.error('再圧縮に失敗、元データのまま維持します:', e);
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = ()=>{ resolve(dataUrl); };
+    img.src = dataUrl;
+  });
+}
+async function recompressAllPhotos(){
+  const btn = document.getElementById('st_recompressBtn');
+  const statusEl = document.getElementById('st_recompressStatus');
+  btn.disabled = true;
+  let total=0, done=0;
+
+  // 対象を数え上げる
+  const targets = [];
+  state.tools.forEach(t=>{ (t.photos||[]).forEach((p,i)=>targets.push({kind:'tool', obj:t, idx:i})); });
+  state.research.forEach(r=>{
+    (r.specimens||[]).forEach((sp,si)=>{
+      (sp.photos||[]).forEach((p,i)=>targets.push({kind:'specimen', research:r, sp, idx:i}));
+    });
+  });
+  total = targets.length;
+  if(!total){ statusEl.textContent='圧縮対象の写真が見つかりませんでした。'; btn.disabled=false; return; }
+
+  statusEl.textContent = `0 / ${total} 枚を処理中…`;
+  for(const t of targets){
+    try{
+      if(t.kind==='tool'){
+        const newUrl = await recompressDataUrl(t.obj.photos[t.idx]);
+        t.obj.photos[t.idx] = newUrl;
+      }else{
+        const newUrl = await recompressDataUrl(t.sp.photos[t.idx]);
+        t.sp.photos[t.idx] = newUrl;
+      }
+    }catch(e){ console.error('1枚の圧縮に失敗:', e); }
+    done++;
+    statusEl.textContent = `${done} / ${total} 枚を処理中…`;
+  }
+
+  // 触れたレコードのupdatedAtを更新してから保存
+  state.tools.forEach(t=>{ if((t.photos||[]).length) touch(t); });
+  state.research.forEach(r=>{ if((r.specimens||[]).some(sp=>(sp.photos||[]).length)) touch(r); });
+
+  saveState();
+  statusEl.textContent = `完了：${total}枚を圧縮しました。クラウドへの保存を試みています…`;
+  btn.disabled = false;
+  toast('写真の圧縮が完了しました');
 }
 
 /* ==========================================================================
