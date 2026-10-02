@@ -1230,7 +1230,7 @@ function updateStorageNote(){
     件数：${cnt} 件　ゴミ箱：${state.trash.length}件<br>
     ${currentUser?esc(currentUser.email):'未ログイン'}<br>
     最終更新：${new Date().toLocaleTimeString('ja-JP')}
-    ${syncStatus==='error'&&lastSyncError?`<br><span class="mute" style="font-size:9.5px">詳細：${esc(lastSyncError).slice(0,120)}</span>`:''}`;
+    ${syncStatus==='error'&&lastSyncError?`<br><span class="mute" style="font-size:9.5px;word-break:break-all;">詳細：${esc(lastSyncError)}</span>`:''}`;
 }
 function exportJSON(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
