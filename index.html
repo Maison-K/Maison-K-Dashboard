@@ -581,6 +581,7 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
   <div class="modal">
     <div class="modal-head"><h3 id="todoModalTitle">ToDoを追加</h3><button class="modal-close" onclick="closeOv('ov-todo')">×</button></div>
     <div class="modal-body">
+      <div class="field" id="td_fromWrap"><label>既存ToDoからコピー（任意）</label><select id="td_from" onchange="todoCopyFrom(this.value)"></select></div>
       <div class="field"><label>タイトル</label><input id="td_title" placeholder="例）W95・希釈10%でのCMP再検証"></div>
       <div class="field-row">
         <div class="field"><label>事業</label><select id="td_biz"><option>研磨</option><option>3Dプリンタ</option><option>製作図面依頼</option><option>量産品</option><option>一般顧客モデル</option><option>全般</option></select></div>
@@ -828,12 +829,26 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
       <div class="field"><label>タイトル</label><input id="nr_title" placeholder="例）センタドリル有無によるポリッシュの仕上がり確認、加工時間、作業性比較"></div>
       <div class="field"><label>ジャンル</label><select id="nr_genre"><option value="製造">製造</option><option value="加工研究">加工研究</option><option value="耐用・測定テスト">耐用・測定テスト</option></select></div>
       <div class="field"><label>事業</label><select id="nr_biz"><option>研磨</option><option>3Dプリンタ</option><option>製作図面依頼</option><option>量産品</option><option>一般顧客モデル</option></select></div>
+      <div class="field"><label>コピー元（任意）</label><select id="nr_from"></select>
+        <div class="mute" style="font-size:10.5px;margin-top:3px">選ぶと、試料（工程・条件・寸法）／目的／お客様の紐づけを複製して新規作成します。写真・請求書番号・結論は引き継ぎません。</div></div>
     </div>
     <div class="modal-foot">
       <div style="flex:1"></div>
       <button class="btn" onclick="closeOv('ov-newresearch')">キャンセル</button>
       <button class="btn primary" onclick="submitNewResearch()">作成して詳細を開く</button>
     </div>
+  </div>
+</div>
+
+<!-- ============ コピー元ピッカー（共通） ============ -->
+<div class="overlay" id="ov-copy" onclick="if(event.target===this)closeOv('ov-copy')">
+  <div class="modal">
+    <div class="modal-head"><h3 id="cp_title">コピー</h3><button class="modal-close" onclick="closeOv('ov-copy')">×</button></div>
+    <div class="modal-body">
+      <input id="cp_q" placeholder="絞り込み（タイトル・No・ジャンル）" oninput="renderCopyList()" style="margin-bottom:8px">
+      <div id="cp_body" style="max-height:52vh;overflow:auto"></div>
+    </div>
+    <div class="modal-foot" id="cp_foot"><div style="flex:1"></div><button class="btn" onclick="closeOv('ov-copy')">キャンセル</button></div>
   </div>
 </div>
 
@@ -3072,6 +3087,8 @@ function openTodoModal(){
   document.getElementById('td_due').value='';
   document.getElementById('td_note').value='';
   populateProjectSelect([]);
+  fillTodoFromOptions();
+  document.getElementById('td_fromWrap').style.display='';
   document.getElementById('td_delBtn').style.display='none';
   openOv('ov-todo');
 }
@@ -3089,6 +3106,7 @@ function editTodo(id){
   document.getElementById('td_due').value=t.due||'';
   document.getElementById('td_note').value=t.note||'';
   populateProjectSelect(t.projectIds||[]);
+  document.getElementById('td_fromWrap').style.display='none';
   document.getElementById('td_delBtn').style.display='inline-block';
   openOv('ov-todo');
 }
@@ -3476,9 +3494,16 @@ function renderRoughnessPage(container){
     </div>` : `<div class="empty">面粗度比較の記録はまだありません。「＋ 行を追加」で登録してください。</div>`}
   `;
 }
-function newResearchDirect(title, biz, genre){
+function newResearchDirect(title, biz, genre, fromId){
   genre = genre || '加工研究';
   const r=emptyResearch(biz||'研磨'); r.id=uid('rs_'); r.genre=genre; r.no=nextResearchNo(biz||'研磨', genre); r.title=title||'';
+  const src = fromId ? state.research.find(x=>x.id===fromId) : null;
+  if(src){
+    const c = JSON.parse(JSON.stringify(src));
+    r.purpose=c.purpose||''; r.compare=c.compare||r.compare; r.type=c.type||r.type;
+    r.specimens=(c.specimens&&c.specimens.length?c.specimens:r.specimens).map(sp=>{ sp.photos=[]; return sp; });
+    r.order=Object.assign({},r.order,c.order||{}, {invoiceNo:'',invoicePdfUrl:'',version:null});
+  }
   state.research.push(r);
   const todoId=uid('td_');
   state.todos.push({id:todoId,title:title||'（無題）',no:r.no,biz:r.biz,genre:genre,priority:'中',status:r.status,start:r.startDate||'',due:r.endDate||'',note:'',order:state.todos.length,createdAt:Date.now(),updatedAt:Date.now(),linkedResearchId:r.id});
@@ -3487,6 +3512,7 @@ function newResearchDirect(title, biz, genre){
 }
 function openNewResearchModal(presetGenre){
   document.getElementById('nr_title').value='';
+  document.getElementById('nr_from').innerHTML='<option value="">（コピーしない）</option>'+state.research.slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).map(x=>`<option value="${x.id}">${esc(x.genre)} No.${x.no??'-'}｜${esc((x.title||'（無題）').slice(0,40))}</option>`).join('');
   document.getElementById('nr_biz').value='研磨';
   document.getElementById('nr_genre').value=presetGenre||'加工研究';
   openOv('ov-newresearch');
@@ -3496,8 +3522,97 @@ function submitNewResearch(){
   if(!title){ toast('タイトルを入力してください'); return; }
   const biz=document.getElementById('nr_biz').value;
   const genre=document.getElementById('nr_genre').value;
+  const fromId=document.getElementById('nr_from').value;
   closeOv('ov-newresearch');
-  newResearchDirect(title, biz, genre);
+  newResearchDirect(title, biz, genre, fromId);
+}
+/* ---------- 共通コピー機能 ---------- */
+let copyCtx=null;
+function cpNorm(t){ return String(t||'').replace(/[\s　]/g,'').replace(/さん|ポリッシュ|様/g,''); }
+function cpRelated(a,b){
+  const ca=a.order&&a.order.customerId, cb=b.order&&b.order.customerId;
+  if(ca && ca===cb) return true;
+  const na=cpNorm(a.title), nb=cpNorm(b.title);
+  return na.length>=4 && nb.length>=4 && na.slice(0,4)===nb.slice(0,4);
+}
+function openCopyPicker(ctx){
+  copyCtx=ctx; ctx.stage='list';
+  document.getElementById('cp_title').textContent=ctx.title;
+  document.getElementById('cp_q').value=''; document.getElementById('cp_q').style.display='';
+  renderCopyList(); openOv('ov-copy');
+}
+function renderCopyList(){
+  const ctx=copyCtx; if(!ctx||ctx.stage!=='list') return;
+  const q=document.getElementById('cp_q').value.trim().toLowerCase();
+  const items=ctx.items.filter(it=>!q||it.label.toLowerCase().includes(q));
+  document.getElementById('cp_foot').innerHTML='<div style="flex:1"></div><button class="btn" onclick="closeOv(\'ov-copy\')">キャンセル</button>';
+  document.getElementById('cp_body').innerHTML = items.length ? items.map(it=>`<div class="card" style="padding:8px 10px;margin-bottom:6px;cursor:pointer" onclick="copyPickItem('${it.key}')"><div style="font-weight:600;font-size:13px">${esc(it.label)}${it.near?' <span class="pill active" style="font-size:10px">同じお客様の可能性</span>':''}</div>${it.sub?`<div class="mute" style="font-size:11px">${esc(it.sub)}</div>`:''}</div>`).join('') : '<div class="empty">該当する記録がありません</div>';
+}
+function researchPickItems(excludeId, base){
+  return state.research.filter(x=>x.id!==excludeId).map(x=>({
+    key:x.id, label:`${x.genre} No.${x.no??'-'}｜${x.title||'（無題）'}`,
+    sub:'試料：'+x.specimens.map(sp=>sp.label).join('・'), near: base?cpRelated(base,x):false, t:x.updatedAt||0
+  })).sort((a,b)=>(b.near-a.near)||(b.t-a.t));
+}
+function copyPickItem(key){ const c=copyCtx; if(c&&c.onPick) c.onPick(key); }
+/* 他の記録 → この記録へ試料をコピー */
+function startSpecimenCopy(targetId){
+  const tgt=state.research.find(x=>x.id===targetId); if(!tgt) return;
+  openCopyPicker({title:'コピー元の記録を選択', items:researchPickItems(targetId,tgt), onPick:(srcId)=>{
+    const src=state.research.find(x=>x.id===srcId); if(!src) return;
+    copyCtx.stage='spec';
+    document.getElementById('cp_title').textContent=`「${src.title||'（無題）'}」の試料を選択`;
+    document.getElementById('cp_q').style.display='none';
+    document.getElementById('cp_body').innerHTML = src.specimens.map((sp,i)=>`<label class="card" style="display:flex;gap:8px;align-items:center;padding:8px 10px;margin-bottom:6px;cursor:pointer"><input type="checkbox" class="cp_sp" value="${i}" ${src.specimens.length===1?'checked':''}><span><b>${esc(sp.label)}</b> <span class="mute" style="font-size:11px">${esc((sp.obj&&sp.obj.product)||'')} ${sp.qty?('×'+esc(sp.qty)):''}｜工程${(sp.steps||[]).length}</span></span></label>`).join('')
+      + '<label style="font-size:12px;display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" id="cp_photos" checked>写真も一緒にコピーする</label>';
+    document.getElementById('cp_foot').innerHTML='<div style="flex:1"></div><button class="btn" onclick="closeOv(\'ov-copy\')">キャンセル</button><button class="btn primary" onclick="doSpecimenCopyIn(\''+srcId+'\',\''+targetId+'\')">この記録にコピー</button>';
+  }});
+}
+function doSpecimenCopyIn(srcId,tgtId){
+  const idxs=Array.from(document.querySelectorAll('.cp_sp:checked')).map(e=>Number(e.value));
+  if(!idxs.length){ toast('コピーする試料を選んでください'); return; }
+  const withPhotos=document.getElementById('cp_photos').checked;
+  closeOv('ov-copy');
+  copySpecimens(srcId,idxs,tgtId,withPhotos,false);
+}
+/* この試料 → 別の記録へコピー */
+function copySpecimenToOther(srcId,si){
+  const src=state.research.find(x=>x.id===srcId); if(!src) return;
+  openCopyPicker({title:`${src.specimens[si].label} のコピー先の記録を選択`, items:researchPickItems(srcId,src), onPick:(tgtId)=>{ closeOv('ov-copy'); copySpecimens(srcId,[si],tgtId,true,true); }});
+}
+function rsDuplicateSpecimen(id,si){ copySpecimens(id,[si],id,true,false); }
+function freeSpecimenLabel(r,pref){
+  const used=new Set(r.specimens.map(s=>s.label));
+  if(pref && !used.has(pref)) return pref;
+  let n=r.specimens.length+1; while(used.has('N'+n)) n++; return 'N'+n;
+}
+function copySpecimens(srcId,idxs,tgtId,withPhotos,openTarget){
+  const src=state.research.find(x=>x.id===srcId), tgt=state.research.find(x=>x.id===tgtId); if(!src||!tgt) return;
+  const labels=[];
+  idxs.forEach(i=>{
+    const sp=JSON.parse(JSON.stringify(src.specimens[i])); if(!sp) return;
+    if(!withPhotos) sp.photos=[];
+    sp.label=freeSpecimenLabel(tgt, srcId===tgtId?null:sp.label);
+    tgt.specimens.push(sp); labels.push(sp.label);
+  });
+  touch(tgt); saveState();
+  if(openTarget){ currentPage=(tgt.genre==='耐用・測定テスト')?'durability':'research'; researchDetailId=tgtId; }
+  render();
+  toast(`${labels.join('・')} を「${(tgt.title||'（無題）').slice(0,18)}」にコピーしました`);
+}
+/* ToDoの複製元 */
+function fillTodoFromOptions(){
+  document.getElementById('td_from').innerHTML='<option value="">（コピーしない）</option>'+state.todos.slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).map(t=>`<option value="${t.id}">${esc(t.genre)}｜${esc((t.title||'').slice(0,40))}</option>`).join('');
+}
+function todoCopyFrom(id){
+  const t=state.todos.find(x=>x.id===id); if(!t) return;
+  document.getElementById('td_title').value=t.title;
+  document.getElementById('td_biz').value=t.biz;
+  document.getElementById('td_genre').value=t.genre;
+  document.getElementById('td_priority').value=t.priority;
+  document.getElementById('td_status').value='未着手';
+  document.getElementById('td_note').value=t.note||'';
+  populateProjectSelect(t.projectIds||[]);
 }
 function openResearchDetail(id){ researchDetailId=id; render(); }
 function openLinkedResearch(researchId){
@@ -3898,6 +4013,8 @@ function renderResearchDetail(id){
     return `<div class="specimen-block">
       <div class="specimen-head">
         <input class="labelinput" value="${esc(sp.label)}" onchange="rsSpecimenField('${id}',${si},'label',this.value)">
+        <button class="btn sm" onclick="copySpecimenToOther('${id}',${si})">別の記録へコピー</button>
+        <button class="btn sm" onclick="rsDuplicateSpecimen('${id}',${si})">複製</button>
         ${(r.specimens.length>1)?`<button class="btn sm danger" onclick="rsRemoveSpecimen('${id}',${si})">この試料を削除</button>`:''}
       </div>
 
@@ -4055,6 +4172,7 @@ function renderResearchDetail(id){
       ${isDurability ? `<div class="card" style="margin-bottom:12px"><div class="mute" style="font-size:10px;margin-bottom:6px">工具ごとの消耗量（このレコード内・自動集計）</div><div id="durability-live-total-${id}">${renderDurabilityLiveSummary(r)}</div></div>` : ''}
       ${specimensHtml}
       <button class="btn brass sm" style="background:var(--green);border-color:var(--green);color:#fff" onclick="rsAddSpecimen('${id}')">＋ 比較試料を追加（N${r.specimens.length+1}）</button>
+      <button class="btn sm" style="margin-left:6px" onclick="startSpecimenCopy('${id}')">他の記録から試料をコピー</button>
 
       <div class="section-label">結論</div>
       <div class="field"><textarea style="min-height:70px" onchange="rsField('${id}','conclusion',this.value)">${esc(r.conclusion)}</textarea></div>
