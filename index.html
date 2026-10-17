@@ -2645,25 +2645,84 @@ function saleWorkMinutes(s){
   return r ? researchCostParts(r).minutes : 0;
 }
 /* 直近N件（時間が分かるもの）の実質時給 */
-function recentRealHourly(n){
-  const list=state.sales.filter(s=>saleWorkMinutes(s)>0)
-    .sort((a,b)=>String(b.date).localeCompare(String(a.date)) || (b.createdAt||0)-(a.createdAt||0)).slice(0,n);
+/* 時給ゲージの集計対象：直近N件／直近N本／期間指定（事業の絞り込みも反映） */
+let gaugeCfg={mode:'count', n:15, from:'', to:''};
+let spotSaleId='';
+function gaugeSales(){
+  let list=state.sales.filter(s=>saleWorkMinutes(s)>0);
+  if(salesFilterBiz.size) list=list.filter(s=>salesFilterBiz.has(s.biz));
+  list=list.sort((a,b)=>String(b.date).localeCompare(String(a.date)) || (b.createdAt||0)-(a.createdAt||0));
+  const g=gaugeCfg;
+  if(g.mode==='period'){
+    return list.filter(s=>(!g.from||String(s.date)>=g.from) && (!g.to||String(s.date)<=g.to));
+  }
+  const n=Math.max(1,Math.floor(Number(g.n))||1);
+  if(g.mode==='bars'){
+    const out=[]; let bars=0;
+    for(const s of list){ if(bars>=n) break; out.push(s); bars+=saleBars(s); }
+    return out;
+  }
+  return list.slice(0,n);
+}
+function aggregateSales(list){
   let take=0, min=0, bars=0, amount=0, cost=0;
   list.forEach(s=>{ const d=saleBreakdown(s); take+=d.take; min+=d.min; bars+=d.bars; amount+=d.amount; cost+=d.cost; });
   return {count:list.length, hourly: min>0 ? take/(min/60) : 0, perBar: bars>0 ? take/bars : 0,
           profit:take, minutes:min, bars, amount, cost, hoursPerBar: bars>0 ? (min/60)/bars : 0};
 }
+function setGauge(key,val){ gaugeCfg[key]=val; render(); }
+function gaugeLabel(){
+  const g=gaugeCfg;
+  if(g.mode==='period') return `${g.from||'最初'} 〜 ${g.to||'今日'}`;
+  return g.mode==='bars' ? `直近${g.n}本` : `直近${g.n}件`;
+}
 const BIZ_COLORS = {'研磨':'#2f6f4f','3Dプリンタ':'#3d6fb0','製作図面依頼':'#b07a2f','量産品':'#8a4fa0','一般顧客モデル':'#b0463d','全般':'#888'};
+function renderGaugeControls(){
+  const g=gaugeCfg;
+  const modeBtn=(m,l)=>`<span class="pill ${g.mode===m?'active':''}" onclick="setGauge('mode','${m}')">${l}</span>`;
+  return `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
+    <span class="mute" style="font-size:11px">集計対象</span>${modeBtn('count','直近の件数')}${modeBtn('bars','直近の本数')}${modeBtn('period','期間指定')}
+    ${g.mode==='period'
+      ? `<input type="date" value="${g.from}" style="width:auto" onchange="setGauge('from',this.value)"><span class="mute">〜</span><input type="date" value="${g.to}" style="width:auto" onchange="setGauge('to',this.value)">`
+      : `<input type="number" min="1" value="${g.n}" style="width:72px" onchange="setGauge('n',this.value)"><span class="mute" style="font-size:12px">${g.mode==='bars'?'本':'件'}</span>`}
+  </div>`;
+}
+function renderSpotPanel(){
+  const cands=state.sales.filter(s=>saleWorkMinutes(s)>0).sort((a,b)=>String(b.date).localeCompare(String(a.date)) || (b.createdAt||0)-(a.createdAt||0));
+  if(!cands.length) return '';
+  if(!cands.some(s=>s.id===spotSaleId)) spotSaleId=cands[0].id;
+  const s=cands.find(x=>x.id===spotSaleId), d=saleBreakdown(s);
+  const base=numOf(state.settings.hourly)||1700, target=numOf(state.settings.targetHourly)||2000;
+  const hours=d.min/60, y=v=>'¥'+Math.round(v).toLocaleString(), sgn=v=>(v>=0?'+':'−')+'¥'+Math.abs(Math.round(v)).toLocaleString();
+  const col = d.hourly>=target ? 'var(--green)' : (d.hourly>=base ? '#c9a227' : 'var(--red)');
+  const opts=cands.map(x=>`<option value="${x.id}" ${x.id===spotSaleId?'selected':''}>${esc(x.date)}　${esc(x.title||'（内容なし）')}</option>`).join('');
+  return `<div class="card" style="margin-top:12px">
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:8px">
+      <div class="section-label" style="margin:0">この案件の働き（スポット）</div>
+      <select style="width:auto;max-width:100%" onchange="spotSaleId=this.value;render()">${opts}</select>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+      <div><div class="mute" style="font-size:11px">売価</div><div style="font-size:18px;font-weight:700">${y(d.amount)}</div></div>
+      <div><div class="mute" style="font-size:11px">原価（材料費）</div><div style="font-size:18px;font-weight:700">${y(d.cost)}</div><div class="mute" style="font-size:11px">原価率 ${Math.round(d.ratio*10)/10}%</div></div>
+      <div><div class="mute" style="font-size:11px">人件費の取り分</div><div style="font-size:18px;font-weight:700">${y(d.take)}</div><div class="mute" style="font-size:11px">${d.bars}本 → 1本 ${y(d.perBar||0)}</div></div>
+      <div><div class="mute" style="font-size:11px">作業時間</div><div style="font-size:18px;font-weight:700">${Math.round(d.min)}分</div><div class="mute" style="font-size:11px">1本 ${d.bars?Math.round(d.min/d.bars):0}分（梱包含む）</div></div>
+      <div><div class="mute" style="font-size:11px">この案件の実質時給</div><div style="font-size:22px;font-weight:800;color:${col}">${y(d.hourly||0)}</div></div>
+    </div>
+    <div style="margin-top:8px;font-size:12px">設定時給 ${y(base)} で働いた場合との差：<b style="color:${d.take-base*hours>=0?'var(--green)':'var(--red)'}">${sgn(d.take-base*hours)}</b>　／　目標時給 ${y(target)} との差：<b style="color:${d.take-target*hours>=0?'var(--green)':'var(--red)'}">${sgn(d.take-target*hours)}</b></div>
+  </div>`;
+}
 function renderHourlyGauge(){
-  const g=recentRealHourly(15);
+  const list=gaugeSales();
+  const g=aggregateSales(list);
   const base=numOf(state.settings.hourly)||1700, target=numOf(state.settings.targetHourly)||2000;
   const maxV=Math.max(3000, Math.ceil(Math.max(g.hourly,target)*1.15/500)*500);
   const pos=v=>Math.max(0,Math.min(100,v/maxV*100));
-  if(!g.count) return `<div class="card"><div class="section-label" style="margin-top:0">人件費の取り分と時給（直近15件）</div><div class="empty" style="padding:14px">工程表に紐づき、作業時間が入力された売上がまだありません。</div></div>`;
-  const col = g.hourly>=target ? 'var(--green)' : (g.hourly>=base ? '#c9a227' : 'var(--red)');
   const y=v=>'¥'+Math.round(v).toLocaleString();
+  const head=`<div class="section-label" style="margin:0 0 6px">売価の内訳と時給レベル（${esc(gaugeLabel())}・${g.count}件${g.bars?`・${g.bars}本`:''}）</div>`;
+  if(!g.count) return `<div class="card">${head}${renderGaugeControls()}<div class="empty" style="padding:14px">この条件に当てはまる、作業時間つきの売上がありません。</div></div>${renderSpotPanel()}`;
+  const col = g.hourly>=target ? 'var(--green)' : (g.hourly>=base ? '#c9a227' : 'var(--red)');
   return `<div class="card">
-    <div class="section-label" style="margin:0 0 6px">売価の内訳と時給レベル（直近${g.count}件・リアルタイム）</div>
+    ${head}${renderGaugeControls()}
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:10px">
       <div><div class="mute" style="font-size:11px">売価（平均/件）</div><div style="font-size:20px;font-weight:700">${y(g.amount/g.count)}</div></div>
       <div><div class="mute" style="font-size:11px">原価＝材料費（平均/件）</div><div style="font-size:20px;font-weight:700">${y(g.cost/g.count)}</div><div class="mute" style="font-size:11px">原価率 ${g.amount>0?Math.round(g.cost/g.amount*1000)/10:0}%</div></div>
@@ -2681,8 +2740,8 @@ function renderHourlyGauge(){
       <span style="position:absolute;left:${pos(target)}%;transform:translateX(-50%);top:13px">目標 ${y(target)}</span>
       <span style="position:absolute;right:0">${y(maxV)}</span>
     </div>
-    <div class="mute" style="font-size:11px">作業 ${Math.round(g.minutes/6)/10}時間・${g.bars}本（時間が分かる売上のみ集計）／梱包費・送料は原価に含めていません</div>
-  </div>`;
+    <div class="mute" style="font-size:11px">作業 ${Math.round(g.minutes/6)/10}時間（時間が分かる売上のみ集計）／梱包費・送料は原価に含めていません${salesFilterBiz.size?'／上の事業の絞り込みを反映':''}</div>
+  </div>${renderSpotPanel()}`;
 }
 function salesMonthlyTable(items){
   const sumBy={};
