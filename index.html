@@ -133,6 +133,99 @@ button{font-family:inherit;}
 .drag-handle{display:inline-flex;align-items:center;justify-content:center;flex:none;width:18px;color:var(--mute,#8a8f8a);cursor:grab;touch-action:none;user-select:none;font-size:14px;letter-spacing:-2px;line-height:1;}
 .drag-handle:active{cursor:grabbing;}
 .reorder-dragging{opacity:.55;box-shadow:0 6px 18px rgba(0,0,0,.18);position:relative;z-index:5;}
+
+/* ===== 売上画面：ステートメント調のデザイン ===== */
+.sx{--sx-good:#0f5c3f;--sx-mid:#9a7414;--sx-bad:#b23b2e;max-width:1120px;}
+.sx-top{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:22px;}
+.sx-top .spacer{flex:1}
+.sx-seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:999px;overflow:hidden;background:var(--white);}
+.sx-seg button{border:none;background:none;padding:5px 13px;font-size:12px;color:var(--ink-soft);cursor:pointer;border-right:1px solid var(--line);}
+.sx-seg button:last-child{border-right:none;}
+.sx-seg button.on{background:var(--ink);color:#fff;}
+.sx-seg button:focus-visible{outline:2px solid var(--green);outline-offset:-2px;}
+.sx-h{font-family:var(--serif);font-size:17px;font-weight:600;margin:34px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--ink);display:flex;align-items:baseline;gap:12px;}
+.sx-h small{font-family:var(--sans);font-size:11.5px;font-weight:400;color:var(--ink-faint);}
+.sx-hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:0;background:var(--white);border:1px solid var(--line);border-radius:4px;}
+.sx-hero > div{padding:26px 30px;}
+.sx-hero > div + div{border-left:1px solid var(--line);}
+.sx-big{font-family:var(--serif);font-size:68px;line-height:1;font-weight:500;letter-spacing:-.02em;font-variant-numeric:lining-nums tabular-nums;margin:6px 0 2px;}
+.sx-big small{font-size:15px;letter-spacing:0;font-weight:400;color:var(--ink-soft);margin-left:6px;}
+.sx-note{font-size:11.5px;color:var(--ink-faint);}
+.sx-ruler{position:relative;height:6px;background:var(--paper-deep);border-radius:3px;margin:34px 0 0;}
+.sx-ruler .fill{position:absolute;left:0;top:0;bottom:0;border-radius:3px;}
+.sx-ruler .tick{position:absolute;top:-6px;width:1px;height:18px;background:var(--ink-soft);}
+.sx-ruler .tick span{position:absolute;top:20px;left:50%;transform:translateX(-50%);font-size:10.5px;color:var(--ink-soft);white-space:nowrap;}
+.sx-ruler .tick.t2 span{top:-22px;}
+.sx-ruler .pin{position:absolute;top:-9px;width:2px;height:24px;background:var(--ink);transform:translateX(-1px);}
+.sx-ruler .pin::after{content:'';position:absolute;top:-5px;left:-4px;border:5px solid transparent;border-top-color:var(--ink);border-bottom:0;}
+.sx-ledger{margin:0;padding:0;list-style:none;}
+.sx-ledger li{display:flex;align-items:baseline;gap:8px;padding:7px 0;font-size:13px;}
+.sx-ledger li::after{content:'';order:2;flex:1;border-bottom:1px dotted var(--line-strong);transform:translateY(-3px);}
+.sx-ledger li > span:first-child{order:1;color:var(--ink-soft);}
+.sx-ledger li > b{order:3;font-family:var(--serif);font-size:17px;font-weight:600;font-variant-numeric:lining-nums tabular-nums;}
+.sx-ledger li.total{border-top:1px solid var(--ink);margin-top:6px;padding-top:12px;}
+.sx-ledger li.total::after{display:none}
+.sx-ledger li.total > b{margin-left:auto;font-size:21px;}
+.sx-ledger .sub{font-size:11px;color:var(--ink-faint);font-weight:400;margin-left:4px;font-family:var(--sans);}
+.sx-ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:50px;}
+.sx-ctl input{width:auto;padding:4px 8px;font-size:12px;border:1px solid var(--line-strong);border-radius:4px;background:var(--white);}
+.sx-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:22px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--white);}
+.sx-kpi{padding:16px 22px;}
+.sx-kpi + .sx-kpi{border-left:1px solid var(--line);}
+.sx-kpi b{display:block;font-family:var(--serif);font-size:26px;font-weight:500;font-variant-numeric:lining-nums tabular-nums;}
+.sx-kpi span{font-size:11.5px;color:var(--ink-soft);}
+.sx-spot{margin-top:22px;background:var(--white);border:1px solid var(--line);border-radius:4px;padding:18px 26px;}
+.sx-spot-head{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:12px;}
+.sx-spot-head h4{margin:0;font-family:var(--serif);font-size:15px;font-weight:600;}
+.sx-spot-head select{width:auto;max-width:100%;font-size:12px;padding:4px 8px;}
+.sx-spot-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:18px;}
+.sx-spot-grid b{display:block;font-family:var(--serif);font-size:21px;font-weight:500;font-variant-numeric:lining-nums tabular-nums;}
+.sx-spot-grid span{font-size:11px;color:var(--ink-faint);}
+.sx-verdict{margin-top:12px;font-size:12.5px;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:10px;}
+.sx-verdict b{font-family:var(--serif);font-size:15px;}
+.sx-table{width:100%;border-collapse:collapse;background:var(--white);}
+.sx-table th{font-weight:500;font-size:11.5px;color:var(--ink-faint);text-align:right;padding:8px 12px;border-bottom:1px solid var(--line-strong);white-space:nowrap;}
+.sx-table th:first-child,.sx-table td:first-child{text-align:left;}
+.sx-table td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:lining-nums tabular-nums;white-space:nowrap;}
+.sx-table td.mix{text-align:left;min-width:180px;white-space:normal;}
+.sx-stack{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--paper-deep);margin-bottom:5px;}
+.sx-legend{font-size:11px;color:var(--ink-soft);display:flex;flex-wrap:wrap;gap:4px 12px;}
+.sx-legend i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;}
+.sx-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:34px;}
+.sx-cols h4{margin:0 0 6px;font-size:13px;font-weight:600;}
+.sx-bar{margin:9px 0;}
+.sx-bar .l{display:flex;justify-content:space-between;gap:10px;font-size:12px;}
+.sx-bar .l em{font-style:normal;color:var(--ink-faint);margin-left:6px;font-size:11px;}
+.sx-bar .t{height:3px;background:var(--paper-deep);margin-top:4px;}
+.sx-bar .t i{display:block;height:100%;background:var(--green);}
+.sx-list{background:var(--white);border-top:1px solid var(--line-strong);}
+.sx-head,.sx-row{display:grid;grid-template-columns:20px minmax(0,1fr) 96px 72px 96px 92px 64px;gap:12px;align-items:center;padding:12px 14px;}
+.sx-head{font-size:11px;color:var(--ink-faint);padding-top:8px;padding-bottom:8px;border-bottom:1px solid var(--line);}
+.sx-head span{text-align:right}.sx-head span:nth-child(-n+2){text-align:left}
+.sx-row{border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s;}
+.sx-row:hover{background:var(--paper);}
+.sx-row.reorder-dragging{background:var(--white);}
+.sx-title{font-weight:600;font-size:13.5px;}
+.sx-sub{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:11.5px;color:var(--ink-soft);margin-top:2px;align-items:center;}
+.sx-code{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);}
+.sx-warn{font-size:11.5px;color:var(--sx-mid);margin-top:3px;}
+.sx-num{text-align:right;font-family:var(--serif);font-size:15px;font-variant-numeric:lining-nums tabular-nums;white-space:nowrap;}
+.sx-num .cap{display:none;font-family:var(--sans);font-size:10.5px;color:var(--ink-faint);}
+.sx-num.good{color:var(--sx-good)}.sx-num.mid{color:var(--sx-mid)}.sx-num.bad{color:var(--sx-bad)}
+.sx-state{text-align:right;font-size:11.5px;color:var(--ink-faint);}
+.sx-state.paid{color:var(--sx-good)}
+@media (max-width:860px){
+  .sx-hero{grid-template-columns:1fr}.sx-hero > div + div{border-left:none;border-top:1px solid var(--line);}
+  .sx-big{font-size:54px}.sx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.sx-kpi:nth-child(3){border-left:none}.sx-kpi:nth-child(n+3){border-top:1px solid var(--line)}
+  .sx-spot-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sx-head{display:none}
+  .sx-row{grid-template-columns:20px 1fr 1fr;grid-template-areas:'hd main main' '. a b' '. c d';row-gap:8px}
+  .sx-row .sx-hd{grid-area:hd}.sx-row .sx-main{grid-area:main}
+  .sx-row .sx-num:nth-of-type(2){grid-area:a}.sx-row .sx-num:nth-of-type(3){grid-area:b}
+  .sx-row .sx-num:nth-of-type(4){grid-area:c}.sx-row .sx-num:nth-of-type(5){grid-area:d}
+  .sx-num{text-align:left}.sx-num .cap{display:block}.sx-state{display:none}
+  .sx-table{display:block;overflow-x:auto}
+}
 .overlay{position:fixed;inset:0;background:rgba(20,22,20,.5);display:none;align-items:flex-start;justify-content:center;z-index:300;overflow:auto;padding:40px 16px;}
 .overlay.show{display:flex;}
 .modal{background:var(--white);border:1px solid var(--line);border-radius:var(--radius);width:600px;max-width:100%;box-shadow:0 14px 44px rgba(20,22,20,.2);}
@@ -611,7 +704,8 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
       </div>
       <div class="field"><label>内容</label><input id="sl_title" placeholder="例）バレル研磨 2BA 1セット"></div>
       <div class="field-row">
-        <div class="field"><label>個数</label><input id="sl_qty" type="number" value="1"></div>
+        <div class="field"><label>個数（セット数）</label><input id="sl_qty" type="number" value="1" oninput="recalcSaleAmount()"></div>
+        <div class="field"><label>単価（円/セット・入力すると金額を自動計算）</label><input id="sl_unitPrice" type="number" placeholder="5800" oninput="recalcSaleAmount()"></div>
         <div class="field"><label>売上金額（円・税込）</label><input id="sl_amount" type="number" placeholder="7700"></div>
         <div class="field"><label>原価（円・空欄＝工程表から自動）</label><input id="sl_costAmount" type="number" placeholder="空欄で自動計算"><div class="hint" id="sl_costHint"></div></div>
       </div>
@@ -1681,7 +1775,7 @@ const REORDER_CFG = {
   durability: {arr:'research',  cont:'.rowlist', item:'.swiperow[data-rowid]', id:'rowid', field:'manualOrder', handleIn:'.itemrow'},
   tools:      {arr:'tools',     cont:'.rowlist', item:'.swiperow[data-rowid]', id:'rowid', field:'manualOrder', handleIn:'.itemrow'},
   customers:  {arr:'customers', cont:'.rowlist', item:'.swiperow[data-rowid]', id:'rowid', field:'manualOrder', handleIn:'.itemrow'},
-  sales:      {arr:'sales',     cont:'.rowlist', item:'.itemrow[data-rowid]',  id:'rowid', field:'manualOrder', handleIn:null},
+  sales:      {arr:'sales',     cont:'.sx-list', item:'.sx-row[data-rowid]',   id:'rowid', field:'manualOrder', handleIn:'.sx-hd'},
   roughness:  {arr:'roughness', cont:'tbody',    item:'tr[data-rowid]',        id:'rowid', field:'manualOrder', handleIn:'td'},
   projects:   {arr:'projects',  cont:'.proj-tree, .proj-node', item:'.proj-node[data-id]', id:'id', field:'order', handleIn:'.proj-card-head'},
   todo:       {arr:'todos',     cont:'.kcol-body', item:'.todo-card[data-id]', id:'id',    field:'order',       handleIn:'.top'},
@@ -2503,6 +2597,7 @@ function openSaleModal(){
   document.getElementById('sl_title').value='';
   document.getElementById('sl_qty').value=1;
   document.getElementById('sl_amount').value='';
+  document.getElementById('sl_unitPrice').value='';
   document.getElementById('sl_costAmount').value='';
   document.getElementById('sl_paid').checked=false;
   document.getElementById('sl_paidDate').value='';
@@ -2522,6 +2617,7 @@ function editSale(id){
   document.getElementById('sl_title').value=s.title||'';
   document.getElementById('sl_qty').value=s.qty||1;
   document.getElementById('sl_amount').value=s.amount;
+  document.getElementById('sl_unitPrice').value=s.unitPrice||'';
   document.getElementById('sl_costAmount').value=s.costAmount;
   document.getElementById('sl_paid').checked=!!s.paid;
   document.getElementById('sl_paidDate').value=s.paidDate||'';
@@ -2557,7 +2653,7 @@ function submitSale(){
     researchId:document.getElementById('sl_researchId').value,
     title:document.getElementById('sl_title').value.trim(),
     qty:Number(document.getElementById('sl_qty').value)||1,
-    amount, costAmount:document.getElementById('sl_costAmount').value,
+    amount, unitPrice:document.getElementById('sl_unitPrice').value, costAmount:document.getElementById('sl_costAmount').value,
     paid:document.getElementById('sl_paid').checked,
     paidDate:document.getElementById('sl_paidDate').value,
     invoiceNo:document.getElementById('sl_invoiceNo').value.trim(),
@@ -2573,6 +2669,10 @@ function deleteSale(){
   state.sales=state.sales.filter(s=>s.id!==editingSaleId);
   saveState(); closeOv('ov-sale'); render(); toast('削除しました');
 }
+function recalcSaleAmount(){
+  const u=Number(document.getElementById('sl_unitPrice').value), q=Number(document.getElementById('sl_qty').value)||1;
+  if(u>0) document.getElementById('sl_amount').value=Math.round(u*q);
+}
 function importSaleFromResearch(){
   const rid=document.getElementById('sl_researchId').value;
   if(!rid){ toast('先に工程表を選択してください'); return; }
@@ -2581,7 +2681,9 @@ function importSaleFromResearch(){
   if(!document.getElementById('sl_title').value.trim()) document.getElementById('sl_title').value=r.title||'';
   if(r.order && r.order.customerId) document.getElementById('sl_customerId').value=r.order.customerId;
   if(r.order && r.order.invoiceNo) document.getElementById('sl_invoiceNo').value=r.order.invoiceNo;
-  toast('工程表から情報を取り込みました');
+  const nSets=(r.specimens||[]).length||1;
+  document.getElementById('sl_qty').value=nSets; recalcSaleAmount();
+  toast(`工程表から情報を取り込みました（${nSets}セット分）`);
 }
 
 /* ==========================================================================
@@ -2677,109 +2779,124 @@ function gaugeLabel(){
   return g.mode==='bars' ? `直近${g.n}本` : `直近${g.n}件`;
 }
 const BIZ_COLORS = {'研磨':'#2f6f4f','3Dプリンタ':'#3d6fb0','製作図面依頼':'#b07a2f','量産品':'#8a4fa0','一般顧客モデル':'#b0463d','全般':'#888'};
+/* 売上金額が全セット分か確認：個数と工程表のセット数の不一致、または1セットあたり金額が他案件より低い場合に警告 */
+function medianSetPrice(){
+  const v=[];
+  state.sales.forEach(sl=>{ const r=state.research.find(x=>x.id===sl.researchId); const sets=r?(r.specimens||[]).length:(Number(sl.qty)||1); if(sets>0 && numOf(sl.amount)>0) v.push(numOf(sl.amount)/sets); });
+  v.sort((a,b)=>a-b); return v.length ? v[Math.floor(v.length/2)] : 0;
+}
+function saleSetsWarning(s){
+  const r=state.research.find(x=>x.id===s.researchId);
+  const q=Number(s.qty)||1, sets=r?(r.specimens||[]).length:q;
+  if(r && sets!==q) return `工程表は${sets}セット分ですが、個数は${q}です。売上金額が全セット分か確認してください`;
+  const med=medianSetPrice(), per=numOf(s.amount)/Math.max(1,sets);
+  if(sets>1 && med>0 && per<med*0.8) return `${sets}セット分で ${yen(numOf(s.amount))}（1セット ${yen(per)}）です。他の案件は1セット ${yen(med)} 前後です。売上金額が全セット分か確認してください`;
+  return '';
+}
+function zoneClass(h){
+  const base=numOf(state.settings.hourly)||1700, target=numOf(state.settings.targetHourly)||2000;
+  return h>=target ? 'good' : (h>=base ? 'mid' : 'bad');
+}
+const ZONE_COLOR={good:'var(--sx-good)',mid:'var(--sx-mid)',bad:'var(--sx-bad)'};
+function yen(v){ const r=Math.round(v); return (r<0?'−':'')+'¥'+Math.abs(r).toLocaleString(); }
+function signedYen(v){ return (v>=0?'＋':'−')+'¥'+Math.abs(Math.round(v)).toLocaleString(); }
 function renderGaugeControls(){
   const g=gaugeCfg;
-  const modeBtn=(m,l)=>`<span class="pill ${g.mode===m?'active':''}" onclick="setGauge('mode','${m}')">${l}</span>`;
-  return `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
-    <span class="mute" style="font-size:11px">集計対象</span>${modeBtn('count','直近の件数')}${modeBtn('bars','直近の本数')}${modeBtn('period','期間指定')}
+  const seg=(m,l)=>`<button class="${g.mode===m?'on':''}" onclick="setGauge('mode','${m}')">${l}</button>`;
+  return `<div class="sx-ctl"><div class="sx-seg" role="group" aria-label="集計対象">${seg('count','直近の件数')}${seg('bars','直近の本数')}${seg('period','期間指定')}</div>
     ${g.mode==='period'
-      ? `<input type="date" value="${g.from}" style="width:auto" onchange="setGauge('from',this.value)"><span class="mute">〜</span><input type="date" value="${g.to}" style="width:auto" onchange="setGauge('to',this.value)">`
-      : `<input type="number" min="1" value="${g.n}" style="width:72px" onchange="setGauge('n',this.value)"><span class="mute" style="font-size:12px">${g.mode==='bars'?'本':'件'}</span>`}
-  </div>`;
+      ? `<input type="date" value="${g.from}" aria-label="開始日" onchange="setGauge('from',this.value)"><span class="sx-note">から</span><input type="date" value="${g.to}" aria-label="終了日" onchange="setGauge('to',this.value)">`
+      : `<input type="number" min="1" value="${g.n}" style="width:70px" aria-label="件数または本数" onchange="setGauge('n',this.value)"><span class="sx-note">${g.mode==='bars'?'本':'件'}</span>`}</div>`;
+}
+function renderRuler(h){
+  const base=numOf(state.settings.hourly)||1700, target=numOf(state.settings.targetHourly)||2000;
+  const maxV=Math.max(3000, Math.ceil(Math.max(h,target)*1.15/500)*500);
+  const pos=v=>Math.max(0,Math.min(100,v/maxV*100));
+  return `<div class="sx-ruler" aria-hidden="true"><div class="fill" style="width:${pos(h)}%;background:${ZONE_COLOR[zoneClass(h)]};opacity:.85"></div>
+    <div class="tick" style="left:${pos(base)}%"><span>設定 ${yen(base)}</span></div>
+    <div class="tick t2" style="left:${pos(target)}%"><span>目標 ${yen(target)}</span></div>
+    <div class="pin" style="left:${pos(h)}%"></div></div>`;
+}
+function renderHourlyGauge(){
+  const list=gaugeSales(), g=aggregateSales(list);
+  const head=`<h3 class="sx-h">実質時給と売価の内訳<small>${esc(gaugeLabel())}・${g.count}件${g.bars?`・${g.bars}本`:''}</small></h3>`;
+  if(!g.count) return `${head}<div class="sx-hero" style="grid-template-columns:1fr"><div>${renderGaugeControls()}<div class="sx-note" style="margin-top:16px">この条件に当てはまる、作業時間つきの売上がありません。</div></div></div>`;
+  const z=zoneClass(g.hourly);
+  return `${head}<div class="sx-hero">
+    <div>
+      <div class="sx-note">取り分 ÷ 実際の作業時間</div>
+      <div class="sx-big" style="color:${ZONE_COLOR[z]}">${yen(g.hourly)}<small>／時間</small></div>
+      ${renderRuler(g.hourly)}
+      ${renderGaugeControls()}
+    </div>
+    <div>
+      <ul class="sx-ledger">
+        <li><span>売価（1件あたり平均）</span><b>${yen(g.amount/g.count)}</b></li>
+        <li><span>原価＝材料費<span class="sub">原価率 ${g.amount>0?Math.round(g.cost/g.amount*1000)/10:0}%</span></span><b>−${yen(g.cost/g.count)}</b></li>
+        <li class="total"><span>人件費の取り分</span><b>${yen((g.amount-g.cost)/g.count)}</b></li>
+        <li><span>1本あたりの取り分</span><b>${yen(g.perBar)}</b></li>
+        <li><span>1本あたりの作業時間<span class="sub">梱包・発送を含む</span></span><b>${Math.round(g.hoursPerBar*60)}分</b></li>
+      </ul>
+      <div class="sx-note" style="margin-top:12px">梱包費・送料は原価に含めていません。作業時間が分かる売上のみ集計${salesFilterBiz.size?'（事業の絞り込みを反映）':''}。</div>
+    </div>
+  </div>${renderSpotPanel()}`;
 }
 function renderSpotPanel(){
   const cands=state.sales.filter(s=>saleWorkMinutes(s)>0).sort((a,b)=>String(b.date).localeCompare(String(a.date)) || (b.createdAt||0)-(a.createdAt||0));
   if(!cands.length) return '';
   if(!cands.some(s=>s.id===spotSaleId)) spotSaleId=cands[0].id;
   const s=cands.find(x=>x.id===spotSaleId), d=saleBreakdown(s);
-  const base=numOf(state.settings.hourly)||1700, target=numOf(state.settings.targetHourly)||2000;
-  const hours=d.min/60, y=v=>'¥'+Math.round(v).toLocaleString(), sgn=v=>(v>=0?'+':'−')+'¥'+Math.abs(Math.round(v)).toLocaleString();
-  const col = d.hourly>=target ? 'var(--green)' : (d.hourly>=base ? '#c9a227' : 'var(--red)');
+  const base=numOf(state.settings.hourly)||1700, target=numOf(state.settings.targetHourly)||2000, hours=d.min/60;
+  const r=state.research.find(x=>x.id===s.researchId), sets=r?(r.specimens||[]).length:0;
+  const warnMsg = saleSetsWarning(s);
   const opts=cands.map(x=>`<option value="${x.id}" ${x.id===spotSaleId?'selected':''}>${esc(x.date)}　${esc(x.title||'（内容なし）')}</option>`).join('');
-  return `<div class="card" style="margin-top:12px">
-    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:8px">
-      <div class="section-label" style="margin:0">この案件の働き（スポット）</div>
-      <select style="width:auto;max-width:100%" onchange="spotSaleId=this.value;render()">${opts}</select>
+  const dBase=d.take-base*hours, dTarget=d.take-target*hours;
+  return `<div class="sx-spot">
+    <div class="sx-spot-head"><h4>この案件の働き</h4><select aria-label="案件を選択" onchange="spotSaleId=this.value;render()">${opts}</select></div>
+    ${warnMsg?`<div class="sx-warn" style="margin-bottom:10px">${warnMsg}</div>`:''}
+    <div class="sx-spot-grid">
+      <div><span>売価</span><b>${yen(d.amount)}</b></div>
+      <div><span>原価（材料費）・原価率 ${Math.round(d.ratio*10)/10}%</span><b>${yen(d.cost)}</b></div>
+      <div><span>人件費の取り分・${d.bars}本</span><b>${yen(d.take)}</b></div>
+      <div><span>作業時間・1本 ${d.bars?Math.round(d.min/d.bars):0}分</span><b>${Math.round(d.min)}分</b></div>
+      <div><span>この案件の実質時給</span><b style="color:${ZONE_COLOR[zoneClass(d.hourly||0)]}">${yen(d.hourly||0)}</b></div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
-      <div><div class="mute" style="font-size:11px">売価</div><div style="font-size:18px;font-weight:700">${y(d.amount)}</div></div>
-      <div><div class="mute" style="font-size:11px">原価（材料費）</div><div style="font-size:18px;font-weight:700">${y(d.cost)}</div><div class="mute" style="font-size:11px">原価率 ${Math.round(d.ratio*10)/10}%</div></div>
-      <div><div class="mute" style="font-size:11px">人件費の取り分</div><div style="font-size:18px;font-weight:700">${y(d.take)}</div><div class="mute" style="font-size:11px">${d.bars}本 → 1本 ${y(d.perBar||0)}</div></div>
-      <div><div class="mute" style="font-size:11px">作業時間</div><div style="font-size:18px;font-weight:700">${Math.round(d.min)}分</div><div class="mute" style="font-size:11px">1本 ${d.bars?Math.round(d.min/d.bars):0}分（梱包含む）</div></div>
-      <div><div class="mute" style="font-size:11px">この案件の実質時給</div><div style="font-size:22px;font-weight:800;color:${col}">${y(d.hourly||0)}</div></div>
-    </div>
-    <div style="margin-top:8px;font-size:12px">設定時給 ${y(base)} で働いた場合との差：<b style="color:${d.take-base*hours>=0?'var(--green)':'var(--red)'}">${sgn(d.take-base*hours)}</b>　／　目標時給 ${y(target)} との差：<b style="color:${d.take-target*hours>=0?'var(--green)':'var(--red)'}">${sgn(d.take-target*hours)}</b></div>
+    <div class="sx-verdict">設定時給 ${yen(base)} で働いた場合との差 <b style="color:${dBase>=0?'var(--sx-good)':'var(--sx-bad)'}">${signedYen(dBase)}</b>　　目標時給 ${yen(target)} との差 <b style="color:${dTarget>=0?'var(--sx-good)':'var(--sx-bad)'}">${signedYen(dTarget)}</b></div>
   </div>`;
 }
-function renderHourlyGauge(){
-  const list=gaugeSales();
-  const g=aggregateSales(list);
-  const base=numOf(state.settings.hourly)||1700, target=numOf(state.settings.targetHourly)||2000;
-  const maxV=Math.max(3000, Math.ceil(Math.max(g.hourly,target)*1.15/500)*500);
-  const pos=v=>Math.max(0,Math.min(100,v/maxV*100));
-  const y=v=>'¥'+Math.round(v).toLocaleString();
-  const head=`<div class="section-label" style="margin:0 0 6px">売価の内訳と時給レベル（${esc(gaugeLabel())}・${g.count}件${g.bars?`・${g.bars}本`:''}）</div>`;
-  if(!g.count) return `<div class="card">${head}${renderGaugeControls()}<div class="empty" style="padding:14px">この条件に当てはまる、作業時間つきの売上がありません。</div></div>${renderSpotPanel()}`;
-  const col = g.hourly>=target ? 'var(--green)' : (g.hourly>=base ? '#c9a227' : 'var(--red)');
-  return `<div class="card">
-    ${head}${renderGaugeControls()}
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:10px">
-      <div><div class="mute" style="font-size:11px">売価（平均/件）</div><div style="font-size:20px;font-weight:700">${y(g.amount/g.count)}</div></div>
-      <div><div class="mute" style="font-size:11px">原価＝材料費（平均/件）</div><div style="font-size:20px;font-weight:700">${y(g.cost/g.count)}</div><div class="mute" style="font-size:11px">原価率 ${g.amount>0?Math.round(g.cost/g.amount*1000)/10:0}%</div></div>
-      <div><div class="mute" style="font-size:11px">人件費の取り分（1本あたり）</div><div style="font-size:20px;font-weight:700">${y(g.perBar)}</div><div class="mute" style="font-size:11px">＝（売価−材料費）÷本数</div></div>
-      <div><div class="mute" style="font-size:11px">1本あたりの作業時間</div><div style="font-size:20px;font-weight:700">${Math.round(g.hoursPerBar*60)}分</div><div class="mute" style="font-size:11px">梱包・発送を含む</div></div>
-    </div>
-    <div style="font-size:12px;color:var(--ink-soft)">実質時給（取り分 ÷ 実際の作業時間）</div>
-    <div style="font-size:30px;font-weight:800;color:${col};margin:2px 0 10px">${y(g.hourly)}<span style="font-size:13px;font-weight:600"> /時間</span></div>
-    <div style="position:relative;height:16px;border-radius:8px;overflow:hidden;background:linear-gradient(90deg,#e8b4ae 0%,#e8b4ae ${pos(base)}%,#f0e1a8 ${pos(base)}%,#f0e1a8 ${pos(target)}%,#b7dcc4 ${pos(target)}%,#b7dcc4 100%)">
-      <div style="position:absolute;left:${pos(g.hourly)}%;top:0;bottom:0;width:4px;background:#1c1f1b;transform:translateX(-2px)"></div>
-    </div>
-    <div style="position:relative;height:30px;font-size:10.5px;color:var(--ink-soft)">
-      <span style="position:absolute;left:0">0</span>
-      <span style="position:absolute;left:${pos(base)}%;transform:translateX(-50%)">設定時給 ${y(base)}</span>
-      <span style="position:absolute;left:${pos(target)}%;transform:translateX(-50%);top:13px">目標 ${y(target)}</span>
-      <span style="position:absolute;right:0">${y(maxV)}</span>
-    </div>
-    <div class="mute" style="font-size:11px">作業 ${Math.round(g.minutes/6)/10}時間（時間が分かる売上のみ集計）／梱包費・送料は原価に含めていません${salesFilterBiz.size?'／上の事業の絞り込みを反映':''}</div>
-  </div>${renderSpotPanel()}`;
-}
 function salesMonthlyTable(items){
-  const sumBy={};
+  const by={};
   items.forEach(sl=>{
     const m=saleMonthKey(sl.date)||'（日付なし）';
-    if(!sumBy[m]) sumBy[m]={amount:0,cost:0,qty:0,n:0,biz:{}};
-    const d=sumBy[m], c=saleEffectiveCost(sl).cost;
-    d.amount+=numOf(sl.amount); d.cost+=c; d.qty+=numOf(sl.qty); d.n++;
+    if(!by[m]) by[m]={amount:0,cost:0,n:0,biz:{}};
+    const d=by[m], c=saleEffectiveCost(sl).cost;
+    d.amount+=numOf(sl.amount); d.cost+=c; d.n++;
     d.biz[sl.biz]=(d.biz[sl.biz]||0)+numOf(sl.amount);
   });
-  const keys=Object.keys(sumBy).sort().reverse();
+  const keys=Object.keys(by).sort().reverse();
   if(!keys.length) return `<div class="empty">集計対象の売上がありません</div>`;
-  const maxA=Math.max(1,...keys.map(k=>sumBy[k].amount));
-  const yen=v=>'¥'+Math.round(v).toLocaleString();
+  const maxA=Math.max(1,...keys.map(k=>by[k].amount));
   const rows=keys.map(k=>{
-    const d=sumBy[k], profit=d.amount-d.cost, ratio=d.amount>0?Math.round(d.cost/d.amount*1000)/10:0;
+    const d=by[k], take=d.amount-d.cost, ratio=d.amount>0?Math.round(d.cost/d.amount*1000)/10:0;
     const seg=Object.keys(d.biz).map(b=>`<div title="${esc(b)} ${yen(d.biz[b])}" style="width:${d.biz[b]/maxA*100}%;background:${BIZ_COLORS[b]||'#888'}"></div>`).join('');
-    const legend=Object.keys(d.biz).map(b=>`<span class="tag biz-${b}">${esc(b)} ${yen(d.biz[b])}</span>`).join('');
-    return `<tr><td style="font-weight:700;white-space:nowrap">${esc(k)}</td><td class="num">${yen(d.amount)}</td><td class="num">${yen(d.cost)}</td><td class="num">${yen(profit)}</td><td class="num">${ratio}%</td><td class="num">${d.n}件</td>
-      <td style="min-width:150px"><div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--paper-deep)">${seg}</div><div class="sales-month-biz">${legend}</div></td></tr>`;
+    const legend=Object.keys(d.biz).map(b=>`<span><i style="background:${BIZ_COLORS[b]||'#888'}"></i>${esc(b)} ${yen(d.biz[b])}</span>`).join('');
+    return `<tr><td style="font-family:var(--serif);font-weight:600">${esc(k)}</td><td>${yen(d.amount)}</td><td>${yen(d.cost)}</td><td>${yen(take)}</td><td>${ratio}%</td><td>${d.n}件</td><td class="mix"><div class="sx-stack">${seg}</div><div class="sx-legend">${legend}</div></td></tr>`;
   }).join('');
-  return `<div style="overflow-x:auto"><table class="step-table" style="min-width:560px"><thead><tr><th>月</th><th>売上</th><th>原価（材料費）</th><th>人件費の取り分</th><th>原価率</th><th>件数</th><th>事業別の内訳</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <style>.step-table td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}</style>`;
+  return `<table class="sx-table"><thead><tr><th>月</th><th>売上</th><th>原価（材料費）</th><th>人件費の取り分</th><th>原価率</th><th>件数</th><th style="text-align:left">事業別</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 function renderBarList(rows,fmt){
-  if(!rows.length) return '<div class="empty" style="padding:12px">データがありません</div>';
+  if(!rows.length) return '<div class="sx-note">データがありません</div>';
   const max=Math.max(1,...rows.map(r=>r.v)), tot=rows.reduce((a,r)=>a+r.v,0)||1;
-  return rows.map(r=>`<div style="margin:6px 0"><div style="display:flex;justify-content:space-between;gap:8px;font-size:12px"><span>${esc(r.label)}</span><span>${fmt(r.v)}<span class="mute">　${Math.round(r.v/tot*1000)/10}%</span></span></div><div class="proj-bar"><div class="proj-bar-fill" style="width:${r.v/max*100}%"></div></div></div>`).join('');
+  return rows.map(r=>`<div class="sx-bar"><div class="l"><span>${esc(r.label)}</span><span>${fmt(r.v)}<em>${Math.round(r.v/tot*1000)/10}%</em></span></div><div class="t"><i style="width:${r.v/max*100}%"></i></div></div>`).join('');
 }
 function renderCostAnalysis(items){
   const linked=items.map(sl=>state.research.find(r=>r.id===sl.researchId)).filter(Boolean);
   const uniq=Array.from(new Set(linked));
-  if(!uniq.length) return `<div class="empty">工程表に紐づく売上がまだないため、原価・時間の内訳は表示できません。</div>`;
-  const kinds={'工具・材料':0,'梱包費':0,'送料':0};
+  if(!uniq.length) return `<div class="sx-note">工程表に紐づく売上がまだないため、内訳は表示できません。</div>`;
   const toolMap={}, timeMap={};
+  let material=0;
   uniq.forEach(r=>{
-    const c=researchCostParts(r);
-    kinds['工具・材料']+=c.material; kinds['梱包費']+=c.packaging; kinds['送料']+=c.shipping;
+    const c=researchCostParts(r); material+=c.material;
     c.toolLines.forEach(l=>{ toolMap[l.name]=(toolMap[l.name]||0)+l.cost; });
     (r.specimens||[]).forEach(sp=>{
       const q=Math.max(1,numOf(sp.qty)||1);
@@ -2791,15 +2908,15 @@ function renderCostAnalysis(items){
     });
   });
   const toTop=(m,n)=>Object.keys(m).map(k=>({label:k,v:m[k]})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v).slice(0,n);
-  const yen=v=>'¥'+Math.round(v).toLocaleString();
-  return `<div class="two-col" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">
-    <div class="card"><div class="section-label" style="margin-top:0">売価の内訳（原価と取り分）</div>${renderBarList([{label:'原価（材料費）',v:kinds['工具・材料']},{label:'人件費の取り分',v:Math.max(0,items.reduce((a,sl)=>a+numOf(sl.amount),0)-items.reduce((a,sl)=>a+saleEffectiveCost(sl).cost,0))}],yen)}</div>
-    <div class="card"><div class="section-label" style="margin-top:0">原価が大きい工具（上位8）</div>${renderBarList(toTop(toolMap,8),yen)}</div>
-    <div class="card"><div class="section-label" style="margin-top:0">時間がかかっている工程（上位8）</div>${renderBarList(toTop(timeMap,8),v=>Math.round(v)+'分')}</div>
+  const amount=items.reduce((a,sl)=>a+numOf(sl.amount),0);
+  return `<div class="sx-cols">
+    <div><h4>売価の内訳</h4>${renderBarList([{label:'原価（材料費）',v:material},{label:'人件費の取り分',v:Math.max(0,amount-material)}],yen)}</div>
+    <div><h4>原価が大きい工具</h4>${renderBarList(toTop(toolMap,8),yen)}</div>
+    <div><h4>時間がかかっている工程</h4>${renderBarList(toTop(timeMap,8),v=>Math.round(v)+'分')}</div>
   </div>`;
 }
 function renderSalesPage(container){
-  const bizChips=BIZ_LIST.filter(b=>b!=='全般').map(b=>`<span class="pill biz-${b} ${salesFilterBiz.has(b)?'active':''}" onclick="salesFilterBiz.has('${b}')?salesFilterBiz.delete('${b}'):salesFilterBiz.add('${b}');render();">${b}</span>`).join('');
+  const bizSeg=BIZ_LIST.filter(b=>b!=='全般').map(b=>`<button class="${salesFilterBiz.has(b)?'on':''}" onclick="salesFilterBiz.has('${b}')?salesFilterBiz.delete('${b}'):salesFilterBiz.add('${b}');render();">${b}</button>`).join('');
   const months=salesMonthList();
   const monthOpts=`<option value="">全期間</option>`+months.map(m=>`<option value="${m}" ${salesMonth===m?'selected':''}>${m.replace('-','年')}月</option>`).join('');
 
@@ -2812,52 +2929,52 @@ function renderSalesPage(container){
   const totalAmount=sum(items,x=>x.amount);
   const totalCost=sum(items,x=>saleEffectiveCost(x).cost);
   const totalQty=sum(items,x=>x.qty);
-  const profit=totalAmount-totalCost;
+  const take=totalAmount-totalCost;
   const costRatio=totalAmount>0?Math.round(totalCost/totalAmount*1000)/10:0;
   const unpaid=items.filter(s=>!s.paid);
-  const unpaidAmount=sum(unpaid,x=>x.amount);
-
-  const statCards=`
-    <div class="dash-grid">
-      <div class="stat"><div class="n">¥${Math.round(totalAmount).toLocaleString()}</div><div class="l">売上合計｜${items.length}件・${totalQty}個</div></div>
-      <div class="stat"><div class="n">¥${Math.round(profit).toLocaleString()}</div><div class="l">人件費の取り分（売上−材料費）｜材料費 ¥${Math.round(totalCost).toLocaleString()}</div></div>
-      <div class="stat"><div class="n">${costRatio}%</div><div class="l">原価率（材料費÷売上）｜取り分は残り${Math.round((100-costRatio)*10)/10}%</div></div>
-      <div class="stat"><div class="n">¥${Math.round(unpaidAmount).toLocaleString()}</div><div class="l">未入金｜${unpaid.length}件</div></div>
-    </div>`;
-  const monthlyHtml = salesMonthlyTable(items);
+  const kpis=`<div class="sx-kpis">
+    <div class="sx-kpi"><b>${yen(totalAmount)}</b><span>売上合計　${items.length}件・${totalQty}個</span></div>
+    <div class="sx-kpi"><b>${yen(take)}</b><span>人件費の取り分（売上−材料費）</span></div>
+    <div class="sx-kpi"><b>${costRatio}%</b><span>原価率（材料費÷売上）</span></div>
+    <div class="sx-kpi"><b>${yen(sum(unpaid,x=>x.amount))}</b><span>未入金　${unpaid.length}件</span></div>
+  </div>`;
 
   const rows = items.length ? items.map(s=>{
     const c=state.customers.find(x=>x.id===s.customerId);
     const r=state.research.find(x=>x.id===s.researchId);
-    const ec=saleEffectiveCost(s);
-    const profitOne=(Number(s.amount)||0)-ec.cost;
-    const bd=saleBreakdown(s);
-    const bdHtml=(ec.cost>0||bd.bars>0)?`<div class="mute" style="font-size:11px;margin-top:3px">原価 ¥${Math.round(bd.cost).toLocaleString()}（${Math.round(bd.ratio*10)/10}%）／取り分 ¥${Math.round(bd.take).toLocaleString()}${bd.perBar!=null?`（1本 ¥${Math.round(bd.perBar).toLocaleString()}）`:''}${bd.hourly!=null?`／時給 ¥${Math.round(bd.hourly).toLocaleString()}`:''}</div>`:'';
-    return `<div class="itemrow" data-rowid="${s.id}" style="cursor:pointer" onclick="editSale('${s.id}')">
-      <div class="thumb empty-thumb">売</div>
-      <div class="main">
-        <div class="ttl">¥${Math.round(Number(s.amount)||0).toLocaleString()}　<span style="font-weight:400;font-size:12px">${esc(s.title||'（内容未記入）')}</span></div>
-        <div class="meta"><span class="tag biz-${s.biz}">${s.biz}</span><span>${esc(s.date)}</span>${s.qty>1?`<span>${s.qty}個</span>`:''}${c?`<span>${esc(c.name)}</span>`:''}${r&&orderCodeFor(r)?`<span class="mute" style="font-family:var(--mono)">${orderCodeFor(r)}</span>`:''}${s.costAmount!==''?`<span class="mute">粗利 ¥${Math.round(profitOne).toLocaleString()}</span>`:''}</div>${bdHtml}
-      </div>
-      <div class="right"><span class="st-chip st-${s.paid?'完了':'未着手'}">${s.paid?'入金済':'未入金'}</span></div>
+    const d=saleBreakdown(s);
+    const warnMsg=saleSetsWarning(s);
+    const costKnown=!!r || (s.costAmount!=='' && s.costAmount!=null);
+    const hz=d.hourly!=null ? zoneClass(d.hourly) : '';
+    return `<div class="sx-row" data-rowid="${s.id}" onclick="editSale('${s.id}')">
+      <span class="sx-hd"></span>
+      <div class="sx-main"><div class="sx-title">${esc(s.title||'（内容未記入）')}</div>
+        <div class="sx-sub"><span>${esc(s.date)}</span>${c?`<span>${esc(c.name)}</span>`:''}<span class="tag biz-${s.biz}">${s.biz}</span>${(Number(s.qty)||1)>1?`<span>${s.qty}セット</span>`:''}${r&&orderCodeFor(r)?`<span class="sx-code">${orderCodeFor(r)}</span>`:''}</div>
+        ${warnMsg?`<div class="sx-warn">${warnMsg}</div>`:''}</div>
+      <div class="sx-num"><span class="cap">売価</span>${yen(d.amount)}</div>
+      <div class="sx-num"><span class="cap">原価率</span>${(d.amount>0&&costKnown)?(Math.round(d.ratio*10)/10)+'%':'—'}</div>
+      <div class="sx-num"><span class="cap">取り分（1本）</span>${d.perBar!=null?yen(d.perBar):'—'}</div>
+      <div class="sx-num ${hz}"><span class="cap">時給</span>${d.hourly!=null?yen(d.hourly):'—'}</div>
+      <div class="sx-state ${s.paid?'paid':''}">${s.paid?'入金済':'未入金'}</div>
     </div>`;
   }).join('') : `<div class="empty">売上の記録がまだありません。「＋ 売上を追加」から登録してください。</div>`;
 
-  container.innerHTML=`
-    <div class="filterbar">${bizChips}<span class="divider"></span>
-      <select style="width:auto" onchange="salesMonth=this.value;render();">${monthOpts}</select>
-      ${salesFilterBiz.size||salesMonth?`<button class="btn sm ghost" onclick="salesFilterBiz.clear();salesMonth='';render();">絞込解除</button>`:''}
+  container.innerHTML=`<div class="sx">
+    <div class="sx-top"><div class="sx-seg" role="group" aria-label="事業">${bizSeg}</div>
+      <select style="width:auto;font-size:12px" aria-label="月" onchange="salesMonth=this.value;render();">${monthOpts}</select>
+      ${salesFilterBiz.size||salesMonth?`<button class="btn sm ghost" onclick="salesFilterBiz.clear();salesMonth='';render();">絞り込みを解除</button>`:''}
       <div class="spacer"></div><button class="btn sm" onclick="exportSalesCSV()">CSV出力</button>
       <button class="btn primary sm" onclick="openSaleModal()">＋ 売上を追加</button></div>
-    ${statCards}
-    <div style="margin:14px 0">${renderHourlyGauge()}</div>
-    <div class="section-label">月別・事業別の集計</div>
-    <div class="card">${monthlyHtml}</div>
-    <div class="section-label">原価と時間の内訳（絞り込み中の売上）</div>
+    ${renderHourlyGauge()}
+    ${kpis}
+    <h3 class="sx-h">月別・事業別<small>絞り込み中の売上</small></h3>
+    ${salesMonthlyTable(items)}
+    <h3 class="sx-h">原価と時間の内訳<small>絞り込み中の売上</small></h3>
     ${renderCostAnalysis(items)}
-    <div class="section-label">売上明細</div>
+    <h3 class="sx-h">売上明細</h3>
     ${renderSortBar('sales',[{value:'date|desc',label:'日付が新しい順'},{value:'date|asc',label:'日付が古い順'},{value:'amount|desc',label:'金額が高い順'},{value:'amount|asc',label:'金額が低い順'}].concat(DATE_SORT_OPTIONS),{field:'date',dir:'desc'})}
-    <div class="rowlist">${rows}</div>`;
+    <div class="sx-list"><div class="sx-head"><span></span><span>内容</span><span>売価</span><span>原価率</span><span>取り分（1本）</span><span>時給</span><span>入金</span></div>${rows}</div>
+  </div>`;
 }
 function exportSalesCSV(){
   const rows=state.sales.map(s=>{
