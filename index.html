@@ -502,6 +502,36 @@ button{font-family:inherit;}
 hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
 .checklist{display:flex;flex-direction:column;gap:8px;}
 .trash-notice{background:var(--orange-tint);border:1px solid var(--orange);color:#7a5615;padding:10px 14px;border-radius:var(--radius);font-size:11.5px;margin-bottom:16px;}
+.lab-svg{width:100%;height:auto;display:block;}
+.lab-tick{font-size:10.5px;fill:var(--ink-faint);font-family:var(--sans);}
+.lab-lbl{font-size:11.5px;fill:var(--ink-soft);font-family:var(--sans);}
+.lab-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:4px;background:var(--white);}
+.lab-scroll .sx-table{border:none;}
+.lab-mx td{vertical-align:top;}
+.lab-cell{position:relative;min-width:84px;text-align:right;padding-bottom:6px;}
+.lab-cell b{font-family:var(--serif);font-size:15px;font-weight:600;display:block;}
+.lab-cell small{font-size:10.5px;color:var(--ink-faint);}
+.lab-cell i{position:absolute;left:0;bottom:0;height:3px;border-radius:2px;opacity:.75;}
+.lab-na{color:var(--ink-faint);}
+.lab-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;}
+.lab-sub{font-family:var(--serif);font-size:14px;margin:18px 0 8px;}
+.lab-cmp td,.lab-cmp th{white-space:normal;}
+.lab-cmp td:last-child,.lab-cmp th:last-child{text-align:left;}
+.lab-tag{font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid var(--line-strong);color:var(--ink-soft);margin-left:4px;white-space:nowrap;}
+.lab-tag.big{background:#0f5c3f;border-color:#0f5c3f;color:#fff;}
+.lab-tag.mid{background:#f1e4bd;border-color:#d6bd73;color:#6b4f0b;}
+.lab-ins{margin:0;padding:0;list-style:none;background:var(--white);border:1px solid var(--line);border-radius:4px;}
+.lab-ins li{padding:10px 16px;border-bottom:1px solid var(--line);font-size:13px;line-height:1.7;}
+.lab-ins li:last-child{border-bottom:none;}
+.lab-filter{background:var(--white);border:1px solid var(--line);border-radius:4px;padding:10px 16px;}
+.lab-filter summary{cursor:pointer;font-size:13px;font-weight:600;}
+.lab-frow{display:flex;gap:12px;padding:6px 0;border-bottom:1px dotted var(--line);align-items:flex-start;}
+.lab-fl{flex:0 0 84px;font-size:11.5px;color:var(--ink-faint);padding-top:3px;}
+.lab-chips{display:flex;flex-wrap:wrap;gap:5px;}
+.lab-chips .pill small{opacity:.6;}
+.lab-data td,.lab-data th{padding:7px 10px;font-size:12px;text-align:left;}
+.lab-ttl{cursor:pointer;color:var(--green);text-align:left!important;white-space:normal!important;min-width:180px;}
+@media (max-width:700px){.lab-fl{flex-basis:64px}.sx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -1711,6 +1741,7 @@ const ICONS = {
   durability:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v4M6 5l2.5 2.5M18 5l-2.5 2.5"/><circle cx="12" cy="14" r="7"/><path d="M12 14l3-3"/></svg>`,
   roughness:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 17c2-4 4-6 6-2s4 6 6 2 4-6 6-2"/><path d="M3 21h18"/></svg>`,
   project:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M6.8 7.6L11 16M17.2 7.6L13 16M7 6h10"/></svg>`,
+  lab:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4A2 2 0 0 0 19 18l-5-9V3"/><path d="M7.5 15h9"/></svg>`,
   sales:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 20h18"/><rect x="5" y="11" width="3.4" height="7"/><rect x="10.3" y="7" width="3.4" height="11"/><rect x="15.6" y="4" width="3.4" height="14"/></svg>`,
 };
 let currentPage='dash';
@@ -1724,6 +1755,7 @@ function renderNav(){
     {id:'projects',label:'プロジェクト',icon:ICONS.project,count:state.projects.filter(p=>p.status==='進行中').length},
     {id:'research',label:'工程表',icon:ICONS.research,count:state.research.filter(r=>r.genre!=='耐用・測定テスト').length},
     {id:'sales',label:'売上',icon:ICONS.sales,count:state.sales.length},
+    {id:'lab',label:'分析ラボ',icon:ICONS.lab},
     {id:'durability',label:'耐用・測定記録',icon:ICONS.durability,count:state.research.filter(r=>r.genre==='耐用・測定テスト').length},
     {id:'roughness',label:'面粗度比較',icon:ICONS.roughness,count:state.roughness.length},
     {id:'tools',label:'工具マスタ',icon:ICONS.tools,count:state.tools.length},
@@ -1860,9 +1892,9 @@ function commitReorder(cfg,ids){
    ========================================================================== */
 function render(){
   renderNav();
-  const titleMap={dash:'ダッシュボード',timer:'作業タイマー',todo:'ToDoリスト',projects:'プロジェクト',sales:'売上',research:'工程表',durability:'耐用・測定記録',roughness:'面粗度比較',tools:'工具マスタ',customers:'顧客管理',trash:'ゴミ箱'};
+  const titleMap={dash:'ダッシュボード',timer:'作業タイマー',todo:'ToDoリスト',projects:'プロジェクト',sales:'売上',lab:'分析ラボ',research:'工程表',durability:'耐用・測定記録',roughness:'面粗度比較',tools:'工具マスタ',customers:'顧客管理',trash:'ゴミ箱'};
   document.getElementById('pageTitle').textContent=titleMap[currentPage]||'';
-  const subMap={dash:todayStr(),timer:'実作業時間を計測して工程表に反映',todo:'定常業務・加工研究・事務を横断管理',projects:'KGI/KPIとToDoをツリーで構造化',sales:'月別・事業別の売上集計と明細',research:'比較検証の記録',durability:'工具・消耗品の使用量を工具ごとに集計',roughness:'条件別の面粗度(Ra)測定計画・結果',tools:'保有工具・消耗品の台帳',customers:'見込み〜取引先の管理',trash:'削除済みアイテムの復元・完全削除'};
+  const subMap={dash:todayStr(),timer:'実作業時間を計測して工程表に反映',todo:'定常業務・加工研究・事務を横断管理',projects:'KGI/KPIとToDoをツリーで構造化',sales:'月別・事業別の売上集計と明細',lab:'条件ごとの違いを数字とグラフで比べる',research:'比較検証の記録',durability:'工具・消耗品の使用量を工具ごとに集計',roughness:'条件別の面粗度(Ra)測定計画・結果',tools:'保有工具・消耗品の台帳',customers:'見込み〜取引先の管理',trash:'削除済みアイテムの復元・完全削除'};
   document.getElementById('pageSub').textContent=subMap[currentPage]||'';
   const c=document.getElementById('content');
   if(currentPage==='dash') c.innerHTML=renderDash();
@@ -1870,6 +1902,7 @@ function render(){
   else if(currentPage==='todo') c.innerHTML=renderTodo();
   else if(currentPage==='projects') renderProjectsPage(c);
   else if(currentPage==='sales') renderSalesPage(c);
+  else if(currentPage==='lab') renderLabPage(c);
   else if(currentPage==='research') renderResearchPage(c);
   else if(currentPage==='durability') renderDurabilityPage(c);
   else if(currentPage==='roughness') renderRoughnessPage(c);
@@ -2867,7 +2900,7 @@ function renderSpotPanel(){
   const opts=cands.map(x=>`<option value="${x.id}" ${x.id===spotSaleId?'selected':''}>${esc(x.date)}　${esc(x.title||'（内容なし）')}</option>`).join('');
   const dBase=d.take-base*hours, dTarget=d.take-target*hours;
   return `<div class="sx-spot">
-    <div class="sx-spot-head"><h4>この案件の働き</h4><select aria-label="案件を選択" onchange="spotSaleId=this.value;render()">${opts}</select></div>
+    <div class="sx-spot-head"><h4>この案件の働き</h4><select aria-label="案件を選択" onchange="spotSaleId=this.value;render()">${opts}</select>${r?`<button class="btn sm" onclick="openLinkedResearch('${r.id}')">工程表の詳細を開く →</button>`:'<span class="sx-note">工程表と未連携</span>'}</div>
     ${warnMsg?`<div class="sx-warn" style="margin-bottom:10px">${warnMsg}</div>`:''}
     <div class="sx-spot-grid">
       <div><span>売価</span><b>${yen(d.amount)}</b></div>
@@ -2930,6 +2963,326 @@ function renderCostAnalysis(items){
     <div><h4>時間がかかっている工程</h4>${renderBarList(toTop(timeMap,8),v=>Math.round(v)+'分')}</div>
   </div>`;
 }
+/* ==========================================================================
+   分析ラボ（工程表データの統計・比較・可視化）
+   1試料 = 1行 として全記録を平坦化し、条件ごとの違いを数字とグラフで比べる
+   ========================================================================== */
+const LAB_UNSET = '（未入力）';
+const LAB_DIMS = [
+  {k:'cond',l:'新品／中古'},{k:'pre',l:'事前研磨'},{k:'mag',l:'磁性'},{k:'mat',l:'材質(W%)'},
+  {k:'country',l:'産出国'},{k:'maker',l:'メーカー'},{k:'spec',l:'規格'},{k:'coolant',l:'研削液'},
+  {k:'center',l:'センタ押し'},{k:'grit',l:'最終番手'},{k:'genre',l:'ジャンル'},{k:'type',l:'種別'},
+  {k:'biz',l:'事業'},{k:'month',l:'月'}
+];
+const LAB_METRICS = [
+  {k:'minutes',l:'加工時間',u:'分',d:1},
+  {k:'wLoss',l:'重量減少',u:'g',d:3},
+  {k:'wLossPct',l:'重量減少率',u:'%',d:2},
+  {k:'maxLoss',l:'最大径の減少',u:'mm',d:3},
+  {k:'minLoss',l:'最小径の減少',u:'mm',d:3},
+  {k:'finish',l:'仕上がり評価',u:'',d:1},
+  {k:'steps',l:'工程数',u:'',d:0},
+  {k:'cost',l:'材料費/本',u:'円',d:0},
+  {k:'wBefore',l:'加工前重量',u:'g',d:2},
+  {k:'maxBefore',l:'加工前最大径',u:'mm',d:2},
+];
+const LAB_MATRIX_METRICS = ['minutes','wLoss','wLossPct','maxLoss','finish','cost'];
+const LAB_PALETTE = ['#2f6f4f','#3d6fb0','#b07a2f','#8a4fa0','#b0463d','#2b8a8a','#6b6b6b','#c0792f','#4b5fa8','#7a8f2b'];
+let labCfg = {group:'cond', metric:'minutes', chart:'strip', sx:'maxBefore', sy:'minutes', filters:{}, hideAnom:true, sortKey:'date', sortDir:'desc'};
+
+function labNum(v){ if(v===''||v==null) return null; const n=parseFloat(String(v).replace(/[^\d.\-]/g,'')); return isFinite(n)?n:null; }
+function labNormMat(m){ const s=String(m||'').trim(); const mm=s.match(/(\d{2})/); return mm?('W'+mm[1]):s; }
+function labNormCountry(c){ const s=String(c||'').trim(); if(/国産|アラマテ/.test(s)) return '国産'; if(/中国/.test(s)) return '中国'; return s; }
+function labNormYN(v){ const s=String(v||'').trim(); if(/^(あり|有)/.test(s)) return 'あり'; if(/^(なし|無)/.test(s)) return 'なし'; return s; }
+function labRows(){
+  const out=[];
+  state.research.forEach(r=>{
+    (r.specimens||[]).forEach((sp,si)=>{
+      const o=sp.obj||{}, sc=sp.specs||{}, pre=sp.pre||{};
+      const unit = sp.weightUnit==='mg' ? 0.001 : 1;
+      const gv=(k,ba)=>labNum(sc[k]&&sc[k][ba]);
+      const stepSum=(sp.steps||[]).reduce((a,s)=>a+(labNum(s.time)||0),0);
+      const am=labNum(sp.cost&&sp.cost.actualMin);
+      const minutes = (am>0)?am:(stepSum>0?stepSum:null);
+      const warn=[];
+      const loss=(k,lim,name,scale)=>{
+        const b=gv(k,'b'), a=gv(k,'a'); if(b==null||a==null) return null;
+        const v=(b-a)*(scale||1);
+        if(v< -0.005*(scale||1)){ warn.push(name+'が増えている（前後の入力違いの疑い）'); return {v,bad:true}; }
+        if(v>lim){ warn.push(name+'の減少が大きすぎる（入力違いの疑い）'); return {v,bad:true}; }
+        return {v,bad:false};
+      };
+      const wl=loss('weight',3,'重量',unit), ml=loss('maxDia',0.5,'最大径'), nl=loss('minDia',0.5,'最小径');
+      const wb=gv('weight','b'); const wbG = wb==null?null:wb*unit;
+      const lastTool=(()=>{ for(let i=(sp.steps||[]).length-1;i>=0;i--){ const s=sp.steps[i]; if(s&&s.tool&&(labNum(s.time)||0)>0) return s; } return (sp.steps||[]).slice(-1)[0]||null; })();
+      const gm = lastTool ? String(lastTool.tool||'').match(/[#♯＃]\s*(\d{2,6})/) : null;
+      let cost=null; try{ if(r.biz==='研磨'){ const t=specimenToolCostBreakdown(r.biz,sp).total; if(t>0) cost=Math.round(t); } }catch(e){}
+      const date=r.startDate||r.createdDate||'';
+      const cu=state.customers.find(c=>c.id===(r.order&&r.order.customerId));
+      out.push({
+        rid:r.id, si, no:r.no, title:r.title||'（無題）', label:sp.label, date, cust:cu?cu.name:'',
+        genre:r.genre||LAB_UNSET, type:r.type||LAB_UNSET, biz:r.biz||LAB_UNSET, month:date?date.slice(0,7):LAB_UNSET,
+        cond:o.cond||LAB_UNSET, pre:o.preOverhaul||LAB_UNSET, mag:o.magnetism||LAB_UNSET,
+        mat:labNormMat(o.material)||LAB_UNSET, country:labNormCountry(o.country)||LAB_UNSET,
+        maker:o.maker||LAB_UNSET, spec:o.spec||LAB_UNSET, coolant:labNormYN(pre.coolant)||LAB_UNSET,
+        center:labNormYN(pre.centerPress)||LAB_UNSET, grit:gm?('#'+gm[1]):LAB_UNSET,
+        minutes, steps:(sp.steps||[]).length||null,
+        wLoss: wl&&!(wl.bad&&labCfg.hideAnom)?wl.v:null,
+        wLossPct: (wl&&wbG>0&&!(wl.bad&&labCfg.hideAnom))?wl.v/wbG*100:null,
+        maxLoss: ml&&!(ml.bad&&labCfg.hideAnom)?ml.v:null,
+        minLoss: nl&&!(nl.bad&&labCfg.hideAnom)?nl.v:null,
+        finish: labNum(sp.result&&sp.result.finish),
+        cost, wBefore:wbG, maxBefore:gv('maxDia','b'),
+        warn
+      });
+    });
+  });
+  return out;
+}
+function labFiltered(rows){
+  return rows.filter(r=>Object.keys(labCfg.filters).every(k=>{ const a=labCfg.filters[k]; return !a||!a.length||a.includes(r[k]); }));
+}
+function labValues(rows,dim){
+  const m={}; rows.forEach(r=>{ m[r[dim]]=(m[r[dim]]||0)+1; });
+  return Object.keys(m).sort((a,b)=>(a===LAB_UNSET)-(b===LAB_UNSET) || m[b]-m[a] || String(a).localeCompare(String(b),'ja'));
+}
+function labStats(arr){
+  const a=arr.filter(x=>x!=null&&isFinite(x)); const n=a.length; if(!n) return {n:0};
+  const s=a.slice().sort((x,y)=>x-y), mean=a.reduce((p,c)=>p+c,0)/n;
+  const sd=n>1?Math.sqrt(a.reduce((p,c)=>p+(c-mean)*(c-mean),0)/(n-1)):0;
+  const q=p=>{const i=(n-1)*p,lo=Math.floor(i),hi=Math.ceil(i);return s[lo]+(s[hi]-s[lo])*(i-lo);};
+  return {n,mean,sd,min:s[0],max:s[n-1],med:q(.5),q1:q(.25),q3:q(.75)};
+}
+function labCompare(a,b){
+  const A=labStats(a), B=labStats(b);
+  if(A.n<2||B.n<2) return {verdict:'データ不足',cls:'none',diff:(A.n&&B.n)?A.mean-B.mean:null,d:0,A,B};
+  const diff=A.mean-B.mean;
+  const sp=Math.sqrt(((A.n-1)*A.sd*A.sd+(B.n-1)*B.sd*B.sd)/(A.n+B.n-2));
+  const d=sp>0?diff/sp:0, ad=Math.abs(d);
+  let verdict=ad>=0.8?'差が大きい':ad>=0.5?'差がありそう':ad>=0.2?'小さな差':'ほぼ差なし';
+  if(A.n<3||B.n<3) verdict='参考（件数が少ない）';
+  return {verdict,cls:(ad>=0.8?'big':ad>=0.5?'mid':'low'),diff,d,A,B};
+}
+function labCorr(xs,ys){
+  const p=[]; for(let i=0;i<xs.length;i++) if(xs[i]!=null&&ys[i]!=null) p.push([xs[i],ys[i]]);
+  const n=p.length; if(n<4) return {n,r:null};
+  const mx=p.reduce((a,c)=>a+c[0],0)/n, my=p.reduce((a,c)=>a+c[1],0)/n;
+  let sxy=0,sxx=0,syy=0; p.forEach(c=>{ sxy+=(c[0]-mx)*(c[1]-my); sxx+=(c[0]-mx)**2; syy+=(c[1]-my)**2; });
+  if(sxx===0||syy===0) return {n,r:null};
+  return {n,r:sxy/Math.sqrt(sxx*syy),slope:sxy/sxx,icpt:my-sxy/sxx*mx};
+}
+function labMetric(k){ return LAB_METRICS.find(m=>m.k===k)||LAB_METRICS[0]; }
+function labFmt(v,mk){ if(v==null||!isFinite(v)) return '—'; const m=labMetric(mk); return v.toFixed(m.d); }
+function labFmtU(v,mk){ const t=labFmt(v,mk); return t==='—'?t:t+(labMetric(mk).u?`<small>${labMetric(mk).u}</small>`:''); }
+function labDimLabel(k){ const d=LAB_DIMS.find(x=>x.k===k); return d?d.l:k; }
+
+/* ---------- 操作 ---------- */
+function labRerender(){ const c=document.querySelector('.content'); const y=c?c.scrollTop:0, wy=window.scrollY; render(); const c2=document.querySelector('.content'); if(c2) c2.scrollTop=y; window.scrollTo(0,wy); }
+function labSet(k,v){ labCfg[k]=v; labRerender(); }
+function labToggleFilter(dim,idx){
+  const vals=labValues(labRows(),dim); const v=vals[idx]; if(v===undefined) return;
+  const a=labCfg.filters[dim]||(labCfg.filters[dim]=[]);
+  const i=a.indexOf(v); if(i>=0) a.splice(i,1); else a.push(v);
+  if(!a.length) delete labCfg.filters[dim];
+  labRerender();
+}
+function labClearFilters(){ labCfg.filters={}; labRerender(); }
+function labSort(k){ if(labCfg.sortKey===k) labCfg.sortDir=labCfg.sortDir==='asc'?'desc':'asc'; else {labCfg.sortKey=k; labCfg.sortDir='asc';} labRerender(); }
+function labOpen(rid){ openLinkedResearch(rid); }
+function labExportCsv(){
+  const rows=labFiltered(labRows());
+  const cols=[['date','日付'],['no','No'],['title','記録'],['label','試料'],['cust','お客様'],...LAB_DIMS.map(d=>[d.k,d.l]),...LAB_METRICS.map(m=>[m.k,m.l+(m.u?`(${m.u})`:'')])];
+  const q=v=>{ const s=v==null?'':String(v); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
+  const csv='﻿'+[cols.map(c=>q(c[1])).join(',')].concat(rows.map(r=>cols.map(c=>q(r[c[0]])).join(','))).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='maisonk_lab_'+todayStr()+'.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  toast(rows.length+'行をCSVに書き出しました');
+}
+
+/* ---------- チャート（SVG） ---------- */
+function labScale(min,max){
+  if(!(max>min)){ const p=Math.abs(min)*0.1||1; min-=p; max+=p; }
+  const span=max-min, pad=span*0.08; min-=pad; max+=pad;
+  const raw=(max-min)/5, mag=Math.pow(10,Math.floor(Math.log10(raw))), f=raw/mag;
+  const step=(f<1.5?1:f<3?2:f<7?5:10)*mag;
+  const lo=Math.floor(min/step)*step, hi=Math.ceil(max/step)*step, ticks=[];
+  for(let v=lo;v<=hi+step/2;v+=step) ticks.push(+v.toFixed(10));
+  return {lo,hi,ticks};
+}
+function labTickFmt(v){ if(v===0) return '0'; const a=Math.abs(v); return a>=100?v.toFixed(0):a>=10?v.toFixed(1):a>=1?v.toFixed(2):v.toFixed(3); }
+function labStripChart(rows,groupKey,mk){
+  const groups=labValues(rows.filter(r=>r[mk]!=null),groupKey);
+  if(!groups.length) return '<div class="sx-note">この指標の数値が入力された試料がありません。</div>';
+  const W=760,H=330,L=58,R=14,T=14,B=62;
+  const vals=rows.map(r=>r[mk]).filter(v=>v!=null);
+  const sc=labScale(Math.min(...vals),Math.max(...vals));
+  const y=v=>T+(H-T-B)*(1-(v-sc.lo)/(sc.hi-sc.lo));
+  const slot=(W-L-R)/groups.length;
+  let g=sc.ticks.map(t=>`<line x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)"/><text x="${L-8}" y="${y(t)+4}" text-anchor="end" class="lab-tick">${labTickFmt(t)}</text>`).join('');
+  groups.forEach((gv,gi)=>{
+    const col=LAB_PALETTE[gi%LAB_PALETTE.length], cx=L+slot*(gi+0.5);
+    const pts=rows.filter(r=>r[groupKey]===gv&&r[mk]!=null);
+    const st=labStats(pts.map(r=>r[mk]));
+    if(st.n>=2) g+=`<rect x="${cx-slot*0.28}" y="${y(st.q3)}" width="${slot*0.56}" height="${Math.max(1,y(st.q1)-y(st.q3))}" fill="${col}" opacity=".09" rx="2"/>`;
+    g+=`<line x1="${cx-slot*0.32}" x2="${cx+slot*0.32}" y1="${y(st.mean)}" y2="${y(st.mean)}" stroke="${col}" stroke-width="2.5"/>`;
+    pts.forEach((p,pi)=>{
+      const jx=((pi*37)%11-5)/5*slot*0.22;
+      g+=`<circle cx="${cx+jx}" cy="${y(p[mk])}" r="5.5" fill="${col}" fill-opacity=".78" stroke="#fff" stroke-width="1.2" style="cursor:pointer" onclick="labOpen('${p.rid}')"><title>${esc(p.title)} ${esc(p.label)}｜${labFmt(p[mk],mk)}${labMetric(mk).u}（クリックで詳細）</title></circle>`;
+    });
+    const lbl=String(gv); g+=`<text x="${cx}" y="${H-B+20}" text-anchor="middle" class="lab-lbl">${esc(lbl.length>9?lbl.slice(0,9)+'…':lbl)}</text><text x="${cx}" y="${H-B+36}" text-anchor="middle" class="lab-tick">n=${st.n}　平均 ${labFmt(st.mean,mk)}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" class="lab-svg" role="img" aria-label="${esc(labMetric(mk).l)}のグループ別分布">${g}</svg>
+    <div class="sx-note">点＝試料1件（クリックで工程表の詳細へ）／太線＝平均／薄い帯＝中央50%の範囲</div>`;
+}
+function labScatterChart(rows,xk,yk,groupKey){
+  const pts=rows.filter(r=>r[xk]!=null&&r[yk]!=null);
+  if(pts.length<2) return '<div class="sx-note">この2指標がそろった試料が2件未満です（入力が増えると描画されます）。</div>';
+  const W=760,H=360,L=58,R=14,T=14,B=46;
+  const sx=labScale(Math.min(...pts.map(p=>p[xk])),Math.max(...pts.map(p=>p[xk])));
+  const sy=labScale(Math.min(...pts.map(p=>p[yk])),Math.max(...pts.map(p=>p[yk])));
+  const X=v=>L+(W-L-R)*(v-sx.lo)/(sx.hi-sx.lo), Y=v=>T+(H-T-B)*(1-(v-sy.lo)/(sy.hi-sy.lo));
+  const groups=labValues(pts,groupKey);
+  let g=sy.ticks.map(t=>`<line x1="${L}" x2="${W-R}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)"/><text x="${L-8}" y="${Y(t)+4}" text-anchor="end" class="lab-tick">${labTickFmt(t)}</text>`).join('')
+    + sx.ticks.map(t=>`<line y1="${T}" y2="${H-B}" x1="${X(t)}" x2="${X(t)}" stroke="var(--line)" opacity=".5"/><text x="${X(t)}" y="${H-B+18}" text-anchor="middle" class="lab-tick">${labTickFmt(t)}</text>`).join('');
+  const cr=labCorr(pts.map(p=>p[xk]),pts.map(p=>p[yk]));
+  if(cr.r!=null) g+=`<line x1="${X(sx.lo)}" y1="${Y(cr.slope*sx.lo+cr.icpt)}" x2="${X(sx.hi)}" y2="${Y(cr.slope*sx.hi+cr.icpt)}" stroke="var(--ink-soft)" stroke-dasharray="5 4" stroke-width="1.3"/>`;
+  pts.forEach(p=>{ const col=LAB_PALETTE[groups.indexOf(p[groupKey])%LAB_PALETTE.length];
+    g+=`<circle cx="${X(p[xk])}" cy="${Y(p[yk])}" r="5.5" fill="${col}" fill-opacity=".78" stroke="#fff" stroke-width="1.2" style="cursor:pointer" onclick="labOpen('${p.rid}')"><title>${esc(p.title)} ${esc(p.label)}｜${labFmt(p[xk],xk)}, ${labFmt(p[yk],yk)}（クリックで詳細）</title></circle>`; });
+  g+=`<text x="${(L+W-R)/2}" y="${H-6}" text-anchor="middle" class="lab-lbl">${esc(labMetric(xk).l)}${labMetric(xk).u?'（'+labMetric(xk).u+'）':''}</text><text transform="translate(14 ${(T+H-B)/2}) rotate(-90)" text-anchor="middle" class="lab-lbl">${esc(labMetric(yk).l)}${labMetric(yk).u?'（'+labMetric(yk).u+'）':''}</text>`;
+  const legend=groups.map((gv,i)=>`<span><i style="background:${LAB_PALETTE[i%LAB_PALETTE.length]}"></i>${esc(gv)}</span>`).join('');
+  const rtxt = cr.r==null ? '相関は4件以上で計算します' : `相関係数 r = ${cr.r.toFixed(2)}（n=${cr.n}）`+(Math.abs(cr.r)>=0.7?'　強い':Math.abs(cr.r)>=0.4?'　中程度':'　弱い');
+  return `<svg viewBox="0 0 ${W} ${H}" class="lab-svg" role="img" aria-label="散布図">${g}</svg><div class="sx-legend" style="margin-top:6px">${legend}</div><div class="sx-note" style="margin-top:4px">${rtxt}（破線＝回帰直線）。相関は因果ではありません。</div>`;
+}
+
+/* ---------- 各セクション ---------- */
+function labFilterBar(all){
+  const dims=LAB_DIMS.filter(d=>labValues(all,d.k).filter(v=>v!==LAB_UNSET).length>=2 || d.k==='cond');
+  const html=dims.map(d=>{
+    const vals=labValues(all,d.k), sel=labCfg.filters[d.k]||[];
+    const cnt={}; all.forEach(r=>{cnt[r[d.k]]=(cnt[r[d.k]]||0)+1;});
+    return `<div class="lab-frow"><span class="lab-fl">${esc(d.l)}</span><div class="lab-chips">${vals.map((v,i)=>`<span class="pill ${sel.includes(v)?'active':''}" onclick="labToggleFilter('${d.k}',${i})">${esc(v)} <small>${cnt[v]}</small></span>`).join('')}</div></div>`;
+  }).join('');
+  const act=Object.keys(labCfg.filters).length;
+  return `<details class="lab-filter" ${act?'open':''}><summary>絞り込み${act?`（${act}項目で絞り込み中）`:'（全データ）'}</summary>${html}
+    <div style="margin-top:10px;display:flex;gap:14px;align-items:center;flex-wrap:wrap"><label style="font-size:12px;display:flex;gap:6px;align-items:center"><input type="checkbox" ${labCfg.hideAnom?'checked':''} onchange="labSet('hideAnom',this.checked)">入力ミスが疑われる寸法・重量を除外する</label>${act?`<button class="btn sm" onclick="labClearFilters()">絞り込みを解除</button>`:''}</div></details>`;
+}
+function labInsights(rows){
+  const dims=['cond','pre','mag','mat','country','coolant','center','spec'];
+  const mets=['minutes','wLoss','wLossPct','maxLoss','finish'];
+  const found=[];
+  dims.forEach(dk=>{
+    const gs=labValues(rows,dk).filter(v=>v!==LAB_UNSET);
+    mets.forEach(mk=>{
+      const withN=gs.map(g=>({g,a:rows.filter(r=>r[dk]===g&&r[mk]!=null).map(r=>r[mk])})).filter(x=>x.a.length>=3).sort((p,q)=>q.a.length-p.a.length).slice(0,2);
+      if(withN.length<2) return;
+      const c=labCompare(withN[0].a,withN[1].a);
+      if(Math.abs(c.d)>=0.5) found.push({dk,mk,A:withN[0],B:withN[1],c,score:Math.abs(c.d)*Math.sqrt(Math.min(withN[0].a.length,withN[1].a.length))});
+    });
+  });
+  found.sort((a,b)=>b.score-a.score);
+  if(!found.length) return `<div class="sx-note">いま絞り込んだデータでは、各グループ3件以上かつ差がはっきりした傾向はまだ見つかっていません。入力が増えるほど精度が上がります。</div>`;
+  return `<ul class="lab-ins">${found.slice(0,8).map(f=>{
+    const m=labMetric(f.mk), diff=f.c.diff, pct=f.B.a.length&&f.c.B.mean?Math.abs(diff/f.c.B.mean*100):null;
+    const hi=diff>0?f.A.g:f.B.g, lo=diff>0?f.B.g:f.A.g;
+    return `<li><b>${esc(labDimLabel(f.dk))}</b>：<b>${esc(hi)}</b> は <b>${esc(lo)}</b> より ${esc(m.l)} が <b>${labFmt(Math.abs(diff),f.mk)}${m.u}</b>${pct!=null?`（約${Math.round(pct)}%）`:''} 大きい <span class="lab-tag ${f.c.cls}">${f.c.verdict}</span><span class="sx-note"> n=${f.A.a.length}／${f.B.a.length}　d=${Math.abs(f.c.d).toFixed(2)}</span></li>`;
+  }).join('')}</ul><div class="sx-note">d＝差の大きさ（平均差÷ばらつき）。0.5以上を候補として表示。件数が少ないうちは「そうかも」程度に読んでください。</div>`;
+}
+function labMatrix(rows){
+  const gk=labCfg.group;
+  const groups=labValues(rows,gk);
+  const cols=LAB_MATRIX_METRICS;
+  const colMax={}; cols.forEach(mk=>{ colMax[mk]=Math.max(0,...groups.map(g=>labStats(rows.filter(r=>r[gk]===g).map(r=>r[mk])).mean||0)); });
+  const body=groups.map((g,gi)=>{
+    const sub=rows.filter(r=>r[gk]===g);
+    const cells=cols.map(mk=>{ const st=labStats(sub.map(r=>r[mk])); if(!st.n) return '<td class="lab-na">—</td>';
+      const w=colMax[mk]>0?Math.max(3,st.mean/colMax[mk]*100):0;
+      return `<td><div class="lab-cell"><b>${labFmt(st.mean,mk)}</b><small>n=${st.n}${st.n>1?`　±${labFmt(st.sd,mk)}`:''}</small><i style="width:${w}%;background:${LAB_PALETTE[gi%LAB_PALETTE.length]}"></i></div></td>`; }).join('');
+    return `<tr><td><span class="lab-dot" style="background:${LAB_PALETTE[gi%LAB_PALETTE.length]}"></span>${esc(g)}</td><td>${sub.length}</td>${cells}</tr>`;
+  }).join('');
+  const head=cols.map(mk=>`<th>${esc(labMetric(mk).l)}${labMetric(mk).u?`<br><small>${labMetric(mk).u}</small>`:''}</th>`).join('');
+  // 上位2グループの比較
+  const top=groups.filter(g=>g!==LAB_UNSET).map(g=>({g,n:rows.filter(r=>r[gk]===g).length})).sort((a,b)=>b.n-a.n).slice(0,2);
+  let cmp='';
+  if(top.length===2){
+    const lines=cols.map(mk=>{
+      const a=rows.filter(r=>r[gk]===top[0].g&&r[mk]!=null).map(r=>r[mk]), b=rows.filter(r=>r[gk]===top[1].g&&r[mk]!=null).map(r=>r[mk]);
+      const c=labCompare(a,b); if(c.diff==null) return `<tr><td>${esc(labMetric(mk).l)}</td><td colspan="3" class="lab-na">比較できる数値が足りません</td></tr>`;
+      const pct=c.B.mean?Math.round(c.diff/Math.abs(c.B.mean)*100):null;
+      return `<tr><td>${esc(labMetric(mk).l)}</td><td>${labFmtU(c.A.mean,mk)} <small class="mute">n=${c.A.n}</small></td><td>${labFmtU(c.B.mean,mk)} <small class="mute">n=${c.B.n}</small></td><td><b>${c.diff>0?'+':''}${labFmt(c.diff,mk)}${labMetric(mk).u}</b>${pct!=null?` <small>(${pct>0?'+':''}${pct}%)</small>`:''} <span class="lab-tag ${c.cls}">${c.verdict}</span></td></tr>`;
+    }).join('');
+    cmp=`<h4 class="lab-sub">${esc(top[0].g)} と ${esc(top[1].g)} の差（${esc(labDimLabel(gk))}）</h4><table class="sx-table lab-cmp"><thead><tr><th>指標</th><th>${esc(top[0].g)}</th><th>${esc(top[1].g)}</th><th style="text-align:left">差（前者−後者）</th></tr></thead><tbody>${lines}</tbody></table>`;
+  }
+  return `<div class="lab-scroll"><table class="sx-table lab-mx"><thead><tr><th>${esc(labDimLabel(gk))}</th><th>件数</th>${head}</tr></thead><tbody>${body}</tbody></table></div>${cmp}`;
+}
+function labCorrMatrix(rows){
+  const ks=['minutes','wLoss','maxLoss','minLoss','finish','steps','wBefore','maxBefore'];
+  const head=ks.map(k=>`<th>${esc(labMetric(k).l)}</th>`).join('');
+  const body=ks.map(a=>`<tr><td>${esc(labMetric(a).l)}</td>${ks.map(b=>{
+    if(a===b) return '<td class="lab-na">·</td>';
+    const c=labCorr(rows.map(r=>r[a]),rows.map(r=>r[b]));
+    if(c.r==null) return `<td class="lab-na" title="n=${c.n}">—</td>`;
+    const al=Math.min(1,Math.abs(c.r)), col=c.r>0?'15,92,63':'178,59,46';
+    return `<td style="background:rgba(${col},${(al*0.55).toFixed(2)});color:${al>0.65?'#fff':'inherit'}" title="n=${c.n}">${c.r.toFixed(2)}</td>`;
+  }).join('')}</tr>`).join('');
+  return `<div class="lab-scroll"><table class="sx-table lab-corr"><thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table></div><div class="sx-note">緑＝同じ向きに増減／赤＝逆向き。4件以上そろった組み合わせのみ表示（—は不足）。</div>`;
+}
+function labDataTable(rows){
+  const cols=[['date','日付'],['title','記録'],['label','試料'],['cond','新/中'],['pre','事前'],['mag','磁性'],['mat','材質'],['maker','メーカー'],['minutes','時間(分)'],['wLoss','重量減(g)'],['maxLoss','径減(mm)'],['finish','仕上がり']];
+  const sk=labCfg.sortKey, dir=labCfg.sortDir==='asc'?1:-1;
+  const sorted=rows.slice().sort((a,b)=>{ const x=a[sk], y=b[sk]; if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1; return (typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y),'ja'))*dir; });
+  const f=(r,k)=>{ const v=r[k]; if(v==null) return '<span class="lab-na">—</span>'; return typeof v==='number'?labFmt(v,k):esc(v); };
+  const head=cols.map(c=>`<th onclick="labSort('${c[0]}')" style="cursor:pointer">${c[1]}${sk===c[0]?(labCfg.sortDir==='asc'?' ▲':' ▼'):''}</th>`).join('')+'<th></th>';
+  const body=sorted.slice(0,300).map(r=>`<tr><td>${esc(r.date)}</td><td class="lab-ttl" onclick="labOpen('${r.rid}')">${esc(r.title)}</td><td>${esc(r.label)}</td>${cols.slice(3).map(c=>`<td>${f(r,c[0])}</td>`).join('')}<td>${r.warn.length?`<span title="${esc(r.warn.join(' / '))}" style="cursor:help">⚠</span>`:''}</td></tr>`).join('');
+  return `<div class="lab-scroll" style="max-height:440px;overflow:auto"><table class="sx-table lab-data"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+function labQuality(all){
+  const real=all.filter(r=>r.type!=='チャット由来');
+  if(!real.length) return '';
+  const chk=[['cond','新品/中古'],['pre','事前研磨'],['mag','磁性'],['mat','材質(W%)'],['country','産出国'],['maker','メーカー'],['coolant','研削液'],['minutes','加工時間'],['wLoss','前後の重量'],['maxLoss','前後の最大径'],['finish','仕上がり評価']];
+  return chk.map(c=>{ const filled=real.filter(r=>r[c[0]]!=null&&r[c[0]]!==LAB_UNSET).length, p=Math.round(filled/real.length*100);
+    return `<div class="sx-bar"><div class="l"><span>${c[1]}</span><span>${filled}/${real.length}件（${p}%）</span></div><div class="sx-stack"><div style="width:${p}%;background:${p>=70?'var(--sx-good)':p>=40?'var(--sx-mid)':'var(--sx-bad)'}"></div></div></div>`; }).join('');
+}
+function renderLabPage(container){
+  const all=labRows();
+  const rows=labFiltered(all);
+  const gSel=LAB_DIMS.map(d=>`<option value="${d.k}" ${labCfg.group===d.k?'selected':''}>${d.l}</option>`).join('');
+  const mSel=(cur)=>LAB_METRICS.map(m=>`<option value="${m.k}" ${cur===m.k?'selected':''}>${m.l}${m.u?`（${m.u}）`:''}</option>`).join('');
+  const nUse=(k)=>rows.filter(r=>r[k]!=null).length;
+  const chartBody = labCfg.chart==='strip' ? labStripChart(rows,labCfg.group,labCfg.metric) : labScatterChart(rows,labCfg.sx,labCfg.sy,labCfg.group);
+  const chartCtl = labCfg.chart==='strip'
+    ? `<label>指標 <select onchange="labSet('metric',this.value)">${mSel(labCfg.metric)}</select></label>`
+    : `<label>横軸 <select onchange="labSet('sx',this.value)">${mSel(labCfg.sx)}</select></label><label>縦軸 <select onchange="labSet('sy',this.value)">${mSel(labCfg.sy)}</select></label>`;
+  container.innerHTML=`<div class="sx">
+    <div class="sx-top"><div><div style="font-family:var(--serif);font-size:24px;font-weight:600">分析ラボ</div><div class="sx-note">工程表に入力した全試料を、条件ごとに比べて傾向を見つける部屋です。</div></div><div class="spacer"></div>
+      <button class="btn sm" onclick="labExportCsv()">CSVに書き出す</button></div>
+    <div class="sx-kpis">
+      <div class="sx-kpi"><b>${rows.length}<small style="font-size:13px">/${all.length}</small></b><span>分析対象の試料</span></div>
+      <div class="sx-kpi"><b>${nUse('minutes')}</b><span>加工時間あり</span></div>
+      <div class="sx-kpi"><b>${nUse('wLoss')}</b><span>前後の重量あり</span></div>
+      <div class="sx-kpi"><b>${nUse('finish')}</b><span>仕上がり評価あり</span></div>
+    </div>
+    <div style="margin-top:14px">${labFilterBar(all)}</div>
+    <div class="sx-h">見えてきた傾向 <small>差が大きい順に自動で候補を挙げます</small></div>
+    ${labInsights(rows)}
+    <div class="sx-h">グループ別の比較表 <small>グループ分けの軸を選ぶと、全指標を一覧で比べられます</small></div>
+    <div class="sx-ctl" style="margin:0 0 12px"><label style="font-size:12px">分け方 <select onchange="labSet('group',this.value)" style="width:auto">${gSel}</select></label></div>
+    ${labMatrix(rows)}
+    <div class="sx-h">グラフ <small>点をクリックすると工程表の詳細に移動します</small></div>
+    <div class="sx-ctl" style="margin:0 0 12px">
+      <div class="sx-seg"><button class="${labCfg.chart==='strip'?'on':''}" onclick="labSet('chart','strip')">グループ別の分布</button><button class="${labCfg.chart==='scatter'?'on':''}" onclick="labSet('chart','scatter')">散布図</button></div>
+      <label style="font-size:12px">色・分け方 <select onchange="labSet('group',this.value)" style="width:auto">${gSel}</select></label>
+      <span style="font-size:12px;display:inline-flex;gap:10px;align-items:center">${chartCtl}</span>
+    </div>
+    <div class="card" style="padding:14px 16px">${chartBody}</div>
+    <div class="sx-h">指標どうしの関係 <small>相関係数の一覧</small></div>
+    ${labCorrMatrix(rows)}
+    <div class="sx-h">データ一覧 <small>見出しで並べ替え／記録名で詳細へ。修正は工程表側で行います</small></div>
+    ${labDataTable(rows)}
+    <div class="sx-h">入力の充実度 <small>空欄が多い項目ほど分析に使えません</small></div>
+    <div class="sx-cols"><div>${labQuality(all)}</div><div class="sx-note" style="line-height:1.8">・仕上がり評価は、工程表「結果」の仕上がり欄に入れた数字を使います。<br>・加工時間は「実時間」、無ければ工程時間の合計です。<br>・重量・径は「前−後」の減少量として扱います（増えている／極端に減っている値は入力違いの疑いとして除外し、一覧に⚠を付けます）。<br>・件数が少ないうちは、傾向は参考値です。</div></div>
+  </div>`;
+}
+
 function renderSalesPage(container){
   const bizSeg=BIZ_LIST.filter(b=>b!=='全般').map(b=>`<button class="${salesFilterBiz.has(b)?'on':''}" onclick="salesFilterBiz.has('${b}')?salesFilterBiz.delete('${b}'):salesFilterBiz.add('${b}');render();">${b}</button>`).join('');
   const months=salesMonthList();
