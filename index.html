@@ -2545,7 +2545,7 @@ function updateSaleCostHint(){
   const r=state.research.find(x=>x.id===rid);
   if(!r){ el.textContent=''; return; }
   const c=researchCostParts(r);
-  el.textContent=`工程表の自動原価：¥${Math.round(c.cost).toLocaleString()}（材料・工具 ${Math.round(c.material)}＋梱包 ${Math.round(c.packaging)}＋送料 ${Math.round(c.shipping)}）／作業 ${Math.round(c.minutes)}分`;
+  el.textContent=`工程表の自動原価（合計材料費）：¥${Math.round(c.material).toLocaleString()}／${c.bars}本・作業 ${Math.round(c.minutes)}分`;
 }
 function submitSale(){
   const amount=document.getElementById('sl_amount').value;
@@ -2613,20 +2613,32 @@ function specimenCostParts(r, sp){
           toolLines: bd.lines.map(l=>({name:l.name, cost:l.cost*q}))};
 }
 function researchCostParts(r){
-  const out={material:0,packaging:0,shipping:0,minutes:0,toolLines:[]};
+  const out={material:0,packaging:0,shipping:0,minutes:0,bars:0,toolLines:[]};
   (r.specimens||[]).forEach(sp=>{
+    out.bars+=Math.max(1,numOf(sp.qty)||1);
     const c=specimenCostParts(r,sp);
     out.material+=c.material; out.packaging+=c.packaging; out.shipping+=c.shipping; out.minutes+=c.minutes;
     out.toolLines=out.toolLines.concat(c.toolLines);
   });
-  out.cost=out.material+out.packaging+out.shipping;
+  out.cost=out.material; // 原価＝合計材料費（梱包・送料は含めない）
   return out;
 }
 function saleEffectiveCost(s){
   if(s.costAmount!=='' && s.costAmount!=null && !isNaN(Number(s.costAmount))) return {cost:Number(s.costAmount), auto:false};
   const r=state.research.find(x=>x.id===s.researchId);
-  if(r) return {cost:researchCostParts(r).cost, auto:true};
+  if(r) return {cost:researchCostParts(r).material, auto:true};
   return {cost:0, auto:false};
+}
+function saleBars(s){
+  const r=state.research.find(x=>x.id===s.researchId);
+  return r ? researchCostParts(r).bars : 0;
+}
+/* 1件の売価の内訳：原価（材料費）／人件費の取り分／1本あたり／時給 */
+function saleBreakdown(s){
+  const amount=numOf(s.amount), cost=saleEffectiveCost(s).cost, take=amount-cost;
+  const bars=saleBars(s), min=saleWorkMinutes(s);
+  return {amount,cost,take,ratio:amount>0?cost/amount*100:0,bars,min,
+          perBar:bars>0?take/bars:null, hourly:min>0?take/(min/60):null};
 }
 function saleWorkMinutes(s){
   const r=state.research.find(x=>x.id===s.researchId);
@@ -2636,9 +2648,10 @@ function saleWorkMinutes(s){
 function recentRealHourly(n){
   const list=state.sales.filter(s=>saleWorkMinutes(s)>0)
     .sort((a,b)=>String(b.date).localeCompare(String(a.date)) || (b.createdAt||0)-(a.createdAt||0)).slice(0,n);
-  let profit=0, min=0;
-  list.forEach(s=>{ profit += numOf(s.amount) - saleEffectiveCost(s).cost; min += saleWorkMinutes(s); });
-  return {count:list.length, hourly: min>0 ? profit/(min/60) : 0, profit, minutes:min};
+  let take=0, min=0, bars=0, amount=0, cost=0;
+  list.forEach(s=>{ const d=saleBreakdown(s); take+=d.take; min+=d.min; bars+=d.bars; amount+=d.amount; cost+=d.cost; });
+  return {count:list.length, hourly: min>0 ? take/(min/60) : 0, perBar: bars>0 ? take/bars : 0,
+          profit:take, minutes:min, bars, amount, cost, hoursPerBar: bars>0 ? (min/60)/bars : 0};
 }
 const BIZ_COLORS = {'研磨':'#2f6f4f','3Dプリンタ':'#3d6fb0','製作図面依頼':'#b07a2f','量産品':'#8a4fa0','一般顧客モデル':'#b0463d','全般':'#888'};
 function renderHourlyGauge(){
@@ -2646,24 +2659,29 @@ function renderHourlyGauge(){
   const base=numOf(state.settings.hourly)||1700, target=numOf(state.settings.targetHourly)||2000;
   const maxV=Math.max(3000, Math.ceil(Math.max(g.hourly,target)*1.15/500)*500);
   const pos=v=>Math.max(0,Math.min(100,v/maxV*100));
-  if(!g.count) return `<div class="card"><div class="section-label" style="margin-top:0">実質時給（直近15件）</div><div class="empty" style="padding:14px">工程表に紐づき、作業時間が入力された売上がまだありません。</div></div>`;
+  if(!g.count) return `<div class="card"><div class="section-label" style="margin-top:0">人件費の取り分と時給（直近15件）</div><div class="empty" style="padding:14px">工程表に紐づき、作業時間が入力された売上がまだありません。</div></div>`;
   const col = g.hourly>=target ? 'var(--green)' : (g.hourly>=base ? '#c9a227' : 'var(--red)');
+  const y=v=>'¥'+Math.round(v).toLocaleString();
   return `<div class="card">
-    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
-      <div class="section-label" style="margin:0">実質時給（直近${g.count}件・リアルタイム）</div>
-      <span class="mute" style="font-size:11px">＝（売上−原価）÷作業時間　※人件費は原価に含めません</span>
+    <div class="section-label" style="margin:0 0 6px">売価の内訳と時給レベル（直近${g.count}件・リアルタイム）</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:10px">
+      <div><div class="mute" style="font-size:11px">売価（平均/件）</div><div style="font-size:20px;font-weight:700">${y(g.amount/g.count)}</div></div>
+      <div><div class="mute" style="font-size:11px">原価＝材料費（平均/件）</div><div style="font-size:20px;font-weight:700">${y(g.cost/g.count)}</div><div class="mute" style="font-size:11px">原価率 ${g.amount>0?Math.round(g.cost/g.amount*1000)/10:0}%</div></div>
+      <div><div class="mute" style="font-size:11px">人件費の取り分（1本あたり）</div><div style="font-size:20px;font-weight:700">${y(g.perBar)}</div><div class="mute" style="font-size:11px">＝（売価−材料費）÷本数</div></div>
+      <div><div class="mute" style="font-size:11px">1本あたりの作業時間</div><div style="font-size:20px;font-weight:700">${Math.round(g.hoursPerBar*60)}分</div><div class="mute" style="font-size:11px">梱包・発送を含む</div></div>
     </div>
-    <div style="font-size:30px;font-weight:800;color:${col};margin:6px 0 10px">¥${Math.round(g.hourly).toLocaleString()}<span style="font-size:13px;font-weight:600"> /時間</span></div>
+    <div style="font-size:12px;color:var(--ink-soft)">実質時給（取り分 ÷ 実際の作業時間）</div>
+    <div style="font-size:30px;font-weight:800;color:${col};margin:2px 0 10px">${y(g.hourly)}<span style="font-size:13px;font-weight:600"> /時間</span></div>
     <div style="position:relative;height:16px;border-radius:8px;overflow:hidden;background:linear-gradient(90deg,#e8b4ae 0%,#e8b4ae ${pos(base)}%,#f0e1a8 ${pos(base)}%,#f0e1a8 ${pos(target)}%,#b7dcc4 ${pos(target)}%,#b7dcc4 100%)">
       <div style="position:absolute;left:${pos(g.hourly)}%;top:0;bottom:0;width:4px;background:#1c1f1b;transform:translateX(-2px)"></div>
     </div>
     <div style="position:relative;height:30px;font-size:10.5px;color:var(--ink-soft)">
       <span style="position:absolute;left:0">0</span>
-      <span style="position:absolute;left:${pos(base)}%;transform:translateX(-50%)">設定時給 ¥${base.toLocaleString()}</span>
-      <span style="position:absolute;left:${pos(target)}%;transform:translateX(-50%);top:13px">目標 ¥${target.toLocaleString()}</span>
-      <span style="position:absolute;right:0">¥${maxV.toLocaleString()}</span>
+      <span style="position:absolute;left:${pos(base)}%;transform:translateX(-50%)">設定時給 ${y(base)}</span>
+      <span style="position:absolute;left:${pos(target)}%;transform:translateX(-50%);top:13px">目標 ${y(target)}</span>
+      <span style="position:absolute;right:0">${y(maxV)}</span>
     </div>
-    <div class="mute" style="font-size:11px">利益 ¥${Math.round(g.profit).toLocaleString()} ／ 作業 ${Math.round(g.minutes/6)/10}時間（時間が分かる売上のみ集計）</div>
+    <div class="mute" style="font-size:11px">作業 ${Math.round(g.minutes/6)/10}時間・${g.bars}本（時間が分かる売上のみ集計）／梱包費・送料は原価に含めていません</div>
   </div>`;
 }
 function salesMonthlyTable(items){
@@ -2686,7 +2704,7 @@ function salesMonthlyTable(items){
     return `<tr><td style="font-weight:700;white-space:nowrap">${esc(k)}</td><td class="num">${yen(d.amount)}</td><td class="num">${yen(d.cost)}</td><td class="num">${yen(profit)}</td><td class="num">${ratio}%</td><td class="num">${d.n}件</td>
       <td style="min-width:150px"><div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--paper-deep)">${seg}</div><div class="sales-month-biz">${legend}</div></td></tr>`;
   }).join('');
-  return `<div style="overflow-x:auto"><table class="step-table" style="min-width:560px"><thead><tr><th>月</th><th>売上</th><th>原価</th><th>粗利</th><th>原価率</th><th>件数</th><th>事業別の内訳</th></tr></thead><tbody>${rows}</tbody></table></div>
+  return `<div style="overflow-x:auto"><table class="step-table" style="min-width:560px"><thead><tr><th>月</th><th>売上</th><th>原価（材料費）</th><th>人件費の取り分</th><th>原価率</th><th>件数</th><th>事業別の内訳</th></tr></thead><tbody>${rows}</tbody></table></div>
     <style>.step-table td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}</style>`;
 }
 function renderBarList(rows,fmt){
@@ -2716,7 +2734,7 @@ function renderCostAnalysis(items){
   const toTop=(m,n)=>Object.keys(m).map(k=>({label:k,v:m[k]})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v).slice(0,n);
   const yen=v=>'¥'+Math.round(v).toLocaleString();
   return `<div class="two-col" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">
-    <div class="card"><div class="section-label" style="margin-top:0">原価の構成</div>${renderBarList(toTop(kinds,5),yen)}</div>
+    <div class="card"><div class="section-label" style="margin-top:0">売価の内訳（原価と取り分）</div>${renderBarList([{label:'原価（材料費）',v:kinds['工具・材料']},{label:'人件費の取り分',v:Math.max(0,items.reduce((a,sl)=>a+numOf(sl.amount),0)-items.reduce((a,sl)=>a+saleEffectiveCost(sl).cost,0))}],yen)}</div>
     <div class="card"><div class="section-label" style="margin-top:0">原価が大きい工具（上位8）</div>${renderBarList(toTop(toolMap,8),yen)}</div>
     <div class="card"><div class="section-label" style="margin-top:0">時間がかかっている工程（上位8）</div>${renderBarList(toTop(timeMap,8),v=>Math.round(v)+'分')}</div>
   </div>`;
@@ -2743,8 +2761,8 @@ function renderSalesPage(container){
   const statCards=`
     <div class="dash-grid">
       <div class="stat"><div class="n">¥${Math.round(totalAmount).toLocaleString()}</div><div class="l">売上合計｜${items.length}件・${totalQty}個</div></div>
-      <div class="stat"><div class="n">¥${Math.round(profit).toLocaleString()}</div><div class="l">粗利（売上−原価）｜原価 ¥${Math.round(totalCost).toLocaleString()}</div></div>
-      <div class="stat"><div class="n">${costRatio}%</div><div class="l">原価率（原価÷売上）｜人件費は含まず</div></div>
+      <div class="stat"><div class="n">¥${Math.round(profit).toLocaleString()}</div><div class="l">人件費の取り分（売上−材料費）｜材料費 ¥${Math.round(totalCost).toLocaleString()}</div></div>
+      <div class="stat"><div class="n">${costRatio}%</div><div class="l">原価率（材料費÷売上）｜取り分は残り${Math.round((100-costRatio)*10)/10}%</div></div>
       <div class="stat"><div class="n">¥${Math.round(unpaidAmount).toLocaleString()}</div><div class="l">未入金｜${unpaid.length}件</div></div>
     </div>`;
   const monthlyHtml = salesMonthlyTable(items);
@@ -2754,11 +2772,13 @@ function renderSalesPage(container){
     const r=state.research.find(x=>x.id===s.researchId);
     const ec=saleEffectiveCost(s);
     const profitOne=(Number(s.amount)||0)-ec.cost;
+    const bd=saleBreakdown(s);
+    const bdHtml=(ec.cost>0||bd.bars>0)?`<div class="mute" style="font-size:11px;margin-top:3px">原価 ¥${Math.round(bd.cost).toLocaleString()}（${Math.round(bd.ratio*10)/10}%）／取り分 ¥${Math.round(bd.take).toLocaleString()}${bd.perBar!=null?`（1本 ¥${Math.round(bd.perBar).toLocaleString()}）`:''}${bd.hourly!=null?`／時給 ¥${Math.round(bd.hourly).toLocaleString()}`:''}</div>`:'';
     return `<div class="itemrow" data-rowid="${s.id}" style="cursor:pointer" onclick="editSale('${s.id}')">
       <div class="thumb empty-thumb">売</div>
       <div class="main">
         <div class="ttl">¥${Math.round(Number(s.amount)||0).toLocaleString()}　<span style="font-weight:400;font-size:12px">${esc(s.title||'（内容未記入）')}</span></div>
-        <div class="meta"><span class="tag biz-${s.biz}">${s.biz}</span><span>${esc(s.date)}</span>${s.qty>1?`<span>${s.qty}個</span>`:''}${c?`<span>${esc(c.name)}</span>`:''}${r&&orderCodeFor(r)?`<span class="mute" style="font-family:var(--mono)">${orderCodeFor(r)}</span>`:''}${s.costAmount!==''?`<span class="mute">粗利 ¥${Math.round(profitOne).toLocaleString()}</span>`:''}</div>
+        <div class="meta"><span class="tag biz-${s.biz}">${s.biz}</span><span>${esc(s.date)}</span>${s.qty>1?`<span>${s.qty}個</span>`:''}${c?`<span>${esc(c.name)}</span>`:''}${r&&orderCodeFor(r)?`<span class="mute" style="font-family:var(--mono)">${orderCodeFor(r)}</span>`:''}${s.costAmount!==''?`<span class="mute">粗利 ¥${Math.round(profitOne).toLocaleString()}</span>`:''}</div>${bdHtml}
       </div>
       <div class="right"><span class="st-chip st-${s.paid?'完了':'未着手'}">${s.paid?'入金済':'未入金'}</span></div>
     </div>`;
@@ -2784,7 +2804,7 @@ function exportSalesCSV(){
   const rows=state.sales.map(s=>{
     const c=state.customers.find(x=>x.id===s.customerId);
     const r=state.research.find(x=>x.id===s.researchId);
-    return {日付:s.date,事業:s.biz,内容:s.title,個数:s.qty,売上金額:s.amount,原価:Math.round(saleEffectiveCost(s).cost),粗利:Math.round((Number(s.amount)||0)-saleEffectiveCost(s).cost),顧客:c?c.name:'',注文コード:r?orderCodeFor(r):'',請求書番号:s.invoiceNo,入金:s.paid?'済':'未',入金日:s.paidDate,メモ:s.note};
+    return {日付:s.date,事業:s.biz,内容:s.title,個数:s.qty,売上金額:s.amount,原価:Math.round(saleEffectiveCost(s).cost),人件費の取り分:Math.round((Number(s.amount)||0)-saleEffectiveCost(s).cost),顧客:c?c.name:'',注文コード:r?orderCodeFor(r):'',請求書番号:s.invoiceNo,入金:s.paid?'済':'未',入金日:s.paidDate,メモ:s.note};
   });
   exportCSV(rows,'売上');
 }
