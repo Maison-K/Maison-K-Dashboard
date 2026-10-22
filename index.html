@@ -532,6 +532,90 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
 .lab-data td,.lab-data th{padding:7px 10px;font-size:12px;text-align:left;}
 .lab-ttl{cursor:pointer;color:var(--green);text-align:left!important;white-space:normal!important;min-width:180px;}
 @media (max-width:700px){.lab-fl{flex-basis:64px}.sx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.g2{--lw:220px;overflow:hidden;}
+.g2-bar-top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line);}
+.g2-nav{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink-soft);}
+.g2-head,.g2-row{display:flex;border-bottom:1px solid var(--line);}
+.g2-label{flex:0 0 var(--lw);width:var(--lw);padding:0 12px;height:34px;display:flex;align-items:center;gap:8px;border-right:1px solid var(--line);font-size:12px;cursor:pointer;min-width:0;}
+.g2-head .g2-label{cursor:default;color:var(--ink-faint);font-size:11px;}
+.g2-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.g2-biz{flex:0 0 7px;width:7px;height:7px;border-radius:50%;}
+.g2-days{flex:1;display:grid;grid-template-columns:repeat(var(--span),1fr);}
+.g2-day{text-align:center;font-size:10.5px;color:var(--ink-soft);padding:6px 0;border-right:1px solid var(--line);font-variant-numeric:tabular-nums;line-height:1.25;}
+.g2-day small{display:block;font-size:9.5px;color:var(--ink-faint);}
+.g2-day.we{background:rgba(0,0,0,.025);}
+.g2-day.today{background:var(--green-tint);color:var(--green-deep);font-weight:700;}
+.g2-body{position:relative;}
+.g2-track{flex:1;position:relative;height:34px;background-image:linear-gradient(to right,var(--line) 1px,transparent 1px);background-size:calc(100% / var(--span)) 100%;}
+.g2-bar{position:absolute;top:10px;height:14px;border-radius:3px;margin-left:2px;cursor:grab;touch-action:none;min-width:8px;opacity:.9;}
+.g2-bar.cl{border-top-left-radius:0;border-bottom-left-radius:0;margin-left:0;}
+.g2-bar.cr{border-top-right-radius:0;border-bottom-right-radius:0;}
+.g2-bar .resize{position:absolute;right:0;top:-4px;bottom:-4px;width:10px;cursor:ew-resize;touch-action:none;}
+.g2-today{position:absolute;top:0;bottom:0;width:2px;background:var(--red);z-index:1;pointer-events:none;}
+@media (max-width:640px){.g2{--lw:120px}.g2-label{font-size:11px;padding:0 8px}}
+.sx-sets tr.sx-tot td{border-top:1px solid var(--ink);font-weight:600;}
+.sx-sets tr.sx-ex td{color:var(--ink-faint);text-align:left;}
+.diff-bad{background:#fbe3df!important;color:#b23b2e!important;border-color:#b23b2e!important;font-weight:600;}
+.ex-toggle{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:3px 10px;border:1px solid var(--line-strong);border-radius:999px;cursor:pointer;color:var(--ink-soft);background:var(--white);}
+.ex-toggle input{margin:0;width:auto;}
+.ex-toggle.on{background:#fbe3df;border-color:#b23b2e;color:#b23b2e;font-weight:600;}
+.fin-btns{display:flex;flex-wrap:wrap;gap:4px;}
+.fin-btns button{width:34px;height:30px;border:1px solid var(--line-strong);background:var(--white);border-radius:4px;cursor:pointer;font-size:12.5px;font-variant-numeric:tabular-nums;}
+.fin-btns button.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+.fin-btns button.clr{width:auto;padding:0 10px;color:var(--ink-faint);}
+.sp-ex{opacity:.62;border-left:3px solid #b23b2e!important;}
+.undo-toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;visibility:hidden;transition:transform .25s,opacity .25s,visibility .25s;background:var(--ink);color:#fff;border-radius:6px;padding:10px 12px 10px 16px;display:flex;gap:14px;align-items:center;font-size:13px;z-index:400;transition:transform .25s;box-shadow:0 6px 20px rgba(0,0,0,.25);}
+.undo-toast.show{transform:translate(-50%,0);opacity:1;visibility:visible;}
+.undo-toast button{background:none;border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12.5px;}
+.srch{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px;}
+.srch-box{position:relative;flex:1 1 300px;min-width:220px;}
+.srch-box input{width:100%;padding:8px 30px 8px 30px;border:1px solid var(--line-strong);border-radius:6px;background:var(--white);font-size:13px;box-sizing:border-box;}
+.srch-ic{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);font-size:15px;pointer-events:none;}
+.srch-x{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:16px;color:var(--ink-faint);cursor:pointer;}
+.srch-sug{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--white);border:1px solid var(--line-strong);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:50;max-height:360px;overflow:auto;}
+.srch-item{padding:8px 12px;border-bottom:1px solid var(--line);cursor:pointer;font-size:12.5px;}
+.srch-item:hover{background:var(--paper);}
+.srch-item small{display:block;color:var(--ink-faint);font-size:11px;margin-top:2px;}
+.srch-item mark{background:#f1e4bd;color:inherit;padding:0 1px;}
+.srch-more{padding:8px 12px;font-size:11.5px;color:var(--ink-faint);}
+.tr-wrap{margin-top:22px;background:var(--white);border:1px solid var(--line);border-radius:4px;padding:16px 22px;}
+.tr-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.tr-head h4{margin:0;font-family:var(--serif);font-size:15px;font-weight:600;}
+.tr-head h4 small{font-family:var(--sans);font-weight:400;font-size:11px;color:var(--ink-faint);margin-left:10px;}
+.tr-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.tr-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-strong);background:var(--white);border-radius:999px;padding:4px 11px;font-size:11.5px;color:var(--ink-faint);cursor:pointer;}
+.tr-chip i{width:10px;height:3px;border-radius:2px;background:var(--line-strong);}
+.tr-chip.on{color:var(--ink);border-color:var(--c);}
+.tr-chip.on i{background:var(--c);}
+.tr-panel{margin-top:12px;}
+.tr-panel + .tr-panel{border-top:1px solid var(--line);padding-top:10px;}
+@media (max-width:640px){.tr-wrap{padding:12px 10px;}.tr-chip{padding:5px 10px;font-size:12px;}}
+.sb-backdrop,.tabbar{display:none;}
+@media (max-width:860px){
+  .sidebar{display:flex;position:fixed;top:0;bottom:0;left:0;width:min(300px,82vw);z-index:300;transform:translateX(-105%);transition:transform .22s ease;overflow-y:auto;}
+  .sidebar.open{display:flex;inset:0 auto 0 0;transform:none;box-shadow:6px 0 24px rgba(0,0,0,.3);}
+  body.sb-open .sb-backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:290;}
+  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:250;background:var(--white);border-top:1px solid var(--line-strong);padding-bottom:env(safe-area-inset-bottom);}
+  .tabbar button{flex:1;border:none;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0 6px;font-size:10px;color:var(--ink-faint);cursor:pointer;min-width:0;}
+  .tabbar button svg{width:21px;height:21px;}
+  .tabbar button.on{color:var(--green-deep);font-weight:700;}
+  .content{padding-bottom:84px;}
+  .topbar{padding:0 12px;gap:10px;}
+  .topbar .sub{display:none;}
+  .topbar h2{white-space:nowrap;}
+  .undo-toast{bottom:76px;} .toast{bottom:76px;}
+}
+@media (max-width:640px){
+  .sx-sets,.sx-sets tbody{display:block;width:100%;}
+  .sx-sets thead{display:none;}
+  .sx-sets tr{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid var(--line);padding:6px 0;}
+  .sx-sets td{border:none!important;padding:3px 8px;text-align:left!important;white-space:normal;font-size:12px;}
+  .sx-sets td::before{content:attr(data-l);display:block;font-size:10px;color:var(--ink-faint);font-weight:400;}
+  .sx-sets td:first-child{grid-column:1/-1;font-weight:700;font-size:13px;}
+  .sx-sets tr.sx-ex td:nth-child(2){grid-column:1/-1;}
+}
+.specimen-head{flex-wrap:wrap;row-gap:6px;}
+.specimen-head .btn,.ex-toggle{white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -580,6 +664,8 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
     </div>
     <div class="content" id="content"></div>
   </div>
+  <div class="sb-backdrop" onclick="toggleSidebar(false)"></div>
+  <nav class="tabbar" id="tabbar"></nav>
 </div>
 
 
@@ -1171,7 +1257,8 @@ let state = {
   settings: {hourly:1800, packMaterial:70, shipping:870, packMin:30, printerHourly:1700, cadMonthlyUsd:4, usdJpyRate:159},
   __meta: {updatedAt:0},
 };
-function todayStr(){ return new Date().toISOString().slice(0,10); }
+function ymdLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function todayStr(){ return ymdLocal(new Date()); }
 function fmtDT(ts){
   if(!ts) return '';
   const d=new Date(ts);
@@ -1216,7 +1303,7 @@ function renderSortBar(page,options,defaultValue){
   return `<div class="sortbar"><span class="mute" style="font-size:11px">並び替え</span><select onchange="setSortConfig('${page}',this.value)">${opts}</select></div>`;
 }
 function uid(p){ return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
-function addDays(dateStr,n){ const d=new Date(dateStr+'T00:00:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+function addDays(dateStr,n){ const d=new Date(dateStr+'T00:00:00'); d.setDate(d.getDate()+n); return ymdLocal(d); }
 function dayDiff(a,b){ return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000); }
 
 /* ---- 互換性補完：旧形式・欠損フィールドを持つデータでも描画が壊れないようにする ---- */
@@ -1670,17 +1757,34 @@ function saveSettings(){
 /* ==========================================================================
    ゴミ箱
    ========================================================================== */
+let undoBatch={ids:[],t:0}, undoTimer=null;
 function moveToTrash(type, item){
-  state.trash.push({trashId:uid('tr_'), type, item, deletedAt:Date.now()});
+  const tid=uid('tr_');
+  state.trash.push({trashId:tid, type, item, deletedAt:Date.now()});
   saveState();
+  const now=Date.now(); if(now-undoBatch.t>1500) undoBatch={ids:[],t:now};
+  undoBatch.ids.push(tid); undoBatch.t=now;
+  setTimeout(showUndoToast,0);
 }
-function restoreFromTrash(trashId){
+function showUndoToast(){
+  let el=document.getElementById('undoToast');
+  if(!el){ el=document.createElement('div'); el.id='undoToast'; el.className='undo-toast'; document.body.appendChild(el); }
+  el.innerHTML=`<span>ゴミ箱に移動しました</span><button onclick="undoLastDelete()">元に戻す</button>`;
+  el.classList.add('show'); clearTimeout(undoTimer); undoTimer=setTimeout(()=>el.classList.remove('show'),7000);
+}
+function undoLastDelete(){
+  const ids=undoBatch.ids.slice().reverse(); undoBatch={ids:[],t:0};
+  ids.forEach(id=>{ if(state.trash.some(x=>x.trashId===id)) restoreFromTrash(id,true); });
+  const el=document.getElementById('undoToast'); if(el) el.classList.remove('show');
+  saveState(); render(); toast('元に戻しました');
+}
+function restoreFromTrash(trashId, keepNo){
   const t = state.trash.find(x=>x.trashId===trashId); if(!t) return;
   if(t.type==='todo'){
     const todo = t.item;
     const pairedTrash = todo.linkedResearchId ? state.trash.find(x=>x.type==='research' && x.item.id===todo.linkedResearchId) : null;
     const isResearchGenre = RESEARCH_GENRES.includes(todo.genre);
-    const newNo = isResearchGenre ? nextResearchNo(todo.biz, todo.genre) : nextTodoNo(todo.biz, todo.genre);
+    const newNo = (keepNo&&todo.no!=null) ? todo.no : (isResearchGenre ? nextResearchNo(todo.biz, todo.genre) : nextTodoNo(todo.biz, todo.genre));
     todo.no = newNo;
     state.todos.push(todo);
     state.trash = state.trash.filter(x=>x.trashId!==trashId);
@@ -1694,7 +1798,7 @@ function restoreFromTrash(trashId){
   else if(t.type==='research'){
     const r = t.item;
     const pairedTrash = state.trash.find(x=>x.type==='todo' && x.item.linkedResearchId===r.id);
-    const newNo = nextResearchNo(r.biz, r.genre);
+    const newNo = (keepNo&&r.no!=null) ? r.no : nextResearchNo(r.biz, r.genre);
     r.no = newNo;
     state.research.push(r);
     state.trash = state.trash.filter(x=>x.trashId!==trashId);
@@ -1745,8 +1849,15 @@ const ICONS = {
   sales:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 20h18"/><rect x="5" y="11" width="3.4" height="7"/><rect x="10.3" y="7" width="3.4" height="11"/><rect x="15.6" y="4" width="3.4" height="14"/></svg>`,
 };
 let currentPage='dash';
-function setPage(p){ currentPage=p; researchDetailId=null; render(); }
-function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('open'); }
+function setPage(p){ currentPage=p; researchDetailId=null; toggleSidebar(false); render(); window.scrollTo(0,0); }
+function toggleSidebar(force){ const sb=document.getElementById('sidebar'); const on=force===undefined?!sb.classList.contains('open'):force; sb.classList.toggle('open',on); document.body.classList.toggle('sb-open',on); }
+function renderTabbar(){
+  const el=document.getElementById('tabbar'); if(!el) return;
+  const tabs=[['dash','ホーム',ICONS.dash],['todo','ToDo',ICONS.todo],['research','工程表',ICONS.research],['sales','売上',ICONS.sales]];
+  const inTabs=tabs.some(t=>t[0]===currentPage);
+  el.innerHTML=tabs.map(([id,l,ic])=>`<button class="${currentPage===id?'on':''}" onclick="setPage('${id}')">${ic}<span>${l}</span></button>`).join('')
+    +`<button class="${!inTabs?'on':''}" onclick="toggleSidebar()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>${!inTabs?esc(({lab:'分析',timer:'タイマー',projects:'PJ',durability:'耐用',roughness:'面粗度',tools:'工具',customers:'顧客',trash:'ゴミ箱'})[currentPage]||'メニュー'):'メニュー'}</span></button>`;
+}
 function renderNav(){
   const items=[
     {id:'dash',label:'ダッシュボード',icon:ICONS.dash},
@@ -1891,7 +2002,7 @@ function commitReorder(cfg,ids){
    render 振り分け
    ========================================================================== */
 function render(){
-  renderNav();
+  renderNav(); renderTabbar();
   const titleMap={dash:'ダッシュボード',timer:'作業タイマー',todo:'ToDoリスト',projects:'プロジェクト',sales:'売上',lab:'分析ラボ',research:'工程表',durability:'耐用・測定記録',roughness:'面粗度比較',tools:'工具マスタ',customers:'顧客管理',trash:'ゴミ箱'};
   document.getElementById('pageTitle').textContent=titleMap[currentPage]||'';
   const subMap={dash:todayStr(),timer:'実作業時間を計測して工程表に反映',todo:'定常業務・加工研究・事務を横断管理',projects:'KGI/KPIとToDoをツリーで構造化',sales:'月別・事業別の売上集計と明細',lab:'条件ごとの違いを数字とグラフで比べる',research:'比較検証の記録',durability:'工具・消耗品の使用量を工具ごとに集計',roughness:'条件別の面粗度(Ra)測定計画・結果',tools:'保有工具・消耗品の台帳',customers:'見込み〜取引先の管理',trash:'削除済みアイテムの復元・完全削除'};
@@ -1965,55 +2076,40 @@ function renderProjectDashSummary(){
   return `<div class="section-label">進行中プロジェクトの進捗サマリー</div><div class="card">${rows}</div>`;
 }
 
-/* ---- ガントチャート ---- */
+/* ---- ガントチャート（WBS） ---- */
+let ganttCfg={span:7, start:null};
+function ganttDefaultStart(){ const d=new Date(todayStr()+'T00:00:00'); const wd=(d.getDay()+6)%7; return addDays(todayStr(),-wd); }
+function ganttSetSpan(n){ ganttCfg.span=n; renderGanttOnly(); }
+function ganttShift(k){ if(k===0) ganttCfg.start=null; else ganttCfg.start=addDays(ganttCfg.start||ganttDefaultStart(), k*(ganttCfg.span===30?30:ganttCfg.span)); renderGanttOnly(); }
 function renderGantt(){
-  const items = state.todos.filter(t=>t.status!=='完了' || (t.due && dayDiff(t.due, todayStr())<7));
-  if(!items.length) return `<div class="empty">表示できるスケジュールがありません（ToDoに開始日・期限を設定すると表示されます）</div>`;
-  const dates = [];
-  items.forEach(t=>{ if(t.start) dates.push(t.start); if(t.due) dates.push(t.due); });
-  if(!dates.length) return `<div class="empty">開始日・期限が設定されたToDoがありません</div>`;
-  let minD = dates.reduce((a,b)=>a<b?a:b);
-  let maxD = dates.reduce((a,b)=>a>b?a:b);
-  minD = addDays(minD,-2); maxD = addDays(maxD,3);
-  const totalDays = Math.max(dayDiff(minD,maxD),7);
-  const dayW = 30;
-
-  let dayCells='';
-  for(let i=0;i<=totalDays;i++){
-    const d = addDays(minD,i);
-    const isToday = d===todayStr();
-    dayCells += `<div class="gantt-daycell ${isToday?'today':''}" style="--daywidth:${dayW}px">${d.slice(5)}</div>`;
-  }
-
-  const rows = items.map(t=>{
-    const start = t.start || t.due || todayStr();
-    const due = t.due || t.start || todayStr();
-    const offset = dayDiff(minD,start)*dayW;
-    const width = Math.max(dayDiff(start,due),1)*dayW;
-    const color = t.status==='未着手'?'var(--red)':t.status==='進行中'?'var(--orange)':'var(--green)';
-    return `<div class="gantt-row">
-      <div class="gantt-label" onclick="editTodo('${t.id}')" style="cursor:pointer"><span class="tag biz-${t.biz}">${t.biz}</span>${esc(t.title).slice(0,14)}</div>
-      <div class="gantt-track" style="--daywidth:${dayW}px">
-        <div class="gantt-bar" data-id="${t.id}" style="left:${offset}px;width:${width}px;background:${color};border-color:${color}"
-             title="${esc(t.title)}（${start} 〜 ${due}）">
-          ${esc(t.title).slice(0,18)}
-          <div class="resize" data-id="${t.id}"></div>
-        </div>
-      </div>
-    </div>`;
+  const span=ganttCfg.span, ws=ganttCfg.start||ganttDefaultStart(), we=addDays(ws,span-1);
+  const items=state.todos.filter(t=>(t.start||t.due)).filter(t=>{
+    const s0=t.start||t.due, e0=t.due||t.start; return !(e0<ws||s0>we);
+  }).filter(t=>t.status!=='完了'||(t.due&&t.due>=ws)).sort((a,b)=>String(a.start||a.due).localeCompare(String(b.start||b.due)));
+  const wd=['日','月','火','水','木','金','土'];
+  let head='';
+  for(let i=0;i<span;i++){ const d=addDays(ws,i), dt=new Date(d+'T00:00:00'), w=dt.getDay();
+    const lbl = span===30 ? (i%2===0||d===todayStr()? String(dt.getDate()) : '') : `${dt.getMonth()+1}/${dt.getDate()}<small>${wd[w]}</small>`;
+    head+=`<div class="g2-day ${d===todayStr()?'today':''} ${w===0||w===6?'we':''}">${lbl}</div>`; }
+  const pct=v=>(v/span*100);
+  const rows=items.map(t=>{
+    const s0=t.start||t.due, e0=t.due||t.start;
+    const sI=Math.max(0,dayDiff(ws,s0)), eI=Math.min(span-1,dayDiff(ws,e0));
+    const color=t.status==='未着手'?'var(--red)':t.status==='進行中'?'var(--orange)':'var(--green)';
+    const clipL=s0<ws, clipR=e0>we;
+    return `<div class="g2-row"><div class="g2-label" onclick="editTodo('${t.id}')" title="${esc(t.title)}"><span class="g2-biz" style="background:${BIZ_COLORS[t.biz]||'#888'}"></span><span class="g2-t">${esc(t.title)}</span></div>
+      <div class="g2-track"><div class="gantt-bar g2-bar ${clipL?'cl':''} ${clipR?'cr':''}" data-id="${t.id}" style="left:${pct(sI)}%;width:calc(${pct(eI-sI+1)}% - 4px);background:${color}" title="${esc(t.title)}（${s0} 〜 ${e0}）"><div class="resize" data-id="${t.id}"></div></div></div></div>`;
   }).join('');
-
-  const todayOffset = dayDiff(minD, todayStr())*dayW + dayW/2;
-
-  return `<div class="gantt-wrap"><div class="gantt">
-    <div class="gantt-head"><div class="gantt-label">項目</div>${dayCells}</div>
-    <div style="position:relative">
-      <div class="gantt-today-line" style="left:${200+todayOffset}px"></div>
-      ${rows}
-    </div>
-  </div></div>`;
+  const ti=dayDiff(ws,todayStr());
+  const md=(d)=>{const x=new Date(d+'T00:00:00');return `${x.getMonth()+1}/${x.getDate()}`;};
+  return `<div class="gantt-wrap g2" style="--span:${span}">
+    <div class="g2-bar-top"><div class="sx-seg">${[[7,'1週間'],[14,'2週間'],[30,'1か月']].map(([n,l])=>`<button class="${span===n?'on':''}" onclick="ganttSetSpan(${n})">${l}</button>`).join('')}</div>
+      <div class="g2-nav"><button class="btn sm" onclick="ganttShift(-1)">‹</button><button class="btn sm" onclick="ganttShift(0)">今日</button><button class="btn sm" onclick="ganttShift(1)">›</button><span>${md(ws)} 〜 ${md(we)}</span></div></div>
+    <div class="g2-head"><div class="g2-label">項目（${items.length}）</div><div class="g2-days">${head}</div></div>
+    <div class="g2-body">${ti>=0&&ti<span?`<div class="g2-today" style="left:calc(var(--lw) + (100% - var(--lw)) * ${(ti+0.5)/span})"></div>`:''}
+    ${rows||'<div class="empty" style="margin:12px">この期間の予定はありません</div>'}</div>
+  </div>`;
 }
-
 let ganttDrag = null;
 function initGanttDrag(){
   document.querySelectorAll('.gantt-bar').forEach(bar=>{
@@ -2021,7 +2117,7 @@ function initGanttDrag(){
       if(ev.target.classList.contains('resize')) return;
       const id = bar.dataset.id;
       const t = state.todos.find(x=>x.id===id); if(!t) return;
-      ganttDrag = {mode:'move', id, startX:ev.clientX, origStart:t.start||t.due||todayStr(), origDue:t.due||t.start||todayStr()};
+      ganttDrag = {dayW:bar.parentElement.getBoundingClientRect().width/ganttCfg.span, mode:'move', id, startX:ev.clientX, origStart:t.start||t.due||todayStr(), origDue:t.due||t.start||todayStr()};
       bar.setPointerCapture(ev.pointerId);
       ev.preventDefault();
     };
@@ -2030,7 +2126,7 @@ function initGanttDrag(){
     handle.onpointerdown = (ev)=>{
       const id = handle.dataset.id;
       const t = state.todos.find(x=>x.id===id); if(!t) return;
-      ganttDrag = {mode:'resize', id, startX:ev.clientX, origDue:t.due||t.start||todayStr()};
+      ganttDrag = {dayW:handle.closest('.g2-track').getBoundingClientRect().width/ganttCfg.span, mode:'resize', id, startX:ev.clientX, origDue:t.due||t.start||todayStr()};
       handle.setPointerCapture(ev.pointerId);
       ev.preventDefault(); ev.stopPropagation();
     };
@@ -2038,7 +2134,7 @@ function initGanttDrag(){
 }
 document.addEventListener('pointermove',(ev)=>{
   if(!ganttDrag) return;
-  const dayW=30;
+  const dayW=ganttDrag.dayW||30;
   const dx = ev.clientX - ganttDrag.startX;
   const dayShift = Math.round(dx/dayW);
   const t = state.todos.find(x=>x.id===ganttDrag.id); if(!t) return;
@@ -2049,10 +2145,10 @@ document.addEventListener('pointermove',(ev)=>{
     const newDue = addDays(ganttDrag.origDue, dayShift);
     if(dayDiff(t.start||newDue,newDue) >= 0) t.due = newDue;
   }
-  renderGanttOnly();
+  const bar=document.querySelector('.g2-bar[data-id="'+t.id+'"]'); if(bar){ const ws=ganttCfg.start||ganttDefaultStart(), sp=ganttCfg.span; const sI=dayDiff(ws,t.start||t.due), eI=dayDiff(ws,t.due||t.start); bar.style.left=(sI/sp*100)+'%'; bar.style.width='calc('+((eI-sI+1)/sp*100)+'% - 4px)'; }
 });
 document.addEventListener('pointerup',()=>{
-  if(ganttDrag){ saveState(); ganttDrag=null; }
+  if(ganttDrag){ saveState(); ganttDrag=null; renderGanttOnly(); }
 });
 function renderGanttOnly(){
   if(currentPage!=='dash') return;
@@ -2721,6 +2817,13 @@ function recalcSaleAmount(){
   const u=Number(document.getElementById('sl_unitPrice').value), q=Number(document.getElementById('sl_qty').value)||1;
   if(u>0) document.getElementById('sl_amount').value=Math.round(u*q);
 }
+function saleFromResearch(rid){
+  openSaleModal();
+  const sel=document.getElementById('sl_researchId'); sel.value=rid;
+  if(sel.value!==rid){ toast('この記録を売上に紐づけられませんでした'); return; }
+  importSaleFromResearch(); updateSaleCostHint();
+  const el=document.getElementById('sl_unitPrice')||document.getElementById('sl_amount'); if(el) setTimeout(()=>el.focus(),60);
+}
 function importSaleFromResearch(){
   const rid=document.getElementById('sl_researchId').value;
   if(!rid){ toast('先に工程表を選択してください'); return; }
@@ -2729,7 +2832,7 @@ function importSaleFromResearch(){
   if(!document.getElementById('sl_title').value.trim()) document.getElementById('sl_title').value=r.title||'';
   if(r.order && r.order.customerId) document.getElementById('sl_customerId').value=r.order.customerId;
   if(r.order && r.order.invoiceNo) document.getElementById('sl_invoiceNo').value=r.order.invoiceNo;
-  const nSets=(r.specimens||[]).length||1;
+  const nSets=(r.specimens||[]).filter(sp=>!sp.excluded).length||1;
   document.getElementById('sl_qty').value=nSets; recalcSaleAmount();
   toast(`工程表から情報を取り込みました（${nSets}セット分）`);
 }
@@ -2765,6 +2868,7 @@ function specimenCostParts(r, sp){
 function researchCostParts(r){
   const out={material:0,packaging:0,shipping:0,minutes:0,bars:0,toolLines:[]};
   (r.specimens||[]).forEach(sp=>{
+    if(sp.excluded) return; // 無償・売上対象外の試料は集計しない
     out.bars+=Math.max(1,numOf(sp.qty)||1);
     const c=specimenCostParts(r,sp);
     out.material+=c.material; out.packaging+=c.packaging; out.shipping+=c.shipping; out.minutes+=c.minutes;
@@ -2789,6 +2893,18 @@ function saleBreakdown(s){
   const bars=saleBars(s), min=saleWorkMinutes(s);
   return {amount,cost,take,ratio:amount>0?cost/amount*100:0,bars,min,
           perBar:bars>0?take/bars:null, hourly:min>0?take/(min/60):null};
+}
+/* セット（試料）別の内訳：売価は本数比で按分、原価・時間は各セットの実績 */
+function saleSetBreakdowns(s){
+  const r=state.research.find(x=>x.id===s.researchId); if(!r) return [];
+  const all=researchCostParts(r); if(!all.bars) return [];
+  const amount=numOf(s.amount), manual=!saleEffectiveCost(s).auto;
+  return (r.specimens||[]).map((sp,si)=>{
+    if(sp.excluded) return {label:sp.label, si, excluded:true};
+    const c=specimenCostParts(r,sp), q=Math.max(1,numOf(sp.qty)||1), share=q/all.bars;
+    const a=amount*share, cost=manual?saleEffectiveCost(s).cost*share:c.material, take=a-cost, min=c.minutes;
+    return {label:sp.label, si, amount:a, cost, take, ratio:a>0?cost/a*100:0, bars:q, min, perBar:take/q, hourly:min>0?take/(min/60):null};
+  });
 }
 function saleWorkMinutes(s){
   const r=state.research.find(x=>x.id===s.researchId);
@@ -2830,12 +2946,12 @@ const BIZ_COLORS = {'研磨':'#2f6f4f','3Dプリンタ':'#3d6fb0','製作図面�
 /* 売上金額が全セット分か確認：個数と工程表のセット数の不一致、または1セットあたり金額が他案件より低い場合に警告 */
 function medianSetPrice(){
   const v=[];
-  state.sales.forEach(sl=>{ const r=state.research.find(x=>x.id===sl.researchId); const sets=r?(r.specimens||[]).length:(Number(sl.qty)||1); if(sets>0 && numOf(sl.amount)>0) v.push(numOf(sl.amount)/sets); });
+  state.sales.forEach(sl=>{ const r=state.research.find(x=>x.id===sl.researchId); const sets=r?((r.specimens||[]).filter(sp=>!sp.excluded).length):(Number(sl.qty)||1); if(sets>0 && numOf(sl.amount)>0) v.push(numOf(sl.amount)/sets); });
   v.sort((a,b)=>a-b); return v.length ? v[Math.floor(v.length/2)] : 0;
 }
 function saleSetsWarning(s){
   const r=state.research.find(x=>x.id===s.researchId);
-  const q=Number(s.qty)||1, sets=r?(r.specimens||[]).length:q;
+  const q=Number(s.qty)||1, sets=r?(r.specimens||[]).filter(sp=>!sp.excluded).length:q;
   if(r && sets!==q) return `工程表は${sets}セット分ですが、個数は${q}です。売上金額が全セット分か確認してください`;
   const med=medianSetPrice(), per=numOf(s.amount)/Math.max(1,sets);
   if(sets>1 && med>0 && per<med*0.8) return `${sets}セット分で ${yen(numOf(s.amount))}（1セット ${yen(per)}）です。他の案件は1セット ${yen(med)} 前後です。売上金額が全セット分か確認してください`;
@@ -2865,6 +2981,71 @@ function renderRuler(h){
     <div class="tick t2" style="left:${pos(target)}%"><span>目標 ${yen(target)}</span></div>
     <div class="pin" style="left:${pos(h)}%"></div></div>`;
 }
+/* ---------- 推移の折れ線グラフ（時給ゲージと同じ集計範囲） ---------- */
+let trendCfg={x:'case', lines:['hourly','amount','cost']};
+const TREND_LINES=[
+  {k:'hourly',l:'実質時給',u:'円',c:'#0f5c3f'},
+  {k:'amount',l:'売価',u:'円',c:'#3d6fb0'},
+  {k:'cost',l:'原価',u:'円',c:'#b0463d'},
+  {k:'perBar',l:'1本あたりの取り分',u:'円',c:'#b07a2f'},
+  {k:'ratio',l:'原価率',u:'%',c:'#8a4fa0'},
+  {k:'minPerBar',l:'1本あたりの作業時間',u:'分',c:'#2b8a8a'},
+];
+function trendToggle(k){ const a=trendCfg.lines, i=a.indexOf(k); if(i>=0){ if(a.length>1) a.splice(i,1); } else a.push(k); labRerender(); }
+function trendSetX(v){ trendCfg.x=v; labRerender(); }
+function trendPoints(list){
+  const asc=list.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))||(a.createdAt||0)-(b.createdAt||0));
+  const mk=(lbl,tip,a)=>({lbl,tip,hourly:a.min>0?a.take/(a.min/60):null,amount:a.amount,cost:a.cost,perBar:a.bars?a.take/a.bars:null,ratio:a.amount>0?a.cost/a.amount*100:null,minPerBar:a.bars?a.min/a.bars:null});
+  if(trendCfg.x==='month'){
+    const by={}; asc.forEach(s=>{ const m=saleMonthKey(s.date)||'—'; const d=saleBreakdown(s); const o=by[m]||(by[m]={take:0,min:0,bars:0,amount:0,cost:0,n:0}); o.take+=d.take;o.min+=d.min;o.bars+=d.bars;o.amount+=d.amount;o.cost+=d.cost;o.n++; });
+    return Object.keys(by).sort().map(m=>mk(m.slice(2).replace('-','/'),`${m}（${by[m].n}件）`,by[m]));
+  }
+  return asc.map(s=>{ const d=saleBreakdown(s); const cu=state.customers.find(c=>c.id===s.customerId); return mk(String(s.date||'').slice(5).replace('-','/'),`${s.date} ${cu?cu.name:(s.title||'')}`,d); });
+}
+function trendPanel(pts,keys,unit,W){
+  const H=W<500?190:220, L=W<500?46:60, R=12, T=12, B=W<500?40:34;
+  const vals=[]; keys.forEach(k=>pts.forEach(p=>{ if(p[k]!=null) vals.push(p[k]); }));
+  const base=numOf(state.settings.hourly)||1700, target=numOf(state.settings.targetHourly)||2000;
+  const refs = (unit==='円'&&keys.includes('hourly')) ? [[target,'目標'],[base,'設定']] : [];
+  refs.forEach(r=>vals.push(r[0]));
+  if(!vals.length) return '';
+  const sc=labScale(Math.min(0,...vals),Math.max(...vals)); if(Math.min(...vals)>=0) sc.lo=0;
+  const n=pts.length, X=i=>L+(n<=1?(W-L-R)/2:(W-L-R)*i/(n-1)), Y=v=>T+(H-T-B)*(1-(v-sc.lo)/(sc.hi-sc.lo));
+  const fs=W<500?11.5:10.5;
+  let g=sc.ticks.filter(t=>t>=sc.lo&&t<=sc.hi).map(t=>`<line x1="${L}" x2="${W-R}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)"/><text x="${L-6}" y="${Y(t)+4}" text-anchor="end" style="font-size:${fs}px" class="lab-tick">${unit==='円'?(Math.abs(t)>=1000?(t/1000)+'k':t):t}</text>`).join('');
+  refs.forEach(([v,l])=>{ g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${l==='目標'?'#0f5c3f':'#9a7414'}" stroke-dasharray="4 4" stroke-width="1.2"/><text x="${L+4}" y="${l==='目標'?Y(v)-4:Y(v)+12}" text-anchor="start" style="font-size:${fs}px;fill:${l==='目標'?'#0f5c3f':'#9a7414'};paint-order:stroke;stroke:#fff;stroke-width:3px">${l} ${yen(v)}</text>`; });
+  const step=Math.max(1,Math.ceil(n/(W<500?5:10)));
+  pts.forEach((p,i)=>{ if(i%step===0||i===n-1) g+=`<text x="${X(i)}" y="${H-B+16}" text-anchor="${n>1&&i===0?'start':n>1&&i===n-1?'end':'middle'}" style="font-size:${fs}px" class="lab-tick">${esc(p.lbl)}</text>`; });
+  keys.forEach(k=>{
+    const ln=TREND_LINES.find(x=>x.k===k);
+    const seg=pts.map((p,i)=>p[k]==null?null:[X(i),Y(p[k])]);
+    let d='',pen=false; seg.forEach(q=>{ if(!q){pen=false;return;} d+=(pen?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1); pen=true; });
+    g+=`<path d="${d}" fill="none" stroke="${ln.c}" stroke-width="2.2" stroke-linejoin="round"/>`;
+    if(k==='hourly'&&trendCfg.x==='case'&&n>=4){
+      let md='',pn=false; pts.forEach((p,i)=>{ const w=pts.slice(Math.max(0,i-2),i+1).map(q=>q.hourly).filter(v=>v!=null); if(w.length<2){pn=false;return;} const v=w.reduce((a,b)=>a+b,0)/w.length; md+=(pn?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1); pn=true; });
+      g+=`<path d="${md}" fill="none" stroke="${ln.c}" stroke-width="5" opacity=".16" stroke-linecap="round"/>`;
+    }
+    pts.forEach((p,i)=>{ if(p[k]==null) return; g+=`<circle cx="${X(i)}" cy="${Y(p[k])}" r="${W<500?3.2:3.6}" fill="${ln.c}" stroke="#fff" stroke-width="1.2"><title>${esc(p.tip)}｜${ln.l} ${unit==='円'?yen(p[k]):(Math.round(p[k]*10)/10)+unit}</title></circle>`; });
+    const li=[...pts.keys()].reverse().find(i=>pts[i][k]!=null);
+    if(li!=null) g+=`<text x="${Math.min(X(li)+6,W-R-2)}" y="${Y(pts[li][k])-7}" text-anchor="${X(li)>W-70?'end':'start'}" style="font-size:${fs}px;font-weight:600;fill:${ln.c};paint-order:stroke;stroke:#fff;stroke-width:3px">${unit==='円'?yen(pts[li][k]):(Math.round(pts[li][k]*10)/10)+unit}</text>`;
+  });
+  const legend=keys.map(k=>{const ln=TREND_LINES.find(x=>x.k===k);return `<span><i style="background:${ln.c}"></i>${ln.l}</span>`;}).join('');
+  return `<div class="tr-panel"><div class="sx-legend">${legend}<span class="sx-note" style="margin-left:auto">単位：${unit}</span></div><svg viewBox="0 0 ${W} ${H}" class="lab-svg" role="img" aria-label="${unit}の推移">${g}</svg></div>`;
+}
+function renderTrendChart(list){
+  const pts=trendPoints(list);
+  const W=(window.innerWidth||1200)<640?360:760;
+  const chips=TREND_LINES.map(l=>`<button class="tr-chip ${trendCfg.lines.includes(l.k)?'on':''}" style="--c:${l.c}" onclick="trendToggle('${l.k}')"><i></i>${l.l}</button>`).join('');
+  const units=['円','%','分'];
+  const panels=pts.length<2?'<div class="sx-note">折れ線にするには2件以上のデータが必要です。集計範囲を広げてください。</div>'
+    : units.map(u=>{ const ks=trendCfg.lines.filter(k=>TREND_LINES.find(x=>x.k===k).u===u); return ks.length?trendPanel(pts,ks,u,W):''; }).join('');
+  return `<div class="tr-wrap"><div class="tr-head"><h4>推移<small>${esc(gaugeLabel())}・上の集計範囲と連動</small></h4>
+    <div class="sx-seg"><button class="${trendCfg.x==='case'?'on':''}" onclick="trendSetX('case')">案件ごと</button><button class="${trendCfg.x==='month'?'on':''}" onclick="trendSetX('month')">月ごと</button></div></div>
+    <div class="tr-chips">${chips}</div>${panels}
+    ${trendCfg.x==='case'&&trendCfg.lines.includes('hourly')&&pts.length>=4?'<div class="sx-note">太い薄線＝実質時給の直近3件の移動平均。点に触れると案件名と値が出ます。</div>':''}</div>`;
+}
+let trendResizeT=null, trendLastNarrow=(window.innerWidth||1200)<640;
+window.addEventListener('resize',()=>{ clearTimeout(trendResizeT); trendResizeT=setTimeout(()=>{ const nw=(window.innerWidth||1200)<640; if(nw!==trendLastNarrow){ trendLastNarrow=nw; if(currentPage==='sales'||currentPage==='lab') labRerender(); } },200); });
 function renderHourlyGauge(){
   const list=gaugeSales(), g=aggregateSales(list);
   const head=`<h3 class="sx-h">実質時給と売価の内訳<small>${esc(gaugeLabel())}・${g.count}件${g.bars?`・${g.bars}本`:''}</small></h3>`;
@@ -2887,7 +3068,7 @@ function renderHourlyGauge(){
       </ul>
       <div class="sx-note" style="margin-top:12px">梱包費・送料は原価に含めていません。作業時間が分かる売上のみ集計${salesFilterBiz.size?'（事業の絞り込みを反映）':''}。</div>
     </div>
-  </div>${renderSpotPanel()}`;
+  </div>${renderTrendChart(list)}${renderSpotPanel()}`;
 }
 function renderSpotPanel(){
   const cands=state.sales.filter(s=>saleWorkMinutes(s)>0).sort((a,b)=>String(b.date).localeCompare(String(a.date)) || (b.createdAt||0)-(a.createdAt||0));
@@ -2910,7 +3091,15 @@ function renderSpotPanel(){
       <div><span>この案件の実質時給</span><b style="color:${ZONE_COLOR[zoneClass(d.hourly||0)]}">${yen(d.hourly||0)}</b></div>
     </div>
     <div class="sx-verdict">設定時給 ${yen(base)} で働いた場合との差 <b style="color:${dBase>=0?'var(--sx-good)':'var(--sx-bad)'}">${signedYen(dBase)}</b>　　目標時給 ${yen(target)} との差 <b style="color:${dTarget>=0?'var(--sx-good)':'var(--sx-bad)'}">${signedYen(dTarget)}</b></div>
+    ${renderSpotSets(s,d)}
   </div>`;
+}
+function renderSpotSets(s,d){
+  const sets=saleSetBreakdowns(s); if(sets.length<2 && !sets.some(x=>x.excluded)) return '';
+  const hc=v=>v==null?'—':`<b style="color:${ZONE_COLOR[zoneClass(v)]}">${yen(v)}</b>`;
+  const row=(lbl,x,cls)=>`<tr class="${cls||''}"><td>${lbl}</td><td data-l="本数">${x.bars}本</td><td data-l="売価">${yen(x.amount)}</td><td data-l="原価">${yen(x.cost)}</td><td data-l="原価率">${Math.round(x.ratio*10)/10}%</td><td data-l="取り分">${yen(x.take)}</td><td data-l="1本あたり">${x.perBar!=null?yen(x.perBar):'—'}</td><td data-l="作業時間">${Math.round(x.min)}分</td><td data-l="実質時給">${hc(x.hourly)}</td></tr>`;
+  const body=sets.map(x=>x.excluded?`<tr class="sx-ex"><td>${esc(x.label)}</td><td colspan="8">無償・売上対象外（集計に含めていません）</td></tr>`:row(esc(x.label),x)).join('')+row('全体',d,'sx-tot');
+  return `<h4 class="lab-sub" style="margin-top:16px">セット別（売価は本数比で按分）</h4><div class="lab-scroll"><table class="sx-table sx-sets"><thead><tr><th>セット</th><th>本数</th><th>売価</th><th>原価</th><th>原価率</th><th>取り分</th><th>1本あたり</th><th>作業時間</th><th>実質時給</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 function salesMonthlyTable(items){
   const by={};
@@ -3242,6 +3431,28 @@ function labQuality(all){
   return chk.map(c=>{ const filled=real.filter(r=>r[c[0]]!=null&&r[c[0]]!==LAB_UNSET).length, p=Math.round(filled/real.length*100);
     return `<div class="sx-bar"><div class="l"><span>${c[1]}</span><span>${filled}/${real.length}件（${p}%）</span></div><div class="sx-stack"><div style="width:${p}%;background:${p>=70?'var(--sx-good)':p>=40?'var(--sx-mid)':'var(--sx-bad)'}"></div></div></div>`; }).join('');
 }
+/* 過去データの表記ゆれを一括でそろえる（材質・産出国・研削液・センタ押し） */
+function normPlan(){
+  const ch=[];
+  const fixMat=v=>{ const t=String(v||'').trim(); if(!t||MATERIAL_OPTIONS.includes(t)||/Fe|Ni|Cu|鉄|銅/i.test(t)) return null; const m=t.replace(/[％]/g,'%').match(/(\d{2})/); if(!m) return null; const w='W'+m[1]; return MATERIAL_OPTIONS.includes(w)?w:null; };
+  const fixCty=v=>{ const t=String(v||'').trim(); if(!t||COUNTRY_OPTIONS.includes(t)) return null; if(/中国/.test(t)) return '中国'; if(/国産|アラマテ|日本/.test(t)) return '日本（国産）'; if(/不明/.test(t)) return '不明'; return null; };
+  const fixYN=v=>{ const t=String(v||'').trim(); if(t==='有'||t==='有り') return 'あり'; if(t==='無'||t==='無し') return 'なし'; return null; };
+  state.research.forEach(r=>(r.specimens||[]).forEach(sp=>{
+    const o=sp.obj||{}, pr=sp.pre||{};
+    [['material',fixMat,o,'材質'],['country',fixCty,o,'産出国'],['coolant',fixYN,pr,'研削液'],['centerPress',fixYN,pr,'センタ押し']].forEach(([k,f,obj,l])=>{
+      const nv=f(obj[k]); if(nv && nv!==obj[k]) ch.push({r,obj,k,from:obj[k],to:nv,l});
+    });
+  }));
+  return ch;
+}
+function runNormalize(){
+  const ch=normPlan();
+  if(!ch.length){ toast('そろえる必要のある表記ゆれはありません'); return; }
+  const sum={}; ch.forEach(c=>{ const key=`${c.l}：「${c.from}」→「${c.to}」`; sum[key]=(sum[key]||0)+1; });
+  if(!confirm(`${ch.length}か所の表記をそろえます。\n\n`+Object.entries(sum).map(([k,n])=>`${k}（${n}件）`).join('\n')+'\n\n実行しますか？')) return;
+  ch.forEach(c=>{ c.obj[c.k]=c.to; touch(c.r); });
+  saveState(); labRerender(); toast(ch.length+'か所の表記をそろえました');
+}
 function renderLabPage(container){
   const all=labRows();
   const rows=labFiltered(all);
@@ -3254,7 +3465,7 @@ function renderLabPage(container){
     : `<label>横軸 <select onchange="labSet('sx',this.value)">${mSel(labCfg.sx)}</select></label><label>縦軸 <select onchange="labSet('sy',this.value)">${mSel(labCfg.sy)}</select></label>`;
   container.innerHTML=`<div class="sx">
     <div class="sx-top"><div><div style="font-family:var(--serif);font-size:24px;font-weight:600">分析ラボ</div><div class="sx-note">工程表に入力した全試料を、条件ごとに比べて傾向を見つける部屋です。</div></div><div class="spacer"></div>
-      <button class="btn sm" onclick="labExportCsv()">CSVに書き出す</button></div>
+      ${normPlan().length?`<button class="btn sm" onclick="runNormalize()">表記ゆれをそろえる（${normPlan().length}）</button>`:''}<button class="btn sm" onclick="labExportCsv()">CSVに書き出す</button></div>
     <div class="sx-kpis">
       <div class="sx-kpi"><b>${rows.length}<small style="font-size:13px">/${all.length}</small></b><span>分析対象の試料</span></div>
       <div class="sx-kpi"><b>${nUse('minutes')}</b><span>加工時間あり</span></div>
@@ -3352,12 +3563,63 @@ function exportSalesCSV(){
   });
   exportCSV(rows,'売上');
 }
+/* ---------- 検索バー（ToDo・工程表） ---------- */
+let srch={todo:{q:'',scope:'all',att:''},research:{q:'',scope:'all',att:''}}, srchOpen=null;
+function srchNorm(t){ return String(t||'').toLowerCase().replace(/[\s　]/g,''); }
+function researchHasAttach(r){ return !!(r&&((r.attachments||[]).length||(r.photos||[]).length||(r.specimens||[]).some(sp=>(sp.photos||[]).length))); }
+function srchTexts(page,x){
+  if(page==='todo'){
+    const r=x.linkedResearchId?state.research.find(y=>y.id===x.linkedResearchId):null;
+    return {title:(x.no!=null?'No.'+x.no+' ':'')+x.title, detail:[x.note, x.genre, x.biz, r?srchTexts('research',r).detail:''].join(' '), att:researchHasAttach(r)};
+  }
+  const cu=state.customers.find(c=>c.id===(x.order&&x.order.customerId));
+  const sp=(x.specimens||[]).map(sp=>[sp.label,sp.obj&&sp.obj.maker,sp.obj&&sp.obj.product,sp.obj&&sp.obj.material,sp.result&&sp.result.good,sp.result&&sp.result.bad,sp.result&&sp.result.next,(sp.steps||[]).map(st=>[st.tool,st.memo,st.processName].join(' ')).join(' ')].join(' ')).join(' ');
+  return {title:(x.no!=null?'No.'+x.no+' ':'')+x.title, detail:[x.purpose,x.conclusion,x.genre,x.biz,cu?cu.name+' '+(cu.kana||''):'',x.order&&x.order.invoiceNo,sp].join(' '), att:researchHasAttach(x)};
+}
+function srchMatch(page,x){
+  const c=srch[page], t=srchTexts(page,x);
+  if(c.att==='yes'&&!t.att) return false;
+  if(c.att==='no'&&t.att) return false;
+  const q=srchNorm(c.q); if(!q) return true;
+  const words=c.q.trim().split(/[\s　]+/).map(srchNorm).filter(Boolean);
+  const hay=srchNorm(c.scope==='title'?t.title:c.scope==='detail'?t.detail:t.title+' '+t.detail);
+  return words.every(w=>hay.includes(w));
+}
+function srchSnippet(page,x){
+  const c=srch[page], t=srchTexts(page,x), w=c.q.trim().split(/[\s　]+/)[0]; if(!w||c.scope==='title') return '';
+  const d=String(t.detail).replace(/\s+/g,' '), i=d.toLowerCase().indexOf(w.toLowerCase()); if(i<0) return '';
+  const a=Math.max(0,i-14), sn=d.slice(a,i+w.length+22);
+  return (a>0?'…':'')+esc(sn).replace(new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),m=>`<mark>${m}</mark>`)+'…';
+}
+function renderSearchBar(page,pool){
+  const c=srch[page];
+  const hits=c.q.trim()?pool.filter(x=>srchMatch(page,x)):[];
+  const sug=(srchOpen===page&&c.q.trim())?`<div class="srch-sug">${hits.length?hits.slice(0,8).map(x=>`<div class="srch-item" onmousedown="event.preventDefault();srchPick('${page}','${x.id}')"><b>${esc(srchTexts(page,x).title)}</b>${srchSnippet(page,x)?`<small>${srchSnippet(page,x)}</small>`:''}</div>`).join('')+(hits.length>8?`<div class="srch-more">ほか${hits.length-8}件（一覧も絞り込まれています）</div>`:''):'<div class="srch-more">該当なし</div>'}</div>`:'';
+  const seg=(k,v,l)=>`<button class="${c[k]===v?'on':''}" onclick="srchSet('${page}','${k}','${v}')">${l}</button>`;
+  return `<div class="srch">
+    <div class="srch-box"><span class="srch-ic">⌕</span><input id="srch-${page}" value="${esc(c.q)}" placeholder="キーワードで検索（スペース区切りでAND）" oninput="srchInput('${page}',this)" onfocus="if(srchOpen!=='${page}'){srchOpen='${page}';if(srch['${page}'].q.trim())srchRefresh('${page}');}" onblur="setTimeout(()=>{const ae=document.activeElement;if(ae&&ae.id==='srch-${page}')return;if(srchOpen==='${page}'){srchOpen=null;srchRefresh('${page}',true)}},150)" onkeydown="if(event.key==='Escape'){this.blur();}">${c.q?`<button class="srch-x" onmousedown="event.preventDefault();srchSet('${page}','q','')">×</button>`:''}${sug}</div>
+    <div class="sx-seg">${seg('scope','all','すべて')}${seg('scope','title','タイトル')}${seg('scope','detail','詳細')}</div>
+    <div class="sx-seg">${seg('att','','添付：指定なし')}${seg('att','yes','あり')}${seg('att','no','なし')}</div>
+    ${c.q.trim()||c.att?`<span class="sx-note">${pool.filter(x=>srchMatch(page,x)).length}件</span>`:''}
+  </div>`;
+}
+function srchRefresh(page,noFocus){
+  const el=document.getElementById('srch-'+page); const pos=el?el.selectionStart:null; const had=el&&document.activeElement===el;
+  const wy=window.scrollY; render(); window.scrollTo(0,wy);
+  const n=document.getElementById('srch-'+page);
+  if(n&&had&&!noFocus){ n.focus(); try{ n.setSelectionRange(pos,pos); }catch(e){} }
+}
+function srchInput(page,el){ srch[page].q=el.value; srchOpen=page; srchRefresh(page); }
+function srchSet(page,k,v){ srch[page][k]=v; srchRefresh(page,true); }
+function srchPick(page,id){ srchOpen=null; if(page==='todo') editTodo(id); else openResearchDetail(id); }
 function renderTodo(){
   const bizChips=BIZ_LIST.map(b=>`<span class="pill biz-${b} ${todoFilterBiz.has(b)?'active':''}" onclick="toggleTodoFilter('biz','${b}')">${b}</span>`).join('');
   const genreChips=GENRE_LIST.map(g=>`<span class="pill ${todoFilterGenre.has(g)?'active':''}" onclick="toggleTodoFilter('genre','${g}')">${g}</span>`).join('');
   let items=state.todos.slice();
   if(todoFilterBiz.size) items=items.filter(t=>todoFilterBiz.has(t.biz));
   if(todoFilterGenre.size) items=items.filter(t=>todoFilterGenre.has(t.genre));
+  const todoPool=items.slice();
+  items=items.filter(t=>srchMatch('todo',t));
   items=applySort('todo',items,{field:'order',dir:'asc'});
   const cols=STATUS_LIST.map(st=>{
     const cardsHtml=items.filter(t=>t.status===st).map(t=>{
@@ -3384,6 +3646,7 @@ function renderTodo(){
     <button class="btn sm ghost" onclick="todoFilterBiz.clear();todoFilterGenre.clear();render();">絞込解除</button>
     <div class="spacer"></div><button class="btn sm" onclick="exportCSV(todoRowsForCSV(),'ToDoリスト')">CSV出力</button>
     <button class="btn primary sm" onclick="openTodoModal()">＋ ToDoを追加</button></div>
+    ${renderSearchBar('todo',todoPool)}
     ${renderSortBar('todo',[{value:'order|asc',label:'追加順（既定）'}].concat(DATE_SORT_OPTIONS),{field:'order',dir:'asc'})}
     <div class="kanban">${cols}</div>`;
 }
@@ -3606,6 +3869,8 @@ function renderResearchPage(container){
   let items=[...state.research].filter(r=>r.genre!=='耐用・測定テスト');
   if(researchFilterBiz.size) items=items.filter(r=>researchFilterBiz.has(r.biz));
   if(researchFilterGenre.size) items=items.filter(r=>researchFilterGenre.has(r.genre));
+  const rsPool=items.slice();
+  items=items.filter(r=>srchMatch('research',r));
   items=applySort('research',items,{field:'createdAt',dir:'desc'});
   const rows=items.length?items.map(r=>{
     const firstSp=(r.specimens&&r.specimens[0])||{};
@@ -3631,6 +3896,7 @@ function renderResearchPage(container){
     <button class="btn sm ghost" onclick="researchFilterBiz.clear();researchFilterGenre.clear();render();">絞込解除</button>
     <div class="spacer"></div><button class="btn sm" onclick="exportResearchCSV()">CSV出力</button>
     <button class="btn primary sm" onclick="openNewResearchModal()">＋ 新規追加</button></div>
+    ${renderSearchBar('research',rsPool)}
     ${renderSortBar('research',DATE_SORT_OPTIONS,{field:'createdAt',dir:'desc'})}
     <div class="rowlist">${rows}</div>`;
   document.querySelectorAll('.swiperow').forEach(row=>attachSwipe(row, ()=>{}));
@@ -4363,9 +4629,10 @@ function renderResearchDetail(id){
     const outsourceCostWF = Number(sp.cost.material)||0; // 「材料費」欄を外注製作費として流用
     const totalWF = laborWithMarkupWF + outsourceCostWF + packagingCost + shippingCost;
 
-    return `<div class="specimen-block">
+    return `<div class="specimen-block ${sp.excluded?'sp-ex':''}">
       <div class="specimen-head">
         <input class="labelinput" value="${esc(sp.label)}" onchange="rsSpecimenField('${id}',${si},'label',this.value)">
+        <label class="ex-toggle ${sp.excluded?'on':''}" title="無償で預かった分など。原価・作業時間・売上の集計から外します（分析ラボには残ります）"><input type="checkbox" ${sp.excluded?'checked':''} onchange="rsSpecimenField('${id}',${si},'excluded',this.checked)">無償・売上対象外</label>
         <button class="btn sm" onclick="copySpecimenToOther('${id}',${si})">別の記録へコピー</button>
         <button class="btn sm" onclick="rsDuplicateSpecimen('${id}',${si})">複製</button>
         ${(r.specimens.length>1)?`<button class="btn sm danger" onclick="rsRemoveSpecimen('${id}',${si})">この試料を削除</button>`:''}
@@ -4391,17 +4658,17 @@ function renderResearchDetail(id){
       <div class="field-row">
         <div class="field"><label>最大径（前）</label><input value="${esc(sp.specs.maxDia.b)}" oninput="rsSpecInput('${id}',${si},'maxDia','b',this.value)"></div>
         <div class="field"><label>最大径（後）</label><input value="${esc(sp.specs.maxDia.a)}" oninput="rsSpecInput('${id}',${si},'maxDia','a',this.value)"></div>
-        <div class="field"><label>径変化（自動）</label><input id="diff-${id}-${si}-maxDia" value="${diffCalc(sp.specs.maxDia.b,sp.specs.maxDia.a,'mm')}" readonly></div>
+        <div class="field"><label>径変化（自動）</label><input id="diff-${id}-${si}-maxDia" value="${diffCalc(sp.specs.maxDia.b,sp.specs.maxDia.a,'mm')}" readonly ${diffWarnAttr(sp.specs.maxDia.b,sp.specs.maxDia.a,'maxDia')}></div>
       </div>
       <div class="field-row">
         <div class="field"><label>最小径（前）</label><input value="${esc(sp.specs.minDia.b)}" oninput="rsSpecInput('${id}',${si},'minDia','b',this.value)"></div>
         <div class="field"><label>最小径（後）</label><input value="${esc(sp.specs.minDia.a)}" oninput="rsSpecInput('${id}',${si},'minDia','a',this.value)"></div>
-        <div class="field"><label>径変化（自動）</label><input id="diff-${id}-${si}-minDia" value="${diffCalc(sp.specs.minDia.b,sp.specs.minDia.a,'mm')}" readonly></div>
+        <div class="field"><label>径変化（自動）</label><input id="diff-${id}-${si}-minDia" value="${diffCalc(sp.specs.minDia.b,sp.specs.minDia.a,'mm')}" readonly ${diffWarnAttr(sp.specs.minDia.b,sp.specs.minDia.a,'minDia')}></div>
       </div>
       <div class="field-row">
         <div class="field"><label>重量（前）</label><input value="${esc(sp.specs.weight.b)}" oninput="rsSpecInput('${id}',${si},'weight','b',this.value)"></div>
         <div class="field"><label>重量（後）</label><input value="${esc(sp.specs.weight.a)}" oninput="rsSpecInput('${id}',${si},'weight','a',this.value)"></div>
-        <div class="field"><label>重量変化（自動）</label><input id="diff-${id}-${si}-weight" value="${diffCalc(sp.specs.weight.b,sp.specs.weight.a,'g')}" readonly></div>
+        <div class="field"><label>重量変化（自動）</label><input id="diff-${id}-${si}-weight" value="${diffCalc(sp.specs.weight.b,sp.specs.weight.a,'g')}" readonly ${diffWarnAttr(sp.specs.weight.b,sp.specs.weight.a,'weight')}></div>
       </div>
 
       ${is3D ? render3DSection(id,si,sp,{filamentMaterialCost,mCounsel,mModel,mPrint,mPack,totalMinutes3D,totalHours3D,laborBase3D,laborWithMarkup3D,cadCost3D,packagingCost,shippingCost,total3D}) : isWorkflow ? renderWorkflowSection(id,si,sp,r,{wfSteps,totalMinutesWF,totalHoursWF,laborBaseWF,laborWithMarkupWF,outsourceCostWF,packagingCost,shippingCost,totalWF}) : `
@@ -4448,7 +4715,7 @@ function renderResearchDetail(id){
       `}
 
       <div class="section-label">結果</div>
-      <div class="field"><label>仕上がり（10段階）</label><input type="number" min="1" max="10" value="${esc(sp.result.finish)}" style="max-width:80px" onchange="rsResult('${id}',${si},'finish',this.value)"></div>
+      <div class="field"><label>仕上がり・光沢評価（10段階：1＝くすみ／傷が残る　10＝鏡面）</label><div class="fin-btns">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button type="button" class="${Math.round(parseFloat(sp.result.finish))===n?'on':''}" onclick="rsSetFinish('${id}',${si},${n})">${n}</button>`).join('')}${sp.result.finish!==''&&sp.result.finish!=null?`<button type="button" class="clr" onclick="rsSetFinish('${id}',${si},'')">クリア</button>`:''}</div></div>
       <div class="field"><label>成功点</label><textarea onchange="rsResult('${id}',${si},'good',this.value)">${esc(sp.result.good)}</textarea></div>
       <div class="field"><label>失敗点・課題</label><textarea onchange="rsResult('${id}',${si},'bad',this.value)">${esc(sp.result.bad)}</textarea></div>
       <div class="field"><label>次への申し送り</label><textarea onchange="rsResult('${id}',${si},'next',this.value)">${esc(sp.result.next)}</textarea></div>
@@ -4471,7 +4738,7 @@ function renderResearchDetail(id){
       <div><button class="btn ghost sm" onclick="closeResearchDetail()">← 一覧へ</button>
         <h2 style="margin-top:8px">No.${r.no}　${esc(r.title)||'（無題の研究）'}</h2>
         <span class="st-chip st-${r.status}">${r.status}</span></div>
-      <div class="detail-actions"><button class="btn sm" onclick="openAttachModal('research','${id}')">📎 添付資料${(r.attachments&&r.attachments.length)?`（${r.attachments.length}）`:''}</button> <button class="btn sm" onclick="window.print()">印刷 / PDF</button>
+      <div class="detail-actions">${r.genre==='製造'?(()=>{const ex=state.sales.filter(x=>x.researchId===id);return ex.length?`<button class="btn sm" onclick="editSale('${ex[0].id}')">💴 売上を確認（登録済み${ex.length>1?ex.length+'件':''}）</button> `:`<button class="btn sm primary" onclick="saleFromResearch('${id}')">💴 この記録で売上を登録</button> `;})():''}<button class="btn sm" onclick="openAttachModal('research','${id}')">📎 添付資料${(r.attachments&&r.attachments.length)?`（${r.attachments.length}）`:''}</button> <button class="btn sm" onclick="window.print()">印刷 / PDF</button>
         <button class="btn danger sm" onclick="rsDelete('${id}')">削除</button></div>
     </div>
 
@@ -4559,18 +4826,28 @@ function rsField(id,key,val){
 }
 function rsObj(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].obj[key]=val; touch(r); saveState(); }
 function rsSpecInput(id,si,key,ba,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].specs[key][ba]=val; touch(r); saveState(); updateDiffDisplays(id,si); }
+/* 前後の値の入力ミス検知（加工で増えることは基本ないため） */
+function diffWarnMsg(b,a,key){
+  const B=parseFloat(b), A=parseFloat(a); if(!isFinite(B)||!isFinite(A)) return '';
+  const tol=key==='weight'?0.005:0.005, lim=key==='weight'?3:0.5;
+  if(A-B>tol) return '加工後の値が加工前より大きくなっています。前後の入れ違いや打ち間違いがないか確認してください。';
+  if(B-A>lim) return '減少量が大きすぎます。打ち間違いがないか確認してください。';
+  return '';
+}
+function diffWarnAttr(b,a,key){ const m=diffWarnMsg(b,a,key); return m?`class="diff-bad" title="${esc(m)}"`:''; }
 function updateDiffDisplays(id,si){
   const r=state.research.find(x=>x.id===id); const sp=r.specimens[si];
   const map=[['maxDia','mm'],['minDia','mm'],['length','mm'],['weight','g']];
   map.forEach(([key,unit])=>{
     const el=document.getElementById(`diff-${id}-${si}-${key}`);
-    if(el) el.value=diffCalc(sp.specs[key].b, sp.specs[key].a, unit);
+    if(el){ el.value=diffCalc(sp.specs[key].b, sp.specs[key].a, unit); const m=diffWarnMsg(sp.specs[key].b, sp.specs[key].a, key); el.classList.toggle('diff-bad',!!m); el.title=m||''; }
   });
 }
 function rsCompare(id,key,val){ const r=state.research.find(x=>x.id===id); r.compare[key]=val; touch(r); saveState(); }
 function rsPre(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].pre[key]=val; touch(r); saveState(); }
 function rsCost(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].cost[key]=val; touch(r); saveState(); render(); }
 function rs3D(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].print3d[key]=val; touch(r); saveState(); render(); }
+function rsSetFinish(id,si,n){ const r=state.research.find(x=>x.id===id); r.specimens[si].result.finish=n===''?'':String(n); touch(r); saveState(); render(); }
 function rsResult(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].result[key]=val; touch(r); saveState(); }
 function rsSpecimenField(id,si,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si][key]=val; touch(r); saveState(); render(); }
 function rsAddSpecimen(id){ const r=state.research.find(x=>x.id===id); r.specimens.push(emptySpecimen('N'+(r.specimens.length+1))); touch(r); saveState(); render(); }
