@@ -616,6 +616,12 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
 }
 .specimen-head{flex-wrap:wrap;row-gap:6px;}
 .specimen-head .btn,.ex-toggle{white-space:nowrap;}
+.step-num{white-space:nowrap;}
+.step-drag{cursor:grab;color:var(--ink-faint);margin-right:4px;touch-action:none;user-select:none;padding:4px 2px;}
+.step-mv{display:inline-flex;flex-direction:column;margin-left:4px;vertical-align:middle;}
+.step-mv button{border:none;background:none;font-size:8px;line-height:1;padding:1px 3px;color:var(--ink-faint);cursor:pointer;}
+.step-mv button:hover{color:var(--ink);}
+tr.step-dragging{background:var(--green-tint);opacity:.85;}
 </style>
 </head>
 <body>
@@ -2020,8 +2026,9 @@ function render(){
   else if(currentPage==='tools') renderToolsPage(c);
   else if(currentPage==='customers') renderCustomersPage(c);
   else if(currentPage==='trash') c.innerHTML=renderTrash();
-  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar').classList.remove('open'); document.body.classList.remove('sb-open');
   if(currentPage==='dash') requestAnimationFrame(initGanttDrag);
+  bindSearchInputs();
   attachReorder();
   updateAttachBadge();
 }
@@ -3564,8 +3571,9 @@ function exportSalesCSV(){
   exportCSV(rows,'売上');
 }
 /* ---------- 検索バー（ToDo・工程表） ---------- */
+let srchComposing=false;
 let srch={todo:{q:'',scope:'all',att:''},research:{q:'',scope:'all',att:''}}, srchOpen=null;
-function srchNorm(t){ return String(t||'').toLowerCase().replace(/[\s　]/g,''); }
+function srchNorm(t){ return String(t||'').normalize('NFKC').toLowerCase().replace(/[\s　]/g,'').replace(/[\u30a1-\u30f6]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60)); }
 function researchHasAttach(r){ return !!(r&&((r.attachments||[]).length||(r.photos||[]).length||(r.specimens||[]).some(sp=>(sp.photos||[]).length))); }
 function srchTexts(page,x){
   if(page==='todo'){
@@ -3597,11 +3605,18 @@ function renderSearchBar(page,pool){
   const sug=(srchOpen===page&&c.q.trim())?`<div class="srch-sug">${hits.length?hits.slice(0,8).map(x=>`<div class="srch-item" onmousedown="event.preventDefault();srchPick('${page}','${x.id}')"><b>${esc(srchTexts(page,x).title)}</b>${srchSnippet(page,x)?`<small>${srchSnippet(page,x)}</small>`:''}</div>`).join('')+(hits.length>8?`<div class="srch-more">ほか${hits.length-8}件（一覧も絞り込まれています）</div>`:''):'<div class="srch-more">該当なし</div>'}</div>`:'';
   const seg=(k,v,l)=>`<button class="${c[k]===v?'on':''}" onclick="srchSet('${page}','${k}','${v}')">${l}</button>`;
   return `<div class="srch">
-    <div class="srch-box"><span class="srch-ic">⌕</span><input id="srch-${page}" value="${esc(c.q)}" placeholder="キーワードで検索（スペース区切りでAND）" oninput="srchInput('${page}',this)" onfocus="if(srchOpen!=='${page}'){srchOpen='${page}';if(srch['${page}'].q.trim())srchRefresh('${page}');}" onblur="setTimeout(()=>{const ae=document.activeElement;if(ae&&ae.id==='srch-${page}')return;if(srchOpen==='${page}'){srchOpen=null;srchRefresh('${page}',true)}},150)" onkeydown="if(event.key==='Escape'){this.blur();}">${c.q?`<button class="srch-x" onmousedown="event.preventDefault();srchSet('${page}','q','')">×</button>`:''}${sug}</div>
+    <div class="srch-box"><span class="srch-ic">⌕</span><input id="srch-${page}" value="${esc(c.q)}" placeholder="キーワードで検索（スペース区切りでAND）" oninput="if(event.isComposing||srchComposing){srch['${page}'].q=this.value;}else srchInput('${page}',this);" data-srch="${page}" onfocus="if(srchOpen!=='${page}'){srchOpen='${page}';if(srch['${page}'].q.trim())srchRefresh('${page}');}" onblur="setTimeout(()=>{const ae=document.activeElement;if(ae&&ae.id==='srch-${page}')return;if(srchOpen==='${page}'){srchOpen=null;srchRefresh('${page}',true)}},150)" onkeydown="if(event.key==='Escape'){this.blur();}">${c.q?`<button class="srch-x" onmousedown="event.preventDefault();srchSet('${page}','q','')">×</button>`:''}${sug}</div>
     <div class="sx-seg">${seg('scope','all','すべて')}${seg('scope','title','タイトル')}${seg('scope','detail','詳細')}</div>
     <div class="sx-seg">${seg('att','','添付：指定なし')}${seg('att','yes','あり')}${seg('att','no','なし')}</div>
     ${c.q.trim()||c.att?`<span class="sx-note">${pool.filter(x=>srchMatch(page,x)).length}件</span>`:''}
   </div>`;
+}
+function bindSearchInputs(){
+  document.querySelectorAll('input[data-srch]').forEach(el=>{
+    if(el._srchBound) return; el._srchBound=true; const page=el.dataset.srch;
+    el.addEventListener('compositionstart',()=>{ srchComposing=true; });
+    el.addEventListener('compositionend',()=>{ srchComposing=false; setTimeout(()=>srchInput(page,el),0); });
+  });
 }
 function srchRefresh(page,noFocus){
   const el=document.getElementById('srch-'+page); const pos=el?el.selectionStart:null; const had=el&&document.activeElement===el;
@@ -4576,8 +4591,8 @@ function renderResearchDetail(id){
       const consumed = (s.beforeWeight!=='' && s.beforeWeight!=null && s.afterWeight!=='' && s.afterWeight!=null)
         ? (Math.round((Number(s.beforeWeight)-Number(s.afterWeight))*1000)/1000) : '';
       return `
-      <tr>
-        <td class="step-num">${i+1}</td>
+      <tr data-si="${i}">
+        <td class="step-num"><span class="step-drag" title="ドラッグで並び替え" onpointerdown="stepDragStart(event,'${id}',${si})">⋮⋮</span>${i+1}<span class="step-mv">${i>0?`<button type="button" onclick="rsMoveStep('${id}',${si},${i},-1)" title="上へ">▲</button>`:''}${i<sp.steps.length-1?`<button type="button" onclick="rsMoveStep('${id}',${si},${i},1)" title="下へ">▼</button>`:''}</span></td>
         <td><div class="cellwrap"><input value="${esc(s.processName)}" placeholder="例）洗浄／測定／研磨" oninput="rsStepInput('${id}',${si},${i},'processName',this.value)"><button type="button" class="cellexp" onclick="openCellEditor('${id}',${si},${i},'processName')" title="拡大して編集">⤢</button></div></td>
         <td><select onchange="rsStepToolChange('${id}',${si},${i},this.value)"><option value="">（選択）</option>${toolOptionsFor(r.biz,s.tool)}</select>
             ${s.tool&&!state.tools.some(t=>t.name===s.tool)?`<div class="cellwrap" style="margin-top:4px"><input value="${esc(s.tool)}" oninput="rsStepInput('${id}',${si},${i},'tool',this.value)"><button type="button" class="cellexp" onclick="openCellEditor('${id}',${si},${i},'tool')" title="拡大して編集">⤢</button></div>`:''}</td>
@@ -4853,6 +4868,17 @@ function rsSpecimenField(id,si,key,val){ const r=state.research.find(x=>x.id===i
 function rsAddSpecimen(id){ const r=state.research.find(x=>x.id===id); r.specimens.push(emptySpecimen('N'+(r.specimens.length+1))); touch(r); saveState(); render(); }
 function rsRemoveSpecimen(id,si){ const r=state.research.find(x=>x.id===id); if(!confirm('この試料を削除しますか？')) return; r.specimens.splice(si,1); touch(r); saveState(); render(); }
 function rsAddStep(id,si){ const r=state.research.find(x=>x.id===id); const sp=r.specimens[si]; if(sp.steps.length>=20) return; sp.steps.push({processName:'',tool:'',grit:'',time:'',pressure:'',memo:'',beforeWeight:'',afterWeight:''}); touch(r); saveState(); render(); }
+function rsMoveStep(id,si,i,d){ const r=state.research.find(x=>x.id===id); const st=r.specimens[si].steps, j=i+d; if(j<0||j>=st.length) return; [st[i],st[j]]=[st[j],st[i]]; touch(r); saveState(); render(); }
+function stepDragStart(ev,id,si){
+  const tr=ev.target.closest('tr'), tb=tr&&tr.parentElement; if(!tb) return;
+  ev.preventDefault(); tr.classList.add('step-dragging'); let moved=false;
+  const onMove=e=>{ const el=document.elementFromPoint(e.clientX,e.clientY); const ov=el&&el.closest('tr'); if(!ov||ov===tr||ov.parentElement!==tb||!ov.dataset.si) return;
+    const b=ov.getBoundingClientRect(); if(e.clientY<b.top+b.height/2) tb.insertBefore(tr,ov); else ov.after(tr); moved=true; };
+  const onUp=()=>{ document.removeEventListener('pointermove',onMove); document.removeEventListener('pointerup',onUp); document.removeEventListener('pointercancel',onUp); tr.classList.remove('step-dragging');
+    if(!moved) return; const order=Array.from(tb.querySelectorAll('tr[data-si]')).map(x=>Number(x.dataset.si));
+    const r=state.research.find(x=>x.id===id); const st=r.specimens[si].steps; r.specimens[si].steps=order.map(k=>st[k]); touch(r); saveState(); render(); toast('工程の順番を入れ替えました'); };
+  document.addEventListener('pointermove',onMove); document.addEventListener('pointerup',onUp); document.addEventListener('pointercancel',onUp);
+}
 function rsRemoveStep(id,si,i){ const r=state.research.find(x=>x.id===id); r.specimens[si].steps.splice(i,1); touch(r); saveState(); render(); }
 function rsStepInput(id,si,i,key,val){ const r=state.research.find(x=>x.id===id); r.specimens[si].steps[i][key]=val; if(key==='grit') r.specimens[si].steps[i].gritAuto=false; touch(r); saveState(); }
 function rsWeightInput(id,si,i,key,val){
