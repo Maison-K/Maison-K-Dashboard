@@ -622,6 +622,18 @@ hr.hair{border:none;border-top:1px solid var(--line);margin:18px 0;}
 .step-mv button{border:none;background:none;font-size:8px;line-height:1;padding:1px 3px;color:var(--ink-faint);cursor:pointer;}
 .step-mv button:hover{color:var(--ink);}
 tr.step-dragging{background:var(--green-tint);opacity:.85;}
+.opt-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;margin-bottom:6px;background:var(--white);}
+.opt-row.on{border-color:var(--green);background:var(--green-tint);}
+.opt-row label{display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;min-width:180px;font-weight:600;font-size:13px;margin:0;}
+.opt-row label input{width:auto;margin:0;}
+.opt-row .mute{font-weight:400;font-size:11.5px;}
+.opt-q{font-size:12px;display:inline-flex;align-items:center;gap:4px;}
+.opt-q input{width:56px;padding:3px 6px;}
+.opt-tag{display:inline-block;margin-left:8px;font-size:10.5px;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--green-tint);color:var(--green-deep);vertical-align:middle;}
+.more-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+.more-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:16px 6px;background:var(--white);border:1px solid var(--line);border-radius:10px;font-size:12px;color:var(--ink);cursor:pointer;min-height:84px;}
+.more-item svg{width:24px;height:24px;color:var(--green-deep);}
+@media (min-width:861px){.more-grid{grid-template-columns:repeat(4,minmax(0,1fr));}}
 </style>
 </head>
 <body>
@@ -823,7 +835,7 @@ tr.step-dragging{background:var(--green-tint);opacity:.85;}
     <div class="modal-body">
       <div class="field-row">
         <div class="field"><label>売上日</label><input id="sl_date" type="date"></div>
-        <div class="field"><label>事業</label><select id="sl_biz"><option>研磨</option><option>3Dプリンタ</option><option>製作図面依頼</option><option>量産品</option><option>一般顧客モデル</option></select></div>
+        <div class="field"><label>事業</label><select id="sl_biz" onchange="renderSaleOptions(saleOptsDraft)"><option>研磨</option><option>3Dプリンタ</option><option>製作図面依頼</option><option>量産品</option><option>一般顧客モデル</option></select></div>
       </div>
       <div class="field"><label>内容</label><input id="sl_title" placeholder="例）バレル研磨 2BA 1セット"></div>
       <div class="field-row">
@@ -832,6 +844,7 @@ tr.step-dragging{background:var(--green-tint);opacity:.85;}
         <div class="field"><label>売上金額（円・税込）</label><input id="sl_amount" type="number" placeholder="7700"></div>
         <div class="field"><label>原価（円・空欄＝工程表から自動）</label><input id="sl_costAmount" type="number" placeholder="空欄で自動計算"><div class="hint" id="sl_costHint"></div></div>
       </div>
+      <div class="field" id="sl_optWrap"><label>オプション</label><div id="sl_opts"></div><div class="hint" id="sl_optHint"></div></div>
       <div class="field"><label>顧客</label><select id="sl_customerId"></select></div>
       <div class="field"><label>紐づく工程表</label><select id="sl_researchId" onchange="updateSaleCostHint()"></select>
         <div class="hint"><button class="btn sm ghost" onclick="importSaleFromResearch()">選んだ工程表から事業・顧客・請求書番号を取り込む</button></div>
@@ -1857,12 +1870,28 @@ const ICONS = {
 let currentPage='dash';
 function setPage(p){ currentPage=p; researchDetailId=null; toggleSidebar(false); render(); window.scrollTo(0,0); }
 function toggleSidebar(force){ const sb=document.getElementById('sidebar'); const on=force===undefined?!sb.classList.contains('open'):force; sb.classList.toggle('open',on); document.body.classList.toggle('sb-open',on); }
+function renderMorePage(){
+  const items=[
+    ['dash','ダッシュボード',ICONS.dash],['timer','作業タイマー',ICONS.timer],['todo','ToDoリスト',ICONS.todo],['projects','プロジェクト',ICONS.project],
+    ['research','工程表',ICONS.research],['sales','売上',ICONS.sales],['lab','分析ラボ',ICONS.lab],['durability','耐用・測定記録',ICONS.durability],
+    ['roughness','面粗度比較',ICONS.roughness],['tools','工具マスタ',ICONS.tools],['customers','顧客管理',ICONS.cust],['trash','ゴミ箱',ICONS.trash]];
+  const note=(document.getElementById('storageNote')||{}).innerHTML||'';
+  return `<div class="more-grid">${items.map(([id,l,ic])=>`<button class="more-item" onclick="setPage('${id}')">${ic||''}<span>${l}</span></button>`).join('')}</div>
+    <div class="section-label">データ・設定</div>
+    <div class="card" style="padding:14px"><div class="storage-note" style="color:var(--ink-soft)">${note}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+        <button class="btn" onclick="openSettingsModal()">⚙ 設定（時給・固定費）</button>
+        <button class="btn" onclick="exportJSON()">JSON書出</button>
+        <button class="btn" onclick="document.getElementById('importFile').click()">JSON読込</button>
+        <button class="btn" onclick="doLogout()">ログアウト</button>
+      </div></div>`;
+}
 function renderTabbar(){
   const el=document.getElementById('tabbar'); if(!el) return;
   const tabs=[['dash','ホーム',ICONS.dash],['todo','ToDo',ICONS.todo],['research','工程表',ICONS.research],['sales','売上',ICONS.sales]];
   const inTabs=tabs.some(t=>t[0]===currentPage);
   el.innerHTML=tabs.map(([id,l,ic])=>`<button class="${currentPage===id?'on':''}" onclick="setPage('${id}')">${ic}<span>${l}</span></button>`).join('')
-    +`<button class="${!inTabs?'on':''}" onclick="toggleSidebar()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>${!inTabs?esc(({lab:'分析',timer:'タイマー',projects:'PJ',durability:'耐用',roughness:'面粗度',tools:'工具',customers:'顧客',trash:'ゴミ箱'})[currentPage]||'メニュー'):'メニュー'}</span></button>`;
+    +`<button class="${!inTabs?'on':''}" onclick="setPage('more')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>${!inTabs?esc(({lab:'分析',timer:'タイマー',projects:'PJ',durability:'耐用',roughness:'面粗度',tools:'工具',customers:'顧客',trash:'ゴミ箱'})[currentPage]||'メニュー'):'メニュー'}</span></button>`;
 }
 function renderNav(){
   const items=[
@@ -2009,7 +2038,7 @@ function commitReorder(cfg,ids){
    ========================================================================== */
 function render(){
   renderNav(); renderTabbar();
-  const titleMap={dash:'ダッシュボード',timer:'作業タイマー',todo:'ToDoリスト',projects:'プロジェクト',sales:'売上',lab:'分析ラボ',research:'工程表',durability:'耐用・測定記録',roughness:'面粗度比較',tools:'工具マスタ',customers:'顧客管理',trash:'ゴミ箱'};
+  const titleMap={dash:'ダッシュボード',timer:'作業タイマー',todo:'ToDoリスト',projects:'プロジェクト',sales:'売上',lab:'分析ラボ',more:'メニュー',research:'工程表',durability:'耐用・測定記録',roughness:'面粗度比較',tools:'工具マスタ',customers:'顧客管理',trash:'ゴミ箱'};
   document.getElementById('pageTitle').textContent=titleMap[currentPage]||'';
   const subMap={dash:todayStr(),timer:'実作業時間を計測して工程表に反映',todo:'定常業務・加工研究・事務を横断管理',projects:'KGI/KPIとToDoをツリーで構造化',sales:'月別・事業別の売上集計と明細',lab:'条件ごとの違いを数字とグラフで比べる',research:'比較検証の記録',durability:'工具・消耗品の使用量を工具ごとに集計',roughness:'条件別の面粗度(Ra)測定計画・結果',tools:'保有工具・消耗品の台帳',customers:'見込み〜取引先の管理',trash:'削除済みアイテムの復元・完全削除'};
   document.getElementById('pageSub').textContent=subMap[currentPage]||'';
@@ -2020,6 +2049,7 @@ function render(){
   else if(currentPage==='projects') renderProjectsPage(c);
   else if(currentPage==='sales') renderSalesPage(c);
   else if(currentPage==='lab') renderLabPage(c);
+  else if(currentPage==='more') c.innerHTML=renderMorePage();
   else if(currentPage==='research') renderResearchPage(c);
   else if(currentPage==='durability') renderDurabilityPage(c);
   else if(currentPage==='roughness') renderRoughnessPage(c);
@@ -2755,6 +2785,7 @@ function openSaleModal(){
   document.getElementById('sl_invoiceNo').value='';
   document.getElementById('sl_note').value='';
   populateSaleSelects('','');
+  renderSaleOptions([]);
   updateSaleCostHint();
   document.getElementById('sl_delBtn').style.display='none';
   openOv('ov-sale');
@@ -2775,6 +2806,7 @@ function editSale(id){
   document.getElementById('sl_invoiceNo').value=s.invoiceNo||'';
   document.getElementById('sl_note').value=s.note||'';
   populateSaleSelects(s.customerId, s.researchId);
+  renderSaleOptions(s.options||[]);
   updateSaleCostHint();
   document.getElementById('sl_delBtn').style.display='inline-block';
   openOv('ov-sale');
@@ -2809,6 +2841,7 @@ function submitSale(){
     paidDate:document.getElementById('sl_paidDate').value,
     invoiceNo:document.getElementById('sl_invoiceNo').value.trim(),
     note:document.getElementById('sl_note').value.trim(),
+    options:saleOptsDraft.map(o=>({id:o.id,name:o.name,price:numOf(o.price),qty:numOf(o.qty)||1})),
   };
   if(editingSaleId){ const s=state.sales.find(x=>x.id===editingSaleId); Object.assign(s,data); touch(s); }
   else{ state.sales.push(Object.assign({id:uid('sl_'),createdAt:Date.now(),updatedAt:Date.now()},data)); }
@@ -2820,9 +2853,35 @@ function deleteSale(){
   state.sales=state.sales.filter(s=>s.id!==editingSaleId);
   saveState(); closeOv('ov-sale'); render(); toast('削除しました');
 }
+/* ---------- 売上オプション（例：コーティング剥がし） ---------- */
+function saleOptionMaster(){ const m=state.settings.saleOptions; return Array.isArray(m)&&m.length?m:[{id:'coat',biz:'研磨',name:'コーティング剥がし',price:1980}]; }
+let saleOptsDraft=[];
+function saleOptionTotal(s){ return (s&&s.options||[]).reduce((a,o)=>a+numOf(o.price)*(numOf(o.qty)||1),0); }
+function renderSaleOptions(cur){
+  saleOptsDraft=(cur||[]).map(o=>Object.assign({},o));
+  const biz=document.getElementById('sl_biz').value, wrap=document.getElementById('sl_optWrap');
+  const list=saleOptionMaster().filter(o=>!o.biz||o.biz===biz);
+  saleOptsDraft.forEach(o=>{ if(!list.some(m=>m.id===o.id)) list.push({id:o.id,name:o.name,price:o.price,biz}); });
+  wrap.style.display=list.length?'':'none';
+  document.getElementById('sl_opts').innerHTML=list.map(m=>{ const on=saleOptsDraft.find(o=>o.id===m.id);
+    return `<div class="opt-row ${on?'on':''}"><label><input type="checkbox" ${on?'checked':''} onchange="toggleSaleOpt('${m.id}',this.checked)">${esc(m.name)}<span class="mute">¥${Number(on?on.price:m.price).toLocaleString()}（税込）</span></label>
+      ${on?`<span class="opt-q">×<input type="number" min="1" value="${on.qty||1}" oninput="setSaleOptQty('${m.id}',this.value)">本・セット</span><b>¥${(numOf(on.price)*(numOf(on.qty)||1)).toLocaleString()}</b>`:''}</div>`; }).join('');
+  updateSaleOptHint();
+}
+function toggleSaleOpt(id,on){
+  const m=saleOptionMaster().find(x=>x.id===id)||saleOptsDraft.find(x=>x.id===id);
+  if(on){ if(!saleOptsDraft.some(o=>o.id===id)) saleOptsDraft.push({id,name:m.name,price:m.price,qty:Number(document.getElementById('sl_qty').value)||1}); }
+  else saleOptsDraft=saleOptsDraft.filter(o=>o.id!==id);
+  renderSaleOptions(saleOptsDraft); recalcSaleAmount();
+}
+function setSaleOptQty(id,v){ const o=saleOptsDraft.find(x=>x.id===id); if(o) o.qty=Math.max(1,Number(v)||1); recalcSaleAmount(); renderSaleOptionsKeepFocus(id); }
+function renderSaleOptionsKeepFocus(id){ const el=document.activeElement, pos=el&&el.selectionStart; renderSaleOptions(saleOptsDraft); const n=document.querySelector(`#sl_opts input[oninput*="'${id}'"]`); if(n){ n.focus(); try{n.setSelectionRange(pos,pos);}catch(e){} } }
+function updateSaleOptHint(){ const t=saleOptionTotal({options:saleOptsDraft}); const u=Number(document.getElementById('sl_unitPrice').value);
+  document.getElementById('sl_optHint').textContent = t ? (u>0?`売上金額＝単価×個数＋オプション ¥${t.toLocaleString()}`:`オプション ¥${t.toLocaleString()} を売上金額に含めて入力してください（単価を入れると自動計算）`) : ''; }
 function recalcSaleAmount(){
   const u=Number(document.getElementById('sl_unitPrice').value), q=Number(document.getElementById('sl_qty').value)||1;
-  if(u>0) document.getElementById('sl_amount').value=Math.round(u*q);
+  if(u>0) document.getElementById('sl_amount').value=Math.round(u*q+saleOptionTotal({options:saleOptsDraft}));
+  updateSaleOptHint();
 }
 function saleFromResearch(rid){
   openSaleModal();
@@ -3534,7 +3593,7 @@ function renderSalesPage(container){
     const hz=d.hourly!=null ? zoneClass(d.hourly) : '';
     return `<div class="sx-row" data-rowid="${s.id}" onclick="editSale('${s.id}')">
       <span class="sx-hd"></span>
-      <div class="sx-main"><div class="sx-title">${esc(s.title||'（内容未記入）')}</div>
+      <div class="sx-main"><div class="sx-title">${esc(s.title||'（内容未記入）')}${(s.options||[]).map(o=>`<span class="opt-tag">＋${esc(o.name)}${(o.qty||1)>1?'×'+o.qty:''}</span>`).join('')}</div>
         <div class="sx-sub"><span>${esc(s.date)}</span>${c?`<span>${esc(c.name)}</span>`:''}<span class="tag biz-${s.biz}">${s.biz}</span>${(Number(s.qty)||1)>1?`<span>${s.qty}セット</span>`:''}${r&&orderCodeFor(r)?`<span class="sx-code">${orderCodeFor(r)}</span>`:''}</div>
         ${warnMsg?`<div class="sx-warn">${warnMsg}</div>`:''}</div>
       <div class="sx-num"><span class="cap">売価</span>${yen(d.amount)}</div>
