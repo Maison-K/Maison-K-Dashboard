@@ -3294,6 +3294,8 @@ function labStage(st){
   if(/ペーパー|やすり|砥石|ドリル/.test(t)) return '荒';
   return 'その他';
 }
+/* 売上でコーティング剥がしのオプションが付いた案件（荒研ぎの時間に剥がしの時間が混ざるため、荒研ぎの比較から外す） */
+function labCoated(r){ return state.sales.some(s=>s.researchId===r.id&&(s.options||[]).some(o=>o.id==='coat'||/コーティング/.test(o.name||''))); }
 function labNum(v){ if(v===''||v==null) return null; const n=parseFloat(String(v).replace(/[^\d.\-]/g,'')); return isFinite(n)?n:null; }
 function labNormMat(m){ const s=String(m||'').trim(); const mm=s.match(/(\d{2})/); return mm?('W'+mm[1]):s; }
 function labNormCountry(c){ const s=String(c||'').trim(); if(/国産|アラマテ/.test(s)) return '国産'; if(/中国/.test(s)) return '中国'; return s; }
@@ -3340,7 +3342,7 @@ function labRows(){
         minLoss: nl&&!(nl.bad&&labCfg.hideAnom)?nl.v:null,
         finish: labNum(sp.result&&sp.result.finish),
         cost, costKinds, labor, totalCost:(cost!=null&&labor!=null)?cost+labor:null,
-        qty:Math.max(1,numOf(sp.qty)||1), stepList, tArai:stageMin('荒'), tNaka:stageMin('中'), tShiage:stageMin('仕上げ'),
+        qty:Math.max(1,numOf(sp.qty)||1), stepList, tArai:(labCoated(r)?null:stageMin('荒')), coated:labCoated(r), tNaka:stageMin('中'), tShiage:stageMin('仕上げ'),
         wBefore:wbG, maxBefore:gv('maxDia','b'),
         warn
       });
@@ -3527,7 +3529,7 @@ function labTimeCost(rows){
   const withSteps=rows.filter(r=>r.stepList&&r.stepList.length);
   const stages=['荒','中','仕上げ','その他'], stLbl={'荒':'荒研ぎ（〜#1000）','中':'中研ぎ（〜#6000・3μ以上）','仕上げ':'仕上げ（それより細かい・ペースト等）','その他':'その他（洗浄・測定など）'};
   const stCol={'荒':'#b0463d','中':'#b07a2f','仕上げ':'#0f5c3f','その他':'#888'};
-  const stSum={}; stages.forEach(k=>stSum[k]=0); withSteps.forEach(r=>r.stepList.forEach(x=>{ stSum[x.stage]+=x.min; }));
+  const stSum={}; stages.forEach(k=>stSum[k]=0); withSteps.forEach(r=>r.stepList.forEach(x=>{ if(r.coated&&x.stage==='荒') return; stSum[x.stage]+=x.min; }));
   const stTot=stages.reduce((a,k)=>a+stSum[k],0)||1, n=withSteps.length||1;
   const stageHtml=withSteps.length?`<div class="sx-stack" style="height:12px">${stages.map(k=>`<div style="width:${stSum[k]/stTot*100}%;background:${stCol[k]}" title="${stLbl[k]}"></div>`).join('')}</div>
     <ul class="sx-ledger">${stages.filter(k=>stSum[k]>0).map(k=>`<li><span><i class="lab-dot" style="background:${stCol[k]}"></i>${stLbl[k]}<span class="sub">${Math.round(stSum[k]/stTot*100)}%</span></span><b>${(stSum[k]/n).toFixed(1)}<span class="sub">分/本</span></b></li>`).join('')}
@@ -3640,7 +3642,7 @@ function renderLabPage(container){
     <div class="sx-h">データ一覧 <small>見出しで並べ替え／記録名で詳細へ。修正は工程表側で行います</small></div>
     ${labDataTable(rows)}
     <div class="sx-h">入力の充実度 <small>空欄が多い項目ほど分析に使えません</small></div>
-    <div class="sx-cols"><div>${labQuality(all)}</div><div class="sx-note" style="line-height:1.8">・仕上がり評価は、工程表「結果」の仕上がり欄に入れた数字を使います。<br>・加工時間は「実時間」、無ければ工程時間の合計です。<br>・重量・径は「前−後」の減少量として扱います（増えている／極端に減っている値は入力違いの疑いとして除外し、一覧に⚠を付けます）。<br>・件数が少ないうちは、傾向は参考値です。</div></div>
+    <div class="sx-cols"><div>${labQuality(all)}</div><div class="sx-note" style="line-height:1.8">・仕上がり評価は、工程表「結果」の仕上がり欄に入れた数字を使います。<br>・加工時間は「実時間」、無ければ工程時間の合計です。<br>・重量・径は「前−後」の減少量として扱います（増えている／極端に減っている値は入力違いの疑いとして除外し、一覧に⚠を付けます）。<br>・売上でコーティング剥がしのオプションを付けた案件は、荒研ぎの時間（比較表・グラフ・段階ごとの時間）から除外します。<br>・件数が少ないうちは、傾向は参考値です。</div></div>
   </div>`;
 }
 
