@@ -71,7 +71,7 @@ button{font-family:inherit;}
 .topbar .sub{font-size:11px;color:var(--ink-faint);font-family:var(--mono);}
 .spacer{flex:1;}
 .hamburger{display:none;background:none;border:1px solid var(--line);border-radius:var(--radius);width:32px;height:32px;cursor:pointer;}
-@media (max-width:860px){.hamburger{display:block;}}
+/* モバイルは画面下のタブとメニュー画面で移動するため、左上の展開ボタンは出さない */
 .content{flex:1;overflow:auto;padding:24px;}
 @media (max-width:640px){.content{padding:14px;}}
 
@@ -634,6 +634,19 @@ tr.step-dragging{background:var(--green-tint);opacity:.85;}
 .more-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:16px 6px;background:var(--white);border:1px solid var(--line);border-radius:10px;font-size:12px;color:var(--ink);cursor:pointer;min-height:84px;}
 .more-item svg{width:24px;height:24px;color:var(--green-deep);}
 @media (min-width:861px){.more-grid{grid-template-columns:repeat(4,minmax(0,1fr));}}
+.pc{font-size:10.5px;font-weight:700;padding:0 5px;border-radius:3px;}
+.pc.up{color:#b23b2e;background:#fbe3df;} .pc.down{color:#0f5c3f;background:#dff0e7;}
+.ph-table{width:100%;border-collapse:collapse;font-size:12px;background:var(--white);border:1px solid var(--line);}
+.ph-table th{font-weight:500;color:var(--ink-faint);font-size:11px;text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);}
+.ph-table td{padding:5px 8px;border-bottom:1px solid var(--line);}
+.ph-add{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.ph-add input{flex:1;min-width:110px;width:auto;}
+.pn-box{background:#fff6dc;border:1px solid #e3c467;border-radius:6px;padding:8px 10px;font-size:12px;margin-bottom:8px;}
+.pn-banner{background:#fff6dc;border:1px solid #e3c467;border-radius:6px;padding:9px 12px;font-size:12.5px;margin:0 0 10px;cursor:pointer;}
+.pi-row{border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin-bottom:6px;background:var(--white);font-size:12.5px;}
+.pi-row.notice{border-color:#e3c467;background:#fffbea;} .pi-row.unknown{opacity:.85;}
+.pi-row label{display:flex;align-items:center;gap:6px;cursor:pointer;margin:0;}
+.pi-row label input{width:auto;margin:0;}
 </style>
 </head>
 <body>
@@ -766,6 +779,7 @@ tr.step-dragging{background:var(--green-tint);opacity:.85;}
         <div class="field"><label>内容量（g・重量消耗品用）</label><input id="tl_weightG" type="number" placeholder="例）フィラメント1kgなら1000"></div>
         <div class="field"><label>原価/1回</label><input id="tl_unitcost" readonly></div>
       </div>
+      <div class="field" id="tl_histWrap"><label>価格の履歴（新しい案件は最新価格、過去の案件は当時の価格で原価計算）</label><div id="tl_hist"></div></div>
       <div class="field-row">
         <div class="field check"><input type="checkbox" id="tl_fixed"><label for="tl_fixed">常に使うもの（毎回の加工に固定計上）</label></div>
         <div class="field check"><input type="checkbox" id="tl_onFelt"><label for="tl_onFelt">フェルトバフに付けて使う（フェルト原価も合算）</label></div>
@@ -972,6 +986,19 @@ tr.step-dragging{background:var(--green-tint);opacity:.85;}
       <button class="btn" onclick="closeOv('ov-newresearch')">キャンセル</button>
       <button class="btn primary" onclick="submitNewResearch()">作成して詳細を開く</button>
     </div>
+  </div>
+</div>
+
+<!-- ============ 購入メールからの価格取り込み ============ -->
+<div class="overlay" id="ov-priceimp">
+  <div class="modal">
+    <div class="modal-head"><h3>購入情報・価格改定を取り込む</h3><button class="modal-close" onclick="closeOv('ov-priceimp')">×</button></div>
+    <div class="modal-body">
+      <div class="mute" style="font-size:11.5px;margin-bottom:6px">毎朝8時の「工具購入メールチェック」が知らせた内容（MKP: で始まる行）をそのまま貼り付けてください。</div>
+      <textarea id="pi_text" style="width:100%;box-sizing:border-box;min-height:110px;font-family:var(--mono);font-size:11px" placeholder='MKP:{"t":"purchase","tool":"ダイヤモンドハンドラッパー #1000","date":"2026-10-27","price":1180,...}' oninput="parsePriceImport()"></textarea>
+      <div id="pi_preview" style="margin-top:10px"></div>
+    </div>
+    <div class="modal-foot"><div style="flex:1"></div><button class="btn" onclick="closeOv('ov-priceimp')">キャンセル</button><button class="btn primary" onclick="applyPriceImport()">チェックしたものを反映</button></div>
   </div>
 </div>
 
@@ -1365,6 +1392,9 @@ function migrateResearchRecord(raw){
 function migrateToolRecord(raw){
   const t = Object.assign(emptyTool(), raw, {createdDate: raw.createdDate||todayStr(), updatedAt: raw.updatedAt||raw.createdAt||Date.now()});
   applyToolCostDefaults(t, raw);
+  if(!Array.isArray(t.priceHistory)) t.priceHistory=[];
+  if(!t.priceHistory.length && numOf(t.price)>0) t.priceHistory.push({id:uid('ph_'),date:t.createdDate||todayStr(),price:numOf(t.price),source:'初期登録',note:''});
+  if(!Array.isArray(t.priceNotices)) t.priceNotices=[];
   return t;
 }
 /* 工具マスタの原価ルール初期値（ユーザーが未設定の項目のみ、名前から推定して補完） */
@@ -2924,7 +2954,7 @@ function specimenCostParts(r, sp){
     return {material:numOf(sp.cost && sp.cost.material), packaging:pack, shipping:ship,
             minutes:WORKFLOW_STEPS[r.biz].reduce((a,st)=>a+numOf((wf.minutes||{})[st]),0), toolLines:[]};
   }
-  const bd=specimenToolCostBreakdown(r.biz, sp);
+  const bd=specimenToolCostBreakdown(r.biz, sp, recDate(r));
   const stepSum=(sp.steps||[]).reduce((a,st)=>a+numOf(st.time),0);
   const perBarMin = numOf(sp.cost && sp.cost.actualMin) || stepSum;
   return {material:bd.total*q, packaging:pack, shipping:ship,
@@ -3271,7 +3301,7 @@ function labRows(){
       const wb=gv('weight','b'); const wbG = wb==null?null:wb*unit;
       const lastTool=(()=>{ for(let i=(sp.steps||[]).length-1;i>=0;i--){ const s=sp.steps[i]; if(s&&s.tool&&(labNum(s.time)||0)>0) return s; } return (sp.steps||[]).slice(-1)[0]||null; })();
       const gm = lastTool ? String(lastTool.tool||'').match(/[#♯＃]\s*(\d{2,6})/) : null;
-      let cost=null; try{ if(r.biz==='研磨'){ const t=specimenToolCostBreakdown(r.biz,sp).total; if(t>0) cost=Math.round(t); } }catch(e){}
+      let cost=null; try{ if(r.biz==='研磨'){ const t=specimenToolCostBreakdown(r.biz,sp,recDate(r)).total; if(t>0) cost=Math.round(t); } }catch(e){}
       const date=r.startDate||r.createdDate||'';
       const cu=state.customers.find(c=>c.id===(r.order&&r.order.customerId));
       out.push({
@@ -4512,13 +4542,34 @@ function effectiveToolLife(t, usage){
   }
   return manual;
 }
+/* 価格の履歴：ある日付時点の価格（その日以前で最新の購入価格。履歴より前の日付なら最初の価格） */
+let COST_AS_OF=null;
+function toolPriceHist(t){ return (t.priceHistory||[]).filter(h=>numOf(h.price)>0).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))||(a.at||0)-(b.at||0)); }
+function toolPriceAt(t,date){
+  const h=toolPriceHist(t); if(!h.length) return numOf(t.price);
+  if(!date) return numOf(h[h.length-1].price);
+  let cur=h[0]; h.forEach(x=>{ if(String(x.date)<=date) cur=x; }); return numOf(cur.price);
+}
+function toolLatestPrice(t){ const h=toolPriceHist(t); return h.length?numOf(h[h.length-1].price):numOf(t.price); }
+function toolPrevPrice(t){ const h=toolPriceHist(t); return h.length>1?numOf(h[h.length-2].price):null; }
+function addToolPrice(t,entry){
+  t.priceHistory=t.priceHistory||[];
+  const e=Object.assign({id:uid('ph_'),at:Date.now(),note:''},entry,{price:numOf(entry.price)});
+  if(t.priceHistory.some(x=>x.date===e.date&&numOf(x.price)===e.price&&(x.source||'')===(e.source||''))) return false;
+  t.priceHistory.push(e); t.price=String(toolLatestPrice(t)); touch(t); return true;
+}
+function recDate(r){ return (r&&(r.startDate||r.createdDate))||null; }
 function toolCostPerUse(t, usage){
   if(!t) return 0;
-  const price=numOf(t.price), life=effectiveToolLife(t, usage);
+  const price=COST_AS_OF?toolPriceAt(t,COST_AS_OF):numOf(t.price), life=effectiveToolLife(t, usage);
   return (price>0 && life>0) ? price/life : 0;
 }
 /* 1本あたり工具原価の内訳を返す */
-function specimenToolCostBreakdown(biz, sp){
+function specimenToolCostBreakdown(biz, sp, asOf){
+  const prevAsOf=COST_AS_OF; COST_AS_OF=asOf||null;
+  try{ return specimenToolCostBreakdown0(biz, sp); } finally { COST_AS_OF=prevAsOf; }
+}
+function specimenToolCostBreakdown0(biz, sp){
   const usage=toolUsageCounts();
   const lines=[]; const used=new Set();
   const felt = state.tools.find(t=>t.name==='フェルトバフ' && (t.biz===biz||t.biz==='全般'));
@@ -4671,7 +4722,7 @@ function renderResearchDetail(id){
 
     const packMin = Number(state.settings.packMin)||0;
     const totalMin = (Number(sp.cost.actualMin)||0) * (Number(sp.qty)||1) + packMin;
-    const toolCostBd = specimenToolCostBreakdown(r.biz, sp);
+    const toolCostBd = specimenToolCostBreakdown(r.biz, sp, recDate(r));
     const autoMaterialPerOne = toolCostBd.total; // 工程表の工具原価＋固定費（1本あたり）
     const legacyManualMaterial = Number(sp.cost.material)||0; // 旧・手入力の材料費（二重計上を避けるため計算には使わない）
     const totalMaterial = autoMaterialPerOne * (Number(sp.qty)||1);
@@ -5125,7 +5176,7 @@ function renderToolsPage(container){
         ${thumb}
         <div class="main" onclick="openToolDetail('${t.id}')">
           <div class="ttl">${esc(t.name)}</div>
-          <div class="meta"><span class="tag biz-${t.biz}">${t.biz}</span>${t.cat?`<span>${esc(t.cat)}</span>`:''}${t.spec?`<span>${esc(t.spec)}</span>`:''}${t.price?`<span>${Number(t.price).toLocaleString()}円</span>`:''}${unit!==null?`<span>原価/回 ${unit}円</span>`:''}${unitG!==null?`<span>単価 ${unitG}円/g</span>`:''}
+          <div class="meta"><span class="tag biz-${t.biz}">${t.biz}</span>${t.cat?`<span>${esc(t.cat)}</span>`:''}${t.spec?`<span>${esc(t.spec)}</span>`:''}${t.price?`<span>${Number(t.price).toLocaleString()}円${(()=>{const pv=toolPrevPrice(t),c=toolLatestPrice(t);if(!pv||!c||pv===c)return '';const d=(c-pv)/pv*100;return ` <span class="pc ${d>0?'up':'down'}">${d>0?'+':''}${Math.round(d)}%</span>`;})()}${(t.priceNotices||[]).some(n=>n.status==='open')?' 📢':''}</span>`:''}${unit!==null?`<span>原価/回 ${unit}円</span>`:''}${unitG!==null?`<span>単価 ${unitG}円/g</span>`:''}
           ${t.link?`<span><a href="${esc(t.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">購入先↗</a></span>`:''}</div>
           <div class="datestamp">作成 ${fmtDT(t.createdAt)}　更新 ${fmtDT(t.updatedAt)}</div>
         </div>
@@ -5137,11 +5188,72 @@ function renderToolsPage(container){
   }).join('') : `<div class="empty">工具が登録されていません</div>`;
   container.innerHTML=`<div class="filterbar">${bizChips}<span class="divider"></span>
     <button class="btn sm ghost" onclick="toolFilterBiz.clear();render();">絞込解除</button>
-    <div class="spacer"></div><button class="btn sm" onclick="optimizeToolLives()" title="交換していない工具は、これまでの使用回数を耐用回数とみなして更新します">耐用回数を実績で最適化</button><button class="btn sm" onclick="exportToolsCSV()">CSV出力</button>
+    <div class="spacer"></div><button class="btn sm" onclick="optimizeToolLives()" title="交換していない工具は、これまでの使用回数を耐用回数とみなして更新します">耐用回数を実績で最適化</button><button class="btn sm" onclick="openPriceImport()">🧾 購入メールから取り込む</button><button class="btn sm" onclick="exportToolsCSV()">CSV出力</button>
     <button class="btn primary sm" onclick="openToolModal()">＋ 工具を追加</button></div>
+    ${(()=>{ const n=state.tools.reduce((a,t)=>a+(t.priceNotices||[]).filter(x=>x.status==='open').length,0); return n?`<div class="pn-banner" onclick="openNoticeTools()">📢 未確認の価格改定のお知らせが ${n}件 あります（タップして確認）</div>`:''; })()}
     ${renderSortBar('tools',DATE_SORT_OPTIONS,{field:'createdAt',dir:'desc'})}
     <div class="rowlist">${rows}</div>`;
   document.querySelectorAll('.swiperow').forEach(row=>attachSwipe(row,()=>{}));
+}
+/* ---------- 工具の価格履歴（手入力の更新・メール取り込み・価格改定のお知らせ） ---------- */
+function renderToolPriceHist(t){
+  const h=toolPriceHist(t).slice().reverse();
+  const rows=h.map((x,i)=>{ const nx=h[i+1]; const d=nx&&numOf(nx.price)?(numOf(x.price)-numOf(nx.price))/numOf(nx.price)*100:null;
+    return `<tr><td>${esc(x.date)}</td><td style="text-align:right">¥${numOf(x.price).toLocaleString()}${d!=null&&Math.abs(d)>=0.5?` <span class="pc ${d>0?'up':'down'}">${d>0?'+':''}${Math.round(d)}%</span>`:''}</td><td>${esc(x.source||'')}</td><td class="mute">${esc(x.note||'')}</td><td>${h.length>1?`<button class="step-del" title="この履歴を削除" onclick="removeToolPrice('${t.id}','${x.id}')">×</button>`:''}</td></tr>`; }).join('');
+  const nts=(t.priceNotices||[]).filter(n=>n.status==='open');
+  document.getElementById('tl_hist').innerHTML=`
+    ${nts.map(n=>`<div class="pn-box">📢 価格改定のお知らせ（${esc(n.shop||'')}）：${n.effective?esc(n.effective)+'から ':''}${n.newPrice?'¥'+numOf(n.newPrice).toLocaleString():''}　<span class="mute">${esc(n.text||'')}</span>
+      <div style="margin-top:4px">${n.newPrice?`<button class="btn sm primary" onclick="applyPriceNotice('${t.id}','${n.id}')">この価格を履歴に反映</button> `:''}<button class="btn sm" onclick="dismissPriceNotice('${t.id}','${n.id}')">確認済みにする</button></div></div>`).join('')}
+    <table class="ph-table"><thead><tr><th>日付</th><th style="text-align:right">価格（1個・税込）</th><th>取得元</th><th>メモ</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="5" class="mute">履歴はまだありません</td></tr>'}</tbody></table>
+    <div class="ph-add"><input type="date" id="ph_date" value="${todayStr()}"><input type="number" id="ph_price" placeholder="新しい価格（円）"><input id="ph_note" placeholder="購入先・メモ（任意）"><button class="btn sm primary" onclick="addToolPriceManual('${t.id}')">価格を更新</button></div>`;
+}
+function addToolPriceManual(id){
+  const t=state.tools.find(x=>x.id===id); if(!t) return;
+  const price=numOf(document.getElementById('ph_price').value); if(!(price>0)){ toast('価格を入力してください'); return; }
+  const ok=addToolPrice(t,{date:document.getElementById('ph_date').value||todayStr(),price,source:'手入力',note:document.getElementById('ph_note').value.trim()});
+  if(!ok){ toast('同じ日付・価格の履歴がすでにあります'); return; }
+  document.getElementById('tl_price').value=t.price; calcUnitCost();
+  saveState(); renderToolPriceHist(t); toast('価格を更新しました（過去の案件の原価は当時の価格のまま）');
+}
+function removeToolPrice(id,hid){
+  const t=state.tools.find(x=>x.id===id); if(!t) return;
+  if(!confirm('この価格の履歴を削除しますか？')) return;
+  t.priceHistory=t.priceHistory.filter(x=>x.id!==hid); t.price=String(toolLatestPrice(t)); touch(t);
+  document.getElementById('tl_price').value=t.price; calcUnitCost(); saveState(); renderToolPriceHist(t);
+}
+function applyPriceNotice(id,nid){
+  const t=state.tools.find(x=>x.id===id); const n=t&&(t.priceNotices||[]).find(x=>x.id===nid); if(!n) return;
+  addToolPrice(t,{date:n.effective||todayStr(),price:n.newPrice,source:'価格改定',note:n.shop||''}); n.status='applied';
+  document.getElementById('tl_price').value=t.price; calcUnitCost(); saveState(); renderToolPriceHist(t); toast('改定後の価格を履歴に反映しました');
+}
+function dismissPriceNotice(id,nid){ const t=state.tools.find(x=>x.id===id); const n=t&&(t.priceNotices||[]).find(x=>x.id===nid); if(!n) return; n.status='dismissed'; touch(t); saveState(); renderToolPriceHist(t); }
+function openNoticeTools(){ const ts=state.tools.filter(t=>(t.priceNotices||[]).some(n=>n.status==='open')); if(ts[0]) editTool(ts[0].id); }
+/* 取り込み：MKP:{json} の行を読み、工具マスタと照合して確認一覧を出す */
+let priceImpRows=[];
+function openPriceImport(){ document.getElementById('pi_text').value=''; priceImpRows=[]; document.getElementById('pi_preview').innerHTML=''; openOv('ov-priceimp'); }
+function piNorm(t){ return String(t||'').normalize('NFKC').toLowerCase().replace(/[\s　・\-‐－]/g,'').replace(/♯/g,'#'); }
+function piMatchTool(name){ const n=piNorm(name); if(!n) return ''; const t=state.tools.find(x=>piNorm(x.name)===n)||state.tools.find(x=>piNorm(x.name).includes(n)||n.includes(piNorm(x.name))); return t?t.id:''; }
+function parsePriceImport(){
+  const txt=document.getElementById('pi_text').value; priceImpRows=[];
+  txt.split(/\n/).forEach(line=>{ const m=line.match(/MKP:\s*(\{.*\})/); if(!m) return; try{ const o=JSON.parse(m[1]); o.toolId=piMatchTool(o.tool); o.on=!!o.toolId&&o.t!=='unknown'; priceImpRows.push(o); }catch(e){} });
+  const opts=sel=>'<option value="">（工具マスタにない・取り込まない）</option>'+state.tools.map(t=>`<option value="${t.id}" ${t.id===sel?'selected':''}>${esc(t.name)}</option>`).join('');
+  document.getElementById('pi_preview').innerHTML = priceImpRows.length ? priceImpRows.map((o,i)=>{
+    const t=state.tools.find(x=>x.id===o.toolId), cur=t?toolLatestPrice(t):0, np=numOf(o.t==='notice'?o.newPrice:o.price), d=cur&&np?(np-cur)/cur*100:null;
+    return `<div class="pi-row ${o.t}"><label><input type="checkbox" ${o.on?'checked':''} onchange="priceImpRows[${i}].on=this.checked"> <b>${o.t==='notice'?'📢 価格改定':o.t==='unknown'?'❔ 未登録の品目':'🧾 購入'}</b>　${esc(o.date||'')}　${esc(o.shop||'')}</label>
+      <div class="mute" style="font-size:11px">${esc(o.item||o.text||o.tool||'')}</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px"><select onchange="priceImpRows[${i}].toolId=this.value;priceImpRows[${i}].on=!!this.value;parsePriceImportKeep()" style="flex:1;min-width:180px">${opts(o.toolId)}</select>
+      <span>${np?'¥'+np.toLocaleString():''}${o.t==='notice'&&o.effective?`（${esc(o.effective)}から）`:''}${o.qty>1?` <span class="mute">×${o.qty}個の1個あたり</span>`:''}${d!=null&&Math.abs(d)>=0.5?` <span class="pc ${d>0?'up':'down'}">今の価格比 ${d>0?'+':''}${Math.round(d)}%</span>`:''}</span></div></div>`; }).join('')
+    : (txt.trim()?'<div class="empty">MKP: で始まる行が見つかりません</div>':'');
+}
+function parsePriceImportKeep(){ const keep=priceImpRows.map(o=>({toolId:o.toolId,on:o.on})); parsePriceImport(); keep.forEach((k,i)=>{ if(priceImpRows[i]) Object.assign(priceImpRows[i],k); }); const boxes=document.querySelectorAll('#pi_preview input[type=checkbox]'); priceImpRows.forEach((o,i)=>{ if(boxes[i]) boxes[i].checked=o.on; }); document.querySelectorAll('#pi_preview select').forEach((s,i)=>{ if(priceImpRows[i]) s.value=priceImpRows[i].toolId||''; }); }
+function applyPriceImport(){
+  let nP=0,nN=0,skip=0;
+  priceImpRows.forEach(o=>{ if(!o.on||!o.toolId) return; const t=state.tools.find(x=>x.id===o.toolId); if(!t) return;
+    if(o.t==='notice'){ t.priceNotices=t.priceNotices||[]; if(t.priceNotices.some(n=>n.effective===o.effective&&numOf(n.newPrice)===numOf(o.newPrice))){skip++;return;} t.priceNotices.push({id:uid('pn_'),date:o.date||todayStr(),effective:o.effective||'',newPrice:numOf(o.newPrice)||'',shop:o.shop||'',text:o.text||'',status:'open'}); touch(t); nN++; }
+    else { if(addToolPrice(t,{date:o.date||todayStr(),price:o.price,source:'メール('+(o.shop||'購入')+')',note:o.qty>1?`${o.qty}個まとめ買い`:''})) nP++; else skip++; }
+  });
+  saveState(); closeOv('ov-priceimp'); render();
+  toast(`価格 ${nP}件・改定のお知らせ ${nN}件を反映しました${skip?`（重複 ${skip}件はスキップ）`:''}`);
 }
 function openToolDetail(id){ editTool(id); } // シンプル化のため詳細=編集モーダルで表示
 function toolDeleteDirect(id){
@@ -5202,6 +5314,7 @@ function openToolModal(){
   document.getElementById('tl_unitcost').value='';
   document.getElementById('tl_autofillHint').textContent='';
   document.getElementById('tl_delBtn').style.display='none';
+  document.getElementById('tl_histWrap').style.display='none';
   renderToolPhotoStrip();
   openOv('ov-tool');
 }
@@ -5225,6 +5338,8 @@ function editTool(id){
   document.getElementById('tl_autofillHint').textContent='';
   calcUnitCost();
   document.getElementById('tl_delBtn').style.display='inline-block';
+  document.getElementById('tl_histWrap').style.display='';
+  renderToolPriceHist(t);
   renderToolPhotoStrip();
   openOv('ov-tool');
 }
@@ -5238,8 +5353,8 @@ function submitTool(){
   const name=document.getElementById('tl_name').value.trim();
   if(!name){ toast('工具名を入力してください'); return; }
   const data={biz:document.getElementById('tl_biz').value,cat:document.getElementById('tl_cat').value.trim(),name,spec:document.getElementById('tl_spec').value.trim(),starter:document.getElementById('tl_starter').checked,price:document.getElementById('tl_price').value,life:document.getElementById('tl_life').value,fixed:document.getElementById('tl_fixed').checked,onFelt:document.getElementById('tl_onFelt').checked,lifeMode:document.getElementById('tl_lifeMode').value,lifeLink:document.getElementById('tl_lifeLink').value.trim(),weightG:document.getElementById('tl_weightG').value,createdDate:document.getElementById('tl_created').value||todayStr(),link:normalizeUrl(document.getElementById('tl_link').value),note:document.getElementById('tl_note').value.trim(),photos:toolPhotoBuffer.slice()};
-  if(editingToolId){ const t=state.tools.find(x=>x.id===editingToolId); Object.assign(t,data); touch(t); }
-  else{ state.tools.push(Object.assign({id:uid('tl_'),createdAt:Date.now(),updatedAt:Date.now()},data)); }
+  if(editingToolId){ const t=state.tools.find(x=>x.id===editingToolId); const before=toolLatestPrice(t); Object.assign(t,data); if(numOf(data.price)>0 && numOf(data.price)!==before) addToolPrice(t,{date:todayStr(),price:data.price,source:'手入力'}); touch(t); }
+  else{ const nt=Object.assign({id:uid('tl_'),createdAt:Date.now(),updatedAt:Date.now(),priceHistory:[],priceNotices:[]},data); if(numOf(data.price)>0) nt.priceHistory.push({id:uid('ph_'),date:data.createdDate,price:numOf(data.price),source:'初期登録',note:''}); state.tools.push(nt); }
   saveState(); closeOv('ov-tool'); render(); toast('保存しました');
 }
 function deleteToolFromModal(){
