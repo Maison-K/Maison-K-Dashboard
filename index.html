@@ -652,6 +652,11 @@ tr.step-dragging{background:var(--green-tint);opacity:.85;}
 .lab-steps td:first-child{white-space:normal;min-width:200px;}
 .lab-minibar{height:3px;background:var(--paper-deep);border-radius:2px;margin-top:3px;min-width:60px;}
 .lab-minibar i{display:block;height:3px;border-radius:2px;}
+.opt-card{display:flex;align-items:flex-start;gap:10px;flex:1;min-width:220px;padding:10px 12px;border:1px solid var(--line-strong);border-radius:8px;background:var(--white);cursor:pointer;margin:0 0 8px;}
+.opt-card input{width:18px;height:18px;margin:2px 0 0;flex:0 0 auto;accent-color:var(--green-deep);}
+.opt-card b{display:block;font-size:13px;color:var(--ink);}
+.opt-card small{display:block;font-size:11px;color:var(--ink-faint);line-height:1.5;margin-top:2px;font-weight:400;}
+.opt-card:has(input:checked){border-color:var(--green-deep);background:var(--green-tint);}
 </style>
 </head>
 <body>
@@ -776,7 +781,7 @@ tr.step-dragging{background:var(--green-tint);opacity:.85;}
       </div>
       <div class="field-row">
         <div class="field"><label>仕様（粒径・番手相当）</label><input id="tl_spec" placeholder="工具名から自動推定されます（手動修正可）"></div>
-        <div class="field check" style="align-items:flex-end;padding-bottom:8px;"><input type="checkbox" id="tl_starter"><label for="tl_starter">現在のスタメン</label></div>
+        <label class="opt-card" for="tl_starter"><input type="checkbox" id="tl_starter"><span><b>現在のスタメン</b><small>いま主に使っている工具。一覧の先頭に表示します</small></span></label>
       </div>
       <div class="field-row">
         <div class="field"><label>価格（円・税込）</label><input id="tl_price" type="number"></div>
@@ -786,8 +791,8 @@ tr.step-dragging{background:var(--green-tint);opacity:.85;}
       </div>
       <div class="field" id="tl_histWrap"><label>価格の履歴（新しい案件は最新価格、過去の案件は当時の価格で原価計算）</label><div id="tl_hist"></div></div>
       <div class="field-row">
-        <div class="field check"><input type="checkbox" id="tl_fixed"><label for="tl_fixed">常に使うもの（毎回の加工に固定計上）</label></div>
-        <div class="field check"><input type="checkbox" id="tl_onFelt"><label for="tl_onFelt">フェルトバフに付けて使う（フェルト原価も合算）</label></div>
+        <label class="opt-card" for="tl_fixed"><input type="checkbox" id="tl_fixed"><span><b>毎回の加工で必ず使う（固定費）</b><small>工程表で選ばなくても、1本ごとの原価に自動で加えます（例：旋盤・センタードリル）</small></span></label>
+        <label class="opt-card" for="tl_onFelt"><input type="checkbox" id="tl_onFelt"><span><b>フェルトバフに付けて使う研磨剤</b><small>この研磨剤を工程で選ぶと、フェルトバフの原価も一緒に加えます</small></span></label>
       </div>
       <div class="field-row">
         <div class="field"><label>耐用回数の決め方</label><select id="tl_lifeMode" onchange="calcUnitCost()"><option value="manual">手入力の耐用回数を使う</option><option value="total">これまでの総加工本数（常に使うもの向け）</option><option value="maxOf">指定した工具の使用数の多い方</option></select></div>
@@ -2889,7 +2894,7 @@ function deleteSale(){
   saveState(); closeOv('ov-sale'); render(); toast('削除しました');
 }
 /* ---------- 売上オプション（例：コーティング剥がし） ---------- */
-function saleOptionMaster(){ const m=state.settings.saleOptions; return Array.isArray(m)&&m.length?m:[{id:'coat',biz:'研磨',name:'コーティング剥がし',price:1980}]; }
+function saleOptionMaster(){ const m=state.settings.saleOptions; return Array.isArray(m)&&m.length?m:[{id:'coat',biz:'研磨',name:'コーティング剥がし',price:2200},{id:'restore',biz:'研磨',name:'レストア対応',price:3300}]; }
 let saleOptsDraft=[];
 function saleOptionTotal(s){ return (s&&s.options||[]).reduce((a,o)=>a+numOf(o.price)*(numOf(o.qty)||1),0); }
 function renderSaleOptions(cur){
@@ -2900,7 +2905,7 @@ function renderSaleOptions(cur){
   wrap.style.display=list.length?'':'none';
   document.getElementById('sl_opts').innerHTML=list.map(m=>{ const on=saleOptsDraft.find(o=>o.id===m.id);
     return `<div class="opt-row ${on?'on':''}"><label><input type="checkbox" ${on?'checked':''} onchange="toggleSaleOpt('${m.id}',this.checked)">${esc(m.name)}<span class="mute">¥${Number(on?on.price:m.price).toLocaleString()}（税込）</span></label>
-      ${on?`<span class="opt-q">×<input type="number" min="1" value="${on.qty||1}" oninput="setSaleOptQty('${m.id}',this.value)">本・セット</span><b>¥${(numOf(on.price)*(numOf(on.qty)||1)).toLocaleString()}</b>`:''}</div>`; }).join('');
+      ${on?`<span class="opt-q">×<input type="number" min="1" value="${on.qty||1}" oninput="setSaleOptQty('${m.id}',this.value)">セット</span><b>¥${(numOf(on.price)*(numOf(on.qty)||1)).toLocaleString()}</b>`:''}</div>`; }).join('');
   updateSaleOptHint();
 }
 function toggleSaleOpt(id,on){
