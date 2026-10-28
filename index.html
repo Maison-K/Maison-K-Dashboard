@@ -647,6 +647,11 @@ tr.step-dragging{background:var(--green-tint);opacity:.85;}
 .pi-row.notice{border-color:#e3c467;background:#fffbea;} .pi-row.unknown{opacity:.85;}
 .pi-row label{display:flex;align-items:center;gap:6px;cursor:pointer;margin:0;}
 .pi-row label input{width:auto;margin:0;}
+.lab-u{display:block;font-size:9.5px;color:var(--ink-faint);font-weight:400;}
+.lab-corr td:first-child{white-space:nowrap;}
+.lab-steps td:first-child{white-space:normal;min-width:200px;}
+.lab-minibar{height:3px;background:var(--paper-deep);border-radius:2px;margin-top:3px;min-width:60px;}
+.lab-minibar i{display:block;height:3px;border-radius:2px;}
 </style>
 </head>
 <body>
@@ -3268,13 +3273,27 @@ const LAB_METRICS = [
   {k:'finish',l:'仕上がり評価',u:'',d:1},
   {k:'steps',l:'工程数',u:'',d:0},
   {k:'cost',l:'材料費/本',u:'円',d:0},
+  {k:'labor',l:'人件費/本',u:'円',d:0},
+  {k:'totalCost',l:'総コスト/本',u:'円',d:0},
+  {k:'tArai',l:'荒研ぎの時間',u:'分',d:1},
+  {k:'tNaka',l:'中研ぎの時間',u:'分',d:1},
+  {k:'tShiage',l:'仕上げの時間',u:'分',d:1},
   {k:'wBefore',l:'加工前重量',u:'g',d:2},
   {k:'maxBefore',l:'加工前最大径',u:'mm',d:2},
 ];
-const LAB_MATRIX_METRICS = ['minutes','wLoss','wLossPct','maxLoss','finish','cost'];
+const LAB_MATRIX_METRICS = ['minutes','tArai','tNaka','tShiage','wLoss','maxLoss','finish','cost','totalCost'];
 const LAB_PALETTE = ['#2f6f4f','#3d6fb0','#b07a2f','#8a4fa0','#b0463d','#2b8a8a','#6b6b6b','#c0792f','#4b5fa8','#7a8f2b'];
 let labCfg = {group:'cond', metric:'minutes', chart:'strip', sx:'maxBefore', sy:'minutes', filters:{}, hideAnom:true, sortKey:'date', sortDir:'desc'};
 
+/* 工程の段階分け：番手・粒径から 荒研ぎ(〜#1000)／中研ぎ(〜#6000・3μ以上)／仕上げ(それより細かい・ペースト・液体研磨剤) */
+function labStage(st){
+  const t=String((st.tool||'')+' '+(st.grit||'')+' '+(st.processName||''));
+  const mu=t.match(/(\d+(?:\.\d+)?)\s*μ/); if(mu) return parseFloat(mu[1])>=3?'中':'仕上げ';
+  const g=t.match(/[#♯＃]\s*(\d{2,6})/); if(g){ const n=+g[1]; return n<=1000?'荒':n<=6000?'中':'仕上げ'; }
+  if(/ペースト|コロイダル|ピカール|ホルツ|鏡面|バフ|クロス/.test(t)) return '仕上げ';
+  if(/ペーパー|やすり|砥石|ドリル/.test(t)) return '荒';
+  return 'その他';
+}
 function labNum(v){ if(v===''||v==null) return null; const n=parseFloat(String(v).replace(/[^\d.\-]/g,'')); return isFinite(n)?n:null; }
 function labNormMat(m){ const s=String(m||'').trim(); const mm=s.match(/(\d{2})/); return mm?('W'+mm[1]):s; }
 function labNormCountry(c){ const s=String(c||'').trim(); if(/国産|アラマテ/.test(s)) return '国産'; if(/中国/.test(s)) return '中国'; return s; }
@@ -3301,7 +3320,10 @@ function labRows(){
       const wb=gv('weight','b'); const wbG = wb==null?null:wb*unit;
       const lastTool=(()=>{ for(let i=(sp.steps||[]).length-1;i>=0;i--){ const s=sp.steps[i]; if(s&&s.tool&&(labNum(s.time)||0)>0) return s; } return (sp.steps||[]).slice(-1)[0]||null; })();
       const gm = lastTool ? String(lastTool.tool||'').match(/[#♯＃]\s*(\d{2,6})/) : null;
-      let cost=null; try{ if(r.biz==='研磨'){ const t=specimenToolCostBreakdown(r.biz,sp,recDate(r)).total; if(t>0) cost=Math.round(t); } }catch(e){}
+      let cost=null, costKinds=null; try{ if(r.biz==='研磨' && (sp.steps||[]).some(st=>st.tool)){ const bd=specimenToolCostBreakdown(r.biz,sp,recDate(r)); if(bd.total>0){ cost=Math.round(bd.total); costKinds={}; bd.lines.forEach(l=>{ costKinds[l.kind]=(costKinds[l.kind]||0)+l.cost; }); } } }catch(e){}
+      const stepList=(sp.steps||[]).map(st=>({tool:st.tool||st.processName||'（工具未選択）', min:labNum(st.time), stage:labStage(st)})).filter(x=>x.min>0);
+      const stageMin=k=>{ const a=stepList.filter(x=>x.stage===k); return a.length?a.reduce((p,c)=>p+c.min,0):(stepList.length?0:null); };
+      const hourly=numOf(state.settings.hourly)||1700, labor=minutes!=null?minutes*hourly/60:null;
       const date=r.startDate||r.createdDate||'';
       const cu=state.customers.find(c=>c.id===(r.order&&r.order.customerId));
       out.push({
@@ -3317,7 +3339,9 @@ function labRows(){
         maxLoss: ml&&!(ml.bad&&labCfg.hideAnom)?ml.v:null,
         minLoss: nl&&!(nl.bad&&labCfg.hideAnom)?nl.v:null,
         finish: labNum(sp.result&&sp.result.finish),
-        cost, wBefore:wbG, maxBefore:gv('maxDia','b'),
+        cost, costKinds, labor, totalCost:(cost!=null&&labor!=null)?cost+labor:null,
+        qty:Math.max(1,numOf(sp.qty)||1), stepList, tArai:stageMin('荒'), tNaka:stageMin('中'), tShiage:stageMin('仕上げ'),
+        wBefore:wbG, maxBefore:gv('maxDia','b'),
         warn
       });
     });
@@ -3499,10 +3523,37 @@ function labMatrix(rows){
   }
   return `<div class="lab-scroll"><table class="sx-table lab-mx"><thead><tr><th>${esc(labDimLabel(gk))}</th><th>件数</th>${head}</tr></thead><tbody>${body}</tbody></table></div>${cmp}`;
 }
+function labTimeCost(rows){
+  const withSteps=rows.filter(r=>r.stepList&&r.stepList.length);
+  const stages=['荒','中','仕上げ','その他'], stLbl={'荒':'荒研ぎ（〜#1000）','中':'中研ぎ（〜#6000・3μ以上）','仕上げ':'仕上げ（それより細かい・ペースト等）','その他':'その他（洗浄・測定など）'};
+  const stCol={'荒':'#b0463d','中':'#b07a2f','仕上げ':'#0f5c3f','その他':'#888'};
+  const stSum={}; stages.forEach(k=>stSum[k]=0); withSteps.forEach(r=>r.stepList.forEach(x=>{ stSum[x.stage]+=x.min; }));
+  const stTot=stages.reduce((a,k)=>a+stSum[k],0)||1, n=withSteps.length||1;
+  const stageHtml=withSteps.length?`<div class="sx-stack" style="height:12px">${stages.map(k=>`<div style="width:${stSum[k]/stTot*100}%;background:${stCol[k]}" title="${stLbl[k]}"></div>`).join('')}</div>
+    <ul class="sx-ledger">${stages.filter(k=>stSum[k]>0).map(k=>`<li><span><i class="lab-dot" style="background:${stCol[k]}"></i>${stLbl[k]}<span class="sub">${Math.round(stSum[k]/stTot*100)}%</span></span><b>${(stSum[k]/n).toFixed(1)}<span class="sub">分/本</span></b></li>`).join('')}
+    <li class="total"><span>工程時間の合計（平均）</span><b>${(stTot/n).toFixed(1)}<span class="sub">分/本</span></b></li></ul>`:'<div class="sx-note">工程ごとの時間が入った試料がありません。</div>';
+  // 工具（工程）別
+  const by={}; withSteps.forEach(r=>r.stepList.forEach(x=>{ const o=by[x.tool]||(by[x.tool]={n:0,sum:0,max:0,stage:x.stage}); o.n++; o.sum+=x.min; o.max=Math.max(o.max,x.min); }));
+  const tl=Object.entries(by).sort((a,b)=>b[1].sum-a[1].sum).slice(0,15), mx=Math.max(1,...tl.map(([,o])=>o.sum/o.n));
+  const toolHtml=tl.length?`<table class="sx-table lab-steps"><thead><tr><th>工程（工具）</th><th>使用件数</th><th>平均（分）</th><th>最長（分）</th><th>全体に占める割合</th></tr></thead><tbody>${tl.map(([k,o])=>`<tr><td><i class="lab-dot" style="background:${stCol[o.stage]}"></i>${esc(k)}</td><td>${o.n}</td><td><b>${(o.sum/o.n).toFixed(1)}</b><div class="lab-minibar"><i style="width:${o.sum/o.n/mx*100}%;background:${stCol[o.stage]}"></i></div></td><td>${o.max.toFixed(1)}</td><td>${Math.round(o.sum/stTot*100)}%</td></tr>`).join('')}</tbody></table>`:'';
+  // コスト構成
+  const cr=rows.filter(r=>r.costKinds); const cn=cr.length||1;
+  const avg=k=>cr.reduce((a,r)=>a+(r.costKinds[k]||0),0)/cn;
+  const lr=rows.filter(r=>r.labor!=null), lab=lr.length?lr.reduce((a,r)=>a+r.labor,0)/lr.length:0;
+  const parts=[['工程で使う工具・研磨剤',avg('工程'),'#3d6fb0'],['フェルトバフ',avg('フェルト'),'#8a4fa0'],['固定費（毎回使う道具）',avg('固定'),'#6b6b6b'],['人件費（時給'+(numOf(state.settings.hourly)||1700).toLocaleString()+'円×加工時間）',lab,'#0f5c3f']];
+  const ct=parts.reduce((a,p)=>a+p[1],0)||1;
+  const costHtml=cr.length?`<div class="sx-stack" style="height:12px">${parts.map(p=>`<div style="width:${p[1]/ct*100}%;background:${p[2]}"></div>`).join('')}</div>
+    <ul class="sx-ledger">${parts.map(p=>`<li><span><i class="lab-dot" style="background:${p[2]}"></i>${p[0]}<span class="sub">${Math.round(p[1]/ct*100)}%</span></span><b>${yen(p[1])}<span class="sub">/本</span></b></li>`).join('')}
+    <li class="total"><span>総コスト（平均）</span><b>${yen(ct)}<span class="sub">/本　1セット3本で ${yen(ct*3)}</span></b></li></ul>
+    <div class="sx-note">材料費は${cr.length}件、人件費は加工時間がある${lr.length}件の平均です。梱包・送料は含みません。</div>`:'<div class="sx-note">研磨の工程が入った試料がありません。</div>';
+  return `<div class="sx-cols"><div><h4>段階ごとの時間（1本あたり平均・${withSteps.length}件）</h4>${stageHtml}</div><div><h4>1本あたりのコスト構成</h4>${costHtml}</div></div>
+    <h4 class="lab-sub">工程（工具）ごとの時間 <small class="mute" style="font-family:var(--sans);font-weight:400;font-size:11px">合計時間が長い順・上位15件</small></h4><div class="lab-scroll">${toolHtml}</div>`;
+}
 function labCorrMatrix(rows){
-  const ks=['minutes','wLoss','maxLoss','minLoss','finish','steps','wBefore','maxBefore'];
-  const head=ks.map(k=>`<th>${esc(labMetric(k).l)}</th>`).join('');
-  const body=ks.map(a=>`<tr><td>${esc(labMetric(a).l)}</td>${ks.map(b=>{
+  const ks=['minutes','tArai','tShiage','wLoss','maxLoss','minLoss','finish','steps','cost','wBefore','maxBefore'];
+  const lu=k=>{ const m=labMetric(k); return esc(m.l)+(`<small class="lab-u">（${m.u||({finish:'10段階',steps:'工程'})[k]||'—'}）</small>`); };
+  const head=ks.map(k=>`<th>${lu(k)}</th>`).join('');
+  const body=ks.map(a=>`<tr><td>${lu(a)}</td>${ks.map(b=>{
     if(a===b) return '<td class="lab-na">·</td>';
     const c=labCorr(rows.map(r=>r[a]),rows.map(r=>r[b]));
     if(c.r==null) return `<td class="lab-na" title="n=${c.n}">—</td>`;
@@ -3564,13 +3615,16 @@ function renderLabPage(container){
       ${normPlan().length?`<button class="btn sm" onclick="runNormalize()">表記ゆれをそろえる（${normPlan().length}）</button>`:''}<button class="btn sm" onclick="labExportCsv()">CSVに書き出す</button></div>
     <div class="sx-kpis">
       <div class="sx-kpi"><b>${rows.length}<small style="font-size:13px">/${all.length}</small></b><span>分析対象の試料</span></div>
-      <div class="sx-kpi"><b>${nUse('minutes')}</b><span>加工時間あり</span></div>
-      <div class="sx-kpi"><b>${nUse('wLoss')}</b><span>前後の重量あり</span></div>
-      <div class="sx-kpi"><b>${nUse('finish')}</b><span>仕上がり評価あり</span></div>
+      ${(()=>{ const rr=rows.filter(r=>r.type!=='チャット由来'); const tot=rr.reduce((a,r)=>a+r.qty,0), mf=rr.filter(r=>r.genre==='製造').reduce((a,r)=>a+r.qty,0);
+        return `<div class="sx-kpi"><b>${tot}<small style="font-size:13px">本</small></b><span>対応した総本数（製造 ${mf}本・研究など ${tot-mf}本）</span></div>`; })()}
+      ${(()=>{ const st=labStats(rows.map(r=>r.minutes)); return `<div class="sx-kpi"><b>${st.n?st.mean.toFixed(1):'—'}<small style="font-size:13px">分/本</small></b><span>平均加工時間（${st.n}件）</span></div>`; })()}
+      ${(()=>{ const st=labStats(rows.map(r=>r.totalCost)); return `<div class="sx-kpi"><b>${st.n?yen(st.mean):'—'}<small style="font-size:13px">/本</small></b><span>平均総コスト（材料＋人件費・${st.n}件）</span></div>`; })()}
     </div>
     <div style="margin-top:14px">${labFilterBar(all)}</div>
     <div class="sx-h">見えてきた傾向 <small>差が大きい順に自動で候補を挙げます</small></div>
     ${labInsights(rows)}
+    <div class="sx-h">時間とコスト <small>どの段階・どの工程に時間とお金がかかっているか</small></div>
+    ${labTimeCost(rows)}
     <div class="sx-h">グループ別の比較表 <small>グループ分けの軸を選ぶと、全指標を一覧で比べられます</small></div>
     <div class="sx-ctl" style="margin:0 0 12px"><label style="font-size:12px">分け方 <select onchange="labSet('group',this.value)" style="width:auto">${gSel}</select></label></div>
     ${labMatrix(rows)}
